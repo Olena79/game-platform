@@ -4,16 +4,23 @@
 
 @layer base {
 	body {
-		/* Тот самый глубокий темный фон */
-		@apply bg-[#030508] text-[#e2e8f0] antialiased;
+		/* Очень глубокий сине-черный */
+		background-color: #020617;
+		/* Мягкий градиент */
+		background-image: radial-gradient(
+			circle at 50% -20%,
+			#0f172a 0%,
+			#020617 100%
+		);
+		@apply text-slate-300 antialiased;
 		font-family: 'Inter', sans-serif;
 	}
 
 	h1,
 	h2,
-	h3,
-	.font-tech {
-		font-family: 'Space Grotesk', sans-serif;
+	h3 {
+		font-family: 'Montserrat', sans-serif;
+		@apply tracking-tight font-extrabold;
 	}
 }
 
@@ -42,4 +49,65 @@
 		@apply bg-white/[0.05] border-white/20;
 		box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
 	}
+}
+
+@keyframes rainbow-border {
+	0% {
+		border-color: #ff0000;
+		box-shadow: 0 0 10px #ff0000;
+	}
+	20% {
+		border-color: #00ff00;
+		box-shadow: 0 0 10px #00ff00;
+	}
+	40% {
+		border-color: #0000ff;
+		box-shadow: 0 0 10px #0000ff;
+	}
+	60% {
+		border-color: #ffff00;
+		box-shadow: 0 0 10px #ffff00;
+	}
+	80% {
+		border-color: #ff00ff;
+		box-shadow: 0 0 10px #ff00ff;
+	}
+	100% {
+		border-color: #ff0000;
+		box-shadow: 0 0 10px #ff0000;
+	}
+}
+
+.rainbow-line {
+	height: 1px;
+	width: 100%;
+	background: linear-gradient(
+		90deg,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+	background-size: 200% auto;
+	animation: rainbow-move 4s linear infinite;
+	opacity: 0.5;
+}
+
+@keyframes rainbow-move {
+	to {
+		background-position: 200% center;
+	}
+}
+
+/* Стеклянная карточка с переливающейся рамкой */
+.neon-card-rainbow {
+	border: 1px solid transparent;
+	background:
+		linear-gradient(#020617, #020617) padding-box,
+		linear-gradient(90deg, #ff0000, #00ffff, #ff00ff, #ff0000) border-box;
+	background-size: 300% 300%;
+	animation: rainbow-move 6s ease infinite;
 }

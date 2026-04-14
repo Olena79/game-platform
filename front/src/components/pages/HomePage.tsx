@@ -13,7 +13,7 @@ export const HomePage = () => {
 				<img
 					src='https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776167811/360_F_1785258885_JV6D8dedszLThU675o3mfiJYKVjkL3rH_dmtm9r.jpg'
 					alt='Neon Glow'
-					className='absolute -top-140 w-[500px] h-[500px] max-w-none opacity-40 -z-10 animate-pulse pointer-events-none'
+					className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] max-w-none opacity-60 z-0 animate-pulse pointer-events-none'
 				/>
 				<h1 className='text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-tight max-w-4xl'>
 					<span className='text-white'>Це не просто гра.</span> <br />
@@ -34,6 +34,8 @@ export const HomePage = () => {
 					Спробувати гру
 				</Button>
 			</section>
+
+			<div className='rainbow-line' />
 
 			{/* Section: Что это за игры */}
 			<section className='flex flex-col items-center gap-12'>
@@ -56,6 +58,8 @@ export const HomePage = () => {
 					/>
 				</div>
 			</section>
+
+			<div className='rainbow-line' />
 
 			{/* Section: Как это происходит (Шаги) */}
 			<section className='flex flex-col items-center gap-12 bg-white/5 py-16 rounded-[40px] border border-white/10 backdrop-blur-sm mx-4'>
