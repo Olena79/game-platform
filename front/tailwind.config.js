@@ -8,8 +8,10 @@ export default {
 				display: ['Montserrat', 'sans-serif'],
 			},
 			colors: {
-				background: '#020617',
+				dark: '#020617',
 				surface: '#0f172a',
+				// Основной неоновый акцент
+				accentCyan: '#00d2ff',
 			},
 		},
 	},

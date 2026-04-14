@@ -1,126 +1,74 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MousePointer2, Users, Lightbulb, Zap } from 'lucide-react'
-import { Button } from '../minicomponents/Button'
+import { MousePointer2, Users, Lightbulb } from 'lucide-react'
+
+// Легкий компонент для карточки
+const FeatureCard = ({ icon: Icon, title }: { icon: any; title: string }) => (
+	<div className='glass-card flex flex-col items-center text-center group'>
+		<div className='mb-6 p-4 rounded-full bg-white/5 border border-white/10 group-hover:border-accentCyan/30 transition-all duration-300'>
+			<Icon size={32} className='text-accentCyan group-hover:animate-pulse' />
+		</div>
+		<h3 className='text-xl font-semibold text-white mb-2'>{title}</h3>
+		<p className='text-slate-400 text-sm font-light'>
+			Ігрові механіки, що активують нестандартне мислення.
+		</p>
+	</div>
+)
+
+// Разделительная радужная линия
+const RainbowSeparator = () => (
+	<div className='w-full flex justify-center my-16'>
+		<div className='rainbow-line max-w-7xl' />
+	</div>
+)
 
 export const HomePage = () => {
 	const { t } = useTranslation()
 
 	return (
 		<div className='flex flex-col gap-24 py-16'>
-			{/* Hero Section - Главный блок */}
-			<section className='relative flex flex-col items-center text-center px-4 overflow-hidden'>
+			{/* Hero Section */}
+			<section className='relative flex flex-col items-center text-center px-4 min-h-[70vh] justify-center overflow-hidden'>
+				{/* Фоновое облачное сияние (z-0, pointer-events-none) */}
+				{/* ВСТАВЬ СВОЮ ССЫЛКУ ИЗ ОБЛАКА НИЖЕ */}
 				<img
 					src='https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776167811/360_F_1785258885_JV6D8dedszLThU675o3mfiJYKVjkL3rH_dmtm9r.jpg'
-					alt='Neon Glow'
-					className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] max-w-none opacity-60 z-0 animate-pulse pointer-events-none'
+					alt='Background Glow'
+					className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] max-w-none opacity-60 z-0 animate-pulse pointer-events-none'
 				/>
-				<h1 className='text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-tight max-w-4xl'>
+
+				{/* Текст (relative z-10) */}
+				<h1 className='relative z-10 text-6xl md:text-8xl font-black mb-8 leading-tight tracking-tighter'>
 					<span className='text-white'>Це не просто гра.</span> <br />
-					<span className='bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent neon-text-blue'>
-						Це досвід мислення в дії
-					</span>
+					<span className='neon-title'>ЦЕ ДОСВІД МИСЛЕННЯ В ДІЇ</span>
 				</h1>
 
-				<p className='text-gray-400 max-w-2xl text-lg md:text-xl font-light mb-10 leading-relaxed'>
-					{t('welcome_subtitle')}
+				<p className='relative z-10 text-slate-400 max-w-2xl text-xl font-light mb-12 leading-relaxed tracking-wide'>
+					Ігромастер: Керуй реальністю. Ігроки: Досліджуйте світи та вирішуйте
+					глобальні конфлікти разом.
 				</p>
 
-				<Button
-					variant='primary'
-					size='lg'
-					className='shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)]'
-				>
-					Спробувати гру
-				</Button>
+				<button className='relative z-10 btn-neon'>Спробувати гру</button>
 			</section>
 
-			<div className='rainbow-line' />
+			<RainbowSeparator />
 
-			{/* Section: Что это за игры */}
-			<section className='flex flex-col items-center gap-12'>
-				<h2 className='text-3xl font-bold text-white tracking-widest uppercase italic'>
+			{/* Section: Що це за ігри */}
+			<section className='flex flex-col items-center gap-16 px-4'>
+				<h2 className='text-4xl md:text-5xl font-extrabold text-white tracking-tight uppercase italic'>
 					Що це за ігри
 				</h2>
 
-				<div className='grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl px-4'>
-					<FeatureCard
-						icon={<MousePointer2 size={32} className='text-blue-400' />}
-						title='Мислення через дію'
-					/>
-					<FeatureCard
-						icon={<Users size={32} className='text-purple-400' />}
-						title='Колективна динаміка'
-					/>
-					<FeatureCard
-						icon={<Lightbulb size={32} className='text-cyan-400' />}
-						title='Рефлексія'
-					/>
+				<div className='grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-7xl'>
+					<FeatureCard icon={MousePointer2} title='Мислення через дію' />
+					<FeatureCard icon={Users} title='Колективна динаміка' />
+					<FeatureCard icon={Lightbulb} title='Рефлексія' />
 				</div>
 			</section>
 
-			<div className='rainbow-line' />
+			<RainbowSeparator />
 
-			{/* Section: Как это происходит (Шаги) */}
-			<section className='flex flex-col items-center gap-12 bg-white/5 py-16 rounded-[40px] border border-white/10 backdrop-blur-sm mx-4'>
-				<h2 className='text-3xl font-bold text-white tracking-widest uppercase italic'>
-					Як це відбувається
-				</h2>
-
-				<div className='grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl px-6'>
-					<StepCard
-						number='1'
-						text='Ти отримуєш запрошення в ігрову ситуацію'
-					/>
-					<StepCard
-						number='2'
-						text='Занурюєшся у роль, задачу, конфлікт'
-						color='text-blue-400'
-					/>
-					<StepCard
-						number='3'
-						text='Разом із групою шукаєш рішення, яке не існувало раніше'
-						color='text-purple-400'
-					/>
-					<StepCard
-						number='4'
-						text='Після гри — розбір і відкриття, які варто змінити у баченні світу'
-						color='text-cyan-400'
-					/>
-				</div>
-			</section>
+			{/* Раздел "Как это происходит" можно добавить позже */}
 		</div>
 	)
 }
-
-/* Под-компоненты для чистоты кода */
-
-const FeatureCard = ({
-	icon,
-	title,
-}: {
-	icon: React.ReactNode
-	title: string
-}) => (
-	<div className='flex flex-col items-center p-10 rounded-3xl bg-[#0a0f18] border border-white/5 hover:border-blue-500/30 transition-all group cursor-default'>
-		<div className='mb-6 transform group-hover:scale-110 transition-transform duration-300'>
-			{icon}
-		</div>
-		<h3 className='text-gray-300 font-medium text-lg'>{title}</h3>
-	</div>
-)
-
-const StepCard = ({
-	number,
-	text,
-	color = 'text-white',
-}: {
-	number: string
-	text: string
-	color?: string
-}) => (
-	<div className='flex items-start gap-6 p-8 bg-black/40 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition'>
-		<span className={`text-5xl font-bold opacity-40 ${color}`}>{number}</span>
-		<p className='text-gray-300 text-lg leading-snug pt-2'>{text}</p>
-	</div>
-)
