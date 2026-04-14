@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	body {
+		/* Тот самый глубокий темный фон */
+		@apply bg-[#030508] text-[#e2e8f0] antialiased;
+		font-family: 'Inter', sans-serif;
+	}
+
+	h1,
+	h2,
+	h3,
+	.font-tech {
+		font-family: 'Space Grotesk', sans-serif;
+	}
+}
+
+@layer components {
+	/* Неоновый текст разных цветов */
+	.neon-text-cyan {
+		@apply text-cyan-400;
+		text-shadow:
+			0 0 10px rgba(34, 211, 238, 0.5),
+			0 0 20px rgba(34, 211, 238, 0.2);
+	}
+
+	.neon-text-purple {
+		@apply text-purple-400;
+		text-shadow:
+			0 0 10px rgba(168, 85, 247, 0.5),
+			0 0 20px rgba(168, 85, 247, 0.2);
+	}
+
+	/* Универсальная стеклянная карточка с неоновой окантовкой */
+	.glass-card {
+		@apply bg-white/[0.03] border border-white/10 backdrop-blur-md transition-all duration-300;
+	}
+
+	.glass-card:hover {
+		@apply bg-white/[0.05] border-white/20;
+		box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
+	}
+}
