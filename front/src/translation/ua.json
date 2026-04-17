@@ -60,6 +60,20 @@
 			"placeholder": "↳ GameForge буде вбудовано тут (iframe: gameforge-xi.vercel.app)"
 		}
 	},
+	"game": {
+		"not_auth_title": "Потрібна авторизація",
+		"not_auth_desc": "Для участі в грі потрібно увійти в акаунт.",
+		"not_auth_btn": "Увійти в акаунт",
+		"title_player": "Приєднатися до гри",
+		"title_gamemaster": "Створити гру",
+		"role_player": "Гравець",
+		"role_spectator": "Глядач",
+		"role_gamemaster": "Ігромайстер",
+		"game_code": "Код гри",
+		"game_name": "Назва гри",
+		"btn_join": "Приєднатися",
+		"btn_create": "Створити гру"
+	},
 	"auth": {
 		"tab_login": "Вхід",
 		"tab_register": "Реєстрація",

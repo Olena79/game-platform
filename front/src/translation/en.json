@@ -60,6 +60,20 @@
 			"placeholder": "↳ GameForge will be embedded here (iframe: gameforge-xi.vercel.app)"
 		}
 	},
+	"game": {
+		"not_auth_title": "Authorization required",
+		"not_auth_desc": "You need to log in to participate in the game.",
+		"not_auth_btn": "Log in",
+		"title_player": "Join a game",
+		"title_gamemaster": "Create a game",
+		"role_player": "Player",
+		"role_spectator": "Spectator",
+		"role_gamemaster": "Game Master",
+		"game_code": "Game code",
+		"game_name": "Game name",
+		"btn_join": "Join",
+		"btn_create": "Create game"
+	},
 	"auth": {
 		"tab_login": "Login",
 		"tab_register": "Register",

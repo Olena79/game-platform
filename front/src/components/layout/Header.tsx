@@ -5,56 +5,21 @@ import { useTranslation } from 'react-i18next'
 import { Globe, Menu, X } from 'lucide-react'
 
 const UserIcon3D = () => (
-	<svg
-		width='34'
-		height='34'
-		viewBox='0 0 34 34'
-		fill='none'
-		xmlns='http://www.w3.org/2000/svg'
-	>
+	<svg width='34' height='34' viewBox='0 0 34 34' fill='none' xmlns='http://www.w3.org/2000/svg'>
 		<defs>
-			<radialGradient id='hdr-user-orb' cx='36%' cy='30%' r='62%'>
-				<stop offset='0%' stopColor='#aaddff' />
-				<stop offset='45%' stopColor='#3366cc' />
+			<radialGradient id='hdr-user-orb' cx='36%' cy='30%' r='65%'>
+				<stop offset='0%' stopColor='#2255cc' />
+				<stop offset='60%' stopColor='#1133aa' />
 				<stop offset='100%' stopColor='#060d2a' />
 			</radialGradient>
-			<radialGradient id='hdr-user-orb2' cx='50%' cy='50%' r='50%'>
-				<stop offset='0%' stopColor='#c07fff' stopOpacity='0.3' />
-				<stop offset='100%' stopColor='#c07fff' stopOpacity='0' />
-			</radialGradient>
 			<filter id='hdr-user-shd' x='-30%' y='-30%' width='160%' height='160%'>
-				<feDropShadow
-					dx='0'
-					dy='2'
-					stdDeviation='3'
-					floodColor='#5588ff'
-					floodOpacity='0.55'
-				/>
+				<feDropShadow dx='0' dy='2' stdDeviation='3' floodColor='#4477ff' floodOpacity='0.6' />
 			</filter>
 		</defs>
-		<circle
-			cx='17'
-			cy='17'
-			r='15.5'
-			fill='url(#hdr-user-orb)'
-			filter='url(#hdr-user-shd)'
-		/>
-		<circle cx='17' cy='17' r='15.5' fill='url(#hdr-user-orb2)' />
-		<ellipse
-			cx='12.5'
-			cy='11.5'
-			rx='5'
-			ry='3'
-			fill='white'
-			fillOpacity='0.2'
-			transform='rotate(-20 12.5 11.5)'
-		/>
-		<circle cx='17' cy='13.5' r='4.8' fill='white' fillOpacity='0.93' />
-		<path
-			d='M7.5 27.5C7.5 22 11.8 18.5 17 18.5C22.2 18.5 26.5 22 26.5 27.5'
-			fill='white'
-			fillOpacity='0.88'
-		/>
+		<circle cx='17' cy='17' r='15.5' fill='url(#hdr-user-orb)' filter='url(#hdr-user-shd)' />
+		<ellipse cx='12' cy='10.5' rx='5' ry='3' fill='white' fillOpacity='0.18' transform='rotate(-20 12 10.5)' />
+		<circle cx='17' cy='13' r='5' fill='white' fillOpacity='0.95' />
+		<path d='M5.5 29C5.5 22.5 10.5 19 17 19C23.5 19 28.5 22.5 28.5 29Z' fill='white' fillOpacity='0.92' />
 	</svg>
 )
 
@@ -106,7 +71,7 @@ export const Header = () => {
 					>
 						<UserIcon3D />
 					</Link>
-					<Link to='/auth'>
+					<Link to='/game'>
 						<button className='bg-transparent text-white border border-[rgba(68,170,255,0.5)] px-[14px] md:px-[22px] py-[8px] md:py-[10px] rounded-[10px] text-[13px] md:text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer whitespace-nowrap'>
 							{t('nav.enter')}
 						</button>
@@ -171,7 +136,7 @@ export const Header = () => {
 					</div>
 
 					<div className='py-[16px]'>
-						<Link to='/auth' onClick={() => setMenuOpen(false)}>
+						<Link to='/game' onClick={() => setMenuOpen(false)}>
 							<button className='w-full bg-transparent text-white border border-[rgba(68,170,255,0.5)] py-[12px] rounded-[10px] text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer'>
 								{t('nav.enter')}
 							</button>

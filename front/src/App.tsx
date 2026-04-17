@@ -5,6 +5,7 @@ import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { HomePage } from './components/pages/HomePage'
 import { AuthPage } from './components/pages/AuthPage'
+import { GamePage } from './components/pages/GamePage'
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
@@ -54,10 +55,7 @@ const App = () => {
 					<Routes>
 						<Route path='/' element={<HomePage />} />
 						<Route path='/auth' element={<AuthPage />} />
-						<Route
-							path='/game'
-							element={<div className='py-20 text-center'>Ігрове поле</div>}
-						/>
+						<Route path='/game' element={<GamePage />} />
 					</Routes>
 				</main>
 

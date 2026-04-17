@@ -3,62 +3,58 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import mongoose from 'mongoose'
+import { connectDB } from './config/db'
+import authRoutes from './routes/auth'
 
-// Загружаем переменные из .env
 dotenv.config()
 
 const app = express()
 const httpServer = createServer(app)
 
-// Настройка Socket.io
+const isDev = process.env.NODE_ENV !== 'production'
+
 const io = new Server(httpServer, {
 	cors: {
-		origin: 'http://localhost:3000',
+		origin: isDev ? true : process.env.CLIENT_URL,
 		methods: ['GET', 'POST'],
 	},
 })
 
-// Middleware
-app.use(cors())
+app.use(cors({ origin: isDev ? true : process.env.CLIENT_URL }))
 app.use(express.json())
 
-// Базовый маршрут для проверки
-app.get('/', (req, res) => {
-	res.send('Сервер Game Forge работает!')
+app.get('/', (_req, res) => {
+	res.json({ status: 'ok', message: 'MindFlow API is running' })
 })
 
-// Логика Socket.io (живое общение)
-io.on('connection', socket => {
-	console.log(`Пользователь подключился: ${socket.id}`)
+app.use('/api/auth', authRoutes)
 
-	// Когда кто-то заходит в комнату по коду игры
-	socket.on('join_room', gameCode => {
+io.on('connection', socket => {
+	console.log(`Connected: ${socket.id}`)
+
+	socket.on('join_room', (gameCode: string) => {
 		socket.join(gameCode)
-		console.log(`Игрок вошел в игру: ${gameCode}`)
+		console.log(`Player joined room: ${gameCode}`)
 	})
 
-	// Передача действий (движение карт, кубиков и т.д.)
-	socket.on('send_move', data => {
-		// Рассылаем всем в этой же комнате
+	socket.on('send_move', (data: { gameCode: string }) => {
 		socket.to(data.gameCode).emit('receive_move', data)
 	})
 
 	socket.on('disconnect', () => {
-		console.log('Пользователь отключился')
+		console.log(`Disconnected: ${socket.id}`)
 	})
 })
 
-// Подключение к MongoDB
-/*
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/game_forge";
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("🔥 База данных MongoDB подключена"))
-  .catch((err) => console.error("❌ Ошибка БД:", err));
-*/
-
 const PORT = process.env.PORT || 5000
 
-httpServer.listen(PORT, () => {
-	console.log(`🚀 Сервер запущен на http://localhost:${PORT}`)
-})
+connectDB()
+	.then(() => {
+		httpServer.listen(PORT, () => {
+			console.log(`Server running on http://localhost:${PORT}`)
+		})
+	})
+	.catch(err => {
+		console.error('Failed to connect to MongoDB:', err)
+		process.exit(1)
+	})
