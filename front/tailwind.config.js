@@ -5,13 +5,14 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: ['Inter', 'sans-serif'],
-				display: ['Montserrat', 'sans-serif'],
+				display: ['Syne', 'sans-serif'],
 			},
 			colors: {
-				dark: '#020617',
-				surface: '#0f172a',
-				// Основной неоновый акцент
-				accentCyan: '#00d2ff',
+				cosmic: '#03040f',
+				neonBlue: '#4af',
+				neonPurple: '#c07fff',
+				neonPink: '#ff5fa0',
+				neonTeal: '#0fffc8',
 			},
 		},
 	},

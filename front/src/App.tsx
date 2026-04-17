@@ -10,6 +10,7 @@ const App = () => {
 	return (
 		<Router>
 			<div className='min-h-screen flex flex-col bg-slate-950 text-slate-200'>
+				<div className='rainbow-line' />
 				<Header />
 
 				<main className='flex-grow container mx-auto px-4'>

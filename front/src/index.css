@@ -3,111 +3,66 @@
 @tailwind utilities;
 
 @layer base {
-	body {
-		/* Очень глубокий сине-черный */
-		background-color: #020617;
-		/* Мягкий градиент */
-		background-image: radial-gradient(
-			circle at 50% -20%,
-			#0f172a 0%,
-			#020617 100%
-		);
-		@apply text-slate-300 antialiased;
-		font-family: 'Inter', sans-serif;
+	:root {
+		--neon-blue: #4af;
+		--neon-purple: #c07fff;
+		--neon-pink: #ff5fa0;
+		--neon-teal: #0fffc8;
 	}
-
-	h1,
-	h2,
-	h3 {
-		font-family: 'Montserrat', sans-serif;
-		@apply tracking-tight font-extrabold;
+	body {
+		background: #03040f;
+		@apply text-[#e0e8ff] antialiased;
+		font-family: 'Inter', sans-serif;
 	}
 }
 
 @layer components {
-	/* Неоновый текст разных цветов */
-	.neon-text-cyan {
-		@apply text-cyan-400;
-		text-shadow:
-			0 0 10px rgba(34, 211, 238, 0.5),
-			0 0 20px rgba(34, 211, 238, 0.2);
+	/* Точная копия радужной линии */
+	.rainbow-line {
+		height: 2px;
+		background: linear-gradient(
+			90deg,
+			#ff0080,
+			#ff6600,
+			#ffff00,
+			#00ff88,
+			#00ccff,
+			#8855ff,
+			#ff0080
+		);
+		background-size: 300% 100%;
+		animation: rainbow-anim 4s linear infinite;
 	}
 
-	.neon-text-purple {
-		@apply text-purple-400;
-		text-shadow:
-			0 0 10px rgba(168, 85, 247, 0.5),
-			0 0 20px rgba(168, 85, 247, 0.2);
+	@keyframes rainbow-anim {
+		0% {
+			background-position: 0% 0;
+		}
+		100% {
+			background-position: 300% 0;
+		}
 	}
 
-	/* Универсальная стеклянная карточка с неоновой окантовкой */
-	.glass-card {
-		@apply bg-white/[0.03] border border-white/10 backdrop-blur-md transition-all duration-300;
+	/* Градиентный текст для слова "мислення" */
+	.neon-word {
+		background: linear-gradient(135deg, #4af, #c07fff, #ff5fa0);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
 	}
 
-	.glass-card:hover {
-		@apply bg-white/[0.05] border-white/20;
-		box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
+	/* Анимация пульсации точки */
+	.pulse-dot-anim {
+		animation: breathe-blue 2.5s ease-in-out infinite;
 	}
-}
 
-@keyframes rainbow-border {
-	0% {
-		border-color: #ff0000;
-		box-shadow: 0 0 10px #ff0000;
+	@keyframes breathe-blue {
+		0%,
+		100% {
+			box-shadow: 0 0 6px 1px rgba(68, 170, 255, 0.6);
+		}
+		50% {
+			box-shadow: 0 0 12px 3px rgba(68, 170, 255, 0.9);
+		}
 	}
-	20% {
-		border-color: #00ff00;
-		box-shadow: 0 0 10px #00ff00;
-	}
-	40% {
-		border-color: #0000ff;
-		box-shadow: 0 0 10px #0000ff;
-	}
-	60% {
-		border-color: #ffff00;
-		box-shadow: 0 0 10px #ffff00;
-	}
-	80% {
-		border-color: #ff00ff;
-		box-shadow: 0 0 10px #ff00ff;
-	}
-	100% {
-		border-color: #ff0000;
-		box-shadow: 0 0 10px #ff0000;
-	}
-}
-
-.rainbow-line {
-	height: 1px;
-	width: 100%;
-	background: linear-gradient(
-		90deg,
-		#ff0000,
-		#ffff00,
-		#00ff00,
-		#00ffff,
-		#0000ff,
-		#ff00ff,
-		#ff0000
-	);
-	background-size: 200% auto;
-	animation: rainbow-move 4s linear infinite;
-	opacity: 0.5;
-}
-
-@keyframes rainbow-move {
-	to {
-		background-position: 200% center;
-	}
-}
-
-/* Стеклянная карточка с переливающейся рамкой */
-.neon-card-rainbow {
-	border: 1px solid transparent;
-	background:
-		linear-gradient(#020617, #020617) padding-box,
-		linear-gradient(90deg, #ff0000, #00ffff, #ff00ff, #ff0000) border-box;
-	background-size: 300% 300%;
-	animation: rainbow-move 6s ease infinite;
 }
