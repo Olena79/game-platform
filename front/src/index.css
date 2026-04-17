@@ -43,6 +43,12 @@
 		}
 	}
 
+	/* Bona Nova SC display font */
+	.font-amatic {
+		font-family: 'Bona Nova SC', serif;
+		letter-spacing: 0.24em !important;
+	}
+
 	/* Градиентный текст для слова "мислення" */
 	.neon-word {
 		background: linear-gradient(135deg, #4af, #c07fff, #ff5fa0);
@@ -59,10 +65,38 @@
 	@keyframes breathe-blue {
 		0%,
 		100% {
-			box-shadow: 0 0 6px 1px rgba(68, 170, 255, 0.6);
+			box-shadow: 0 0 3px 0px rgba(68, 170, 255, 0.2);
 		}
 		50% {
-			box-shadow: 0 0 12px 3px rgba(68, 170, 255, 0.9);
+			box-shadow: 0 0 14px 5px rgba(68, 170, 255, 0.85);
+		}
+	}
+
+	/* Неонові числа на картках аудиторії */
+	.neon-num-blue {
+		color: #44aaff;
+		text-shadow: 0 0 10px rgba(68, 170, 255, 0.9), 0 0 30px rgba(68, 170, 255, 0.5);
+	}
+	.neon-num-purple {
+		color: #c07fff;
+		text-shadow: 0 0 10px rgba(192, 127, 255, 0.9), 0 0 30px rgba(192, 127, 255, 0.5);
+	}
+	.neon-num-teal {
+		color: #0fffc8;
+		text-shadow: 0 0 10px rgba(15, 255, 200, 0.9), 0 0 30px rgba(15, 255, 200, 0.5);
+	}
+	.neon-num-pink {
+		color: #ff5fa0;
+		text-shadow: 0 0 10px rgba(255, 90, 160, 0.9), 0 0 30px rgba(255, 90, 160, 0.5);
+	}
+
+	@keyframes twinkle {
+		0%,
+		100% {
+			opacity: 0.1;
+		}
+		50% {
+			opacity: 0.7;
 		}
 	}
 }

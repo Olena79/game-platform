@@ -1,46 +1,182 @@
 // src/components/layout/Header.tsx
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe, Gamepad2, UserCircle } from 'lucide-react'
-import { Button } from '../minicomponents/Button'
+import { Globe, Menu, X } from 'lucide-react'
+
+const UserIcon3D = () => (
+	<svg
+		width='34'
+		height='34'
+		viewBox='0 0 34 34'
+		fill='none'
+		xmlns='http://www.w3.org/2000/svg'
+	>
+		<defs>
+			<radialGradient id='hdr-user-orb' cx='36%' cy='30%' r='62%'>
+				<stop offset='0%' stopColor='#aaddff' />
+				<stop offset='45%' stopColor='#3366cc' />
+				<stop offset='100%' stopColor='#060d2a' />
+			</radialGradient>
+			<radialGradient id='hdr-user-orb2' cx='50%' cy='50%' r='50%'>
+				<stop offset='0%' stopColor='#c07fff' stopOpacity='0.3' />
+				<stop offset='100%' stopColor='#c07fff' stopOpacity='0' />
+			</radialGradient>
+			<filter id='hdr-user-shd' x='-30%' y='-30%' width='160%' height='160%'>
+				<feDropShadow
+					dx='0'
+					dy='2'
+					stdDeviation='3'
+					floodColor='#5588ff'
+					floodOpacity='0.55'
+				/>
+			</filter>
+		</defs>
+		<circle
+			cx='17'
+			cy='17'
+			r='15.5'
+			fill='url(#hdr-user-orb)'
+			filter='url(#hdr-user-shd)'
+		/>
+		<circle cx='17' cy='17' r='15.5' fill='url(#hdr-user-orb2)' />
+		<ellipse
+			cx='12.5'
+			cy='11.5'
+			rx='5'
+			ry='3'
+			fill='white'
+			fillOpacity='0.2'
+			transform='rotate(-20 12.5 11.5)'
+		/>
+		<circle cx='17' cy='13.5' r='4.8' fill='white' fillOpacity='0.93' />
+		<path
+			d='M7.5 27.5C7.5 22 11.8 18.5 17 18.5C22.2 18.5 26.5 22 26.5 27.5'
+			fill='white'
+			fillOpacity='0.88'
+		/>
+	</svg>
+)
 
 export const Header = () => {
 	const { t, i18n } = useTranslation()
+	const [menuOpen, setMenuOpen] = useState(false)
 
-	const toggleLang = () => {
+	const toggleLang = () =>
 		i18n.changeLanguage(i18n.language === 'ua' ? 'en' : 'ua')
-	}
+	const currentLang = (i18n.language ?? 'ua').toUpperCase().slice(0, 2)
 
 	return (
-		<header className='border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50'>
-			<div className='max-w-7xl mx-auto px-4 h-16 flex items-center justify-between'>
-				<Link to='/' className='flex items-center gap-2 group'>
-					<div className='w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center group-hover:rotate-6 transition-transform'>
-						<Gamepad2 size={24} className='text-white' />
-					</div>
-					<span className='font-bold text-xl tracking-tight text-white'>
-						GAME FORGE
+		<header className='border-b border-[rgba(100,160,255,0.12)] bg-[rgba(3,4,15,0.85)] backdrop-blur-[12px] sticky top-0 z-[100] relative'>
+			{/* ── Main bar ── */}
+			<div className='flex items-center justify-between px-[20px] md:px-[32px] lg:px-[48px] py-[14px] md:py-[18px]'>
+				<Link
+					to='/'
+					className='font-amatic text-[20px] md:text-[22px] font-[800] text-white no-underline'
+				>
+					Mind
+					<span className='text-[#44aaff] [text-shadow:0_0_20px_rgba(68,170,255,0.7)]'>
+						Flow
 					</span>
 				</Link>
 
-				<div className='flex items-center gap-3'>
-					<Button
-						variant='ghost'
-						size='sm'
+				{/* Desktop nav — tablet+ */}
+				<div className='hidden md:flex items-center gap-[24px] lg:gap-[32px] text-[13px] lg:text-[14px] text-[rgba(180,200,255,0.55)]'>
+					<a className='hover:text-white transition-colors cursor-pointer'>
+						{t('nav.games')}
+					</a>
+					<a className='hover:text-white transition-colors cursor-pointer'>
+						{t('nav.about')}
+					</a>
+					<button
 						onClick={toggleLang}
-						className='gap-2'
+						className='flex items-center gap-[5px] hover:text-white transition-colors cursor-pointer'
 					>
-						<Globe size={16} />
-						<span className='uppercase'>{i18n.language}</span>
-					</Button>
+						<Globe size={13} strokeWidth={1.8} />
+						<span className='text-[12px] font-[500]'>{currentLang}</span>
+					</button>
+				</div>
 
-					<Link to='/auth'>
-						<Button variant='primary' size='md' className='gap-2'>
-							<UserCircle size={18} />
-							{t('login_btn')}
-						</Button>
+				{/* Desktop enter button + user icon */}
+				<div className='hidden md:flex items-center gap-[10px]'>
+					<Link
+						to='/auth'
+						aria-label='Профіль'
+						className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_8px_rgba(68,170,255,0.6)] cursor-pointer'
+					>
+						<UserIcon3D />
 					</Link>
+					<Link to='/auth'>
+						<button className='bg-transparent text-white border border-[rgba(68,170,255,0.5)] px-[14px] md:px-[22px] py-[8px] md:py-[10px] rounded-[10px] text-[13px] md:text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer whitespace-nowrap'>
+							{t('nav.enter')}
+						</button>
+					</Link>
+				</div>
+
+				{/* Mobile burger */}
+				<button
+					className='md:hidden flex items-center justify-center w-[36px] h-[36px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer'
+					onClick={() => setMenuOpen(p => !p)}
+					aria-label='Меню'
+				>
+					{menuOpen ? (
+						<X size={22} strokeWidth={1.8} />
+					) : (
+						<Menu size={22} strokeWidth={1.8} />
+					)}
+				</button>
+			</div>
+
+			{/* ── Mobile dropdown ── */}
+			<div
+				className={`absolute top-full left-0 right-0 bg-[rgba(3,4,15,0.97)] backdrop-blur-[20px] border-b border-[rgba(100,160,255,0.12)] flex flex-col md:hidden overflow-hidden transition-all duration-[250ms] ${
+					menuOpen
+						? 'opacity-100 max-h-[420px]'
+						: 'opacity-0 max-h-0 pointer-events-none'
+				}`}
+			>
+				<div className='px-[24px] py-[8px] flex flex-col'>
+					<a
+						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
+						onClick={() => setMenuOpen(false)}
+					>
+						{t('nav.games')}
+					</a>
+					<a
+						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
+						onClick={() => setMenuOpen(false)}
+					>
+						{t('nav.about')}
+					</a>
+
+					<Link
+						to='/auth'
+						className='text-[16px] text-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.4)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px]'
+						onClick={() => setMenuOpen(false)}
+					>
+						{t('auth.tab_login')}
+					</Link>
+
+					<div className='flex items-center justify-between py-[14px] border-b border-[rgba(255,255,255,0.06)]'>
+						<span className='text-[13px] text-[rgba(180,200,255,0.35)] font-[300]'>
+							{t('nav.lang_label')}
+						</span>
+						<button
+							onClick={toggleLang}
+							className='flex items-center gap-[6px] text-[rgba(180,200,255,0.6)] hover:text-[#44aaff] transition-colors cursor-pointer'
+						>
+							<Globe size={14} strokeWidth={1.8} />
+							<span className='text-[12px] font-[500]'>{currentLang}</span>
+						</button>
+					</div>
+
+					<div className='py-[16px]'>
+						<Link to='/auth' onClick={() => setMenuOpen(false)}>
+							<button className='w-full bg-transparent text-white border border-[rgba(68,170,255,0.5)] py-[12px] rounded-[10px] text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer'>
+								{t('nav.enter')}
+							</button>
+						</Link>
+					</div>
 				</div>
 			</div>
 		</header>

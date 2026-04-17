@@ -1,10 +1,77 @@
 {
-	"play_button": "Play",
-	"welcome": "Welcome",
-	"login": "Login",
-	"role_gm": "Game Master",
-	"role_player": "Player",
-	"welcome_title": "Your Future Gaming Platform",
-	"welcome_subtitle": "A space for transformational games where every move matters. Play in real-time without boundaries.",
-	"login_btn": "Login to Play"
+	"nav": {
+		"games": "Games",
+		"about": "About",
+		"enter": "Enter the game",
+		"lang_label": "Interface language"
+	},
+	"footer": {
+		"copy": "© 2025 MindFlow · Games for Thinking"
+	},
+	"home": {
+		"hero": {
+			"badge": "A new thinking experience",
+			"title_line1": "This is not just a game.",
+			"title_line2": "This is",
+			"title_highlight": "thinking",
+			"title_line3": "in action.",
+			"subtitle": "Dive into a space where play is a way to know yourself, understand systems, and co-create reality with others.",
+			"btn_try": "Try the game ↗",
+			"btn_learn": "Learn more"
+		},
+		"features": {
+			"eyebrow": "Features",
+			"title": "What are these games",
+			"desc": "Not entertainment — a tool. Every game is a structured situation where you think, decide and reflect.",
+			"card1_title": "Thinking through action",
+			"card1_desc": "You don't observe — you play a role, make decisions and feel the consequences in real time.",
+			"card2_title": "Collective dynamics",
+			"card2_desc": "Conflicting interests, coalitions, negotiations — everything that exists in real teams, but in a safe space.",
+			"card3_title": "Reflection after",
+			"card3_desc": "The debrief is the most important part. What happened? Why did you decide that way? What does it say about you?"
+		},
+		"audience": {
+			"eyebrow": "Audience",
+			"title": "Who are these games for",
+			"desc": "For those who want more — from themselves, their team, and reality.",
+			"card1_title": "For yourself",
+			"card1_desc": "Want to know yourself better, test your limits and expand your perception of reality — these games are made for you.",
+			"card2_title": "For companies",
+			"card2_desc": "Team-building games or forecasting sessions — when you need to see the future through the lens of play.",
+			"card3_title": "For ideas",
+			"card3_desc": "A space where ideas are born. Where play becomes a method of thinking, not just entertainment."
+		},
+		"how": {
+			"eyebrow": "Process",
+			"title": "How it works",
+			"desc": "Four steps from invitation to insight.",
+			"step1_title": "Receive an invitation",
+			"step1_desc": "The moderator selects a template or builds a custom scenario for your group.",
+			"step2_title": "Step into your role",
+			"step2_desc": "A character with interests, resources, and decisions to make awaits you.",
+			"step3_title": "Find solutions with the group",
+			"step3_desc": "Negotiations, votes, unexpected alliances and conflicts.",
+			"step4_title": "Debrief and discovery",
+			"step4_desc": "Reflection after the game often changes how you see real life."
+		},
+		"launcher": {
+			"title": "Launch a game now",
+			"desc": "The GameForge platform is embedded right here — create or join in seconds.",
+			"placeholder": "↳ GameForge will be embedded here (iframe: gameforge-xi.vercel.app)"
+		}
+	},
+	"auth": {
+		"tab_login": "Login",
+		"tab_register": "Register",
+		"name": "Name",
+		"email": "Email",
+		"phone": "Phone",
+		"password": "Password",
+		"role_player": "Player",
+		"role_gamemaster": "Game Master",
+		"role_spectator": "Spectator",
+		"game_code": "Game code",
+		"btn_login": "Login",
+		"btn_register": "Create account"
+	}
 }

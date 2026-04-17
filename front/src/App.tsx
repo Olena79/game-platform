@@ -1,23 +1,59 @@
 // src/App.tsx
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { HomePage } from './components/pages/HomePage'
 import { AuthPage } from './components/pages/AuthPage'
 
+const Stars = () => {
+	const ref = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		const container = ref.current
+		if (!container) return
+
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+		svg.setAttribute('width', '100%')
+		svg.setAttribute('height', '100%')
+		svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'
+
+		const colors = ['#fff', '#4af', '#c07fff', '#0fffc8', '#ff5fa0']
+		for (let i = 0; i < 180; i++) {
+			const ci = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+			const x = Math.random() * 100
+			const y = Math.random() * 100
+			const r = Math.random() * 1.2 + 0.2
+			const col = colors[Math.floor(Math.random() * colors.length)]
+			const dur = 2 + Math.random() * 4
+			ci.setAttribute('cx', x + '%')
+			ci.setAttribute('cy', y + '%')
+			ci.setAttribute('r', String(r))
+			ci.setAttribute('fill', col)
+			ci.setAttribute('opacity', String(Math.random() * 0.6 + 0.1))
+			ci.style.animation = `twinkle ${dur}s ease-in-out infinite`
+			ci.style.animationDelay = Math.random() * 5 + 's'
+			svg.appendChild(ci)
+		}
+		container.appendChild(svg)
+		return () => { container.innerHTML = '' }
+	}, [])
+
+	return <div ref={ref} className='fixed inset-0 z-0 pointer-events-none overflow-hidden' />
+}
+
 const App = () => {
 	return (
 		<Router>
-			<div className='min-h-screen flex flex-col bg-slate-950 text-slate-200'>
-				<div className='rainbow-line' />
+			<div className='min-h-screen flex flex-col text-[#e0e8ff]'>
+				<Stars />
+				<div className='rainbow-line relative z-10' />
 				<Header />
 
-				<main className='flex-grow container mx-auto px-4'>
+				<main className='flex-grow relative z-10'>
 					<Routes>
 						<Route path='/' element={<HomePage />} />
 						<Route path='/auth' element={<AuthPage />} />
-						{/* Добавим заглушку для игры, чтобы не было пустоты */}
 						<Route
 							path='/game'
 							element={<div className='py-20 text-center'>Ігрове поле</div>}
