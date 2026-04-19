@@ -3,8 +3,9 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 export interface AuthUser {
 	id: string
 	name: string
+	surname?: string
 	email: string
-	role: string
+	phone?: string
 }
 
 export interface AuthResponse {
@@ -25,11 +26,17 @@ export const loginRequest = (email: string, password: string): Promise<AuthRespo
 		body: JSON.stringify({ email, password }),
 	}).then(handleResponse<AuthResponse>)
 
-export const registerRequest = (name: string, email: string, password: string): Promise<AuthResponse> =>
+export const registerRequest = (
+	name: string,
+	surname: string,
+	email: string,
+	phone: string,
+	password: string,
+): Promise<AuthResponse> =>
 	fetch(`${API}/api/auth/register`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ name, email, password }),
+		body: JSON.stringify({ name, surname, email, phone, password }),
 	}).then(handleResponse<AuthResponse>)
 
 export const getMeRequest = (token: string): Promise<AuthUser> =>

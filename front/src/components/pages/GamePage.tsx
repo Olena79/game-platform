@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { X, Hash, Pencil, Lock, Users } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -9,8 +9,25 @@ type Role = 'player' | 'spectator' | 'gamemaster'
 export const GamePage = () => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const { isLoggedIn, isLoading } = useAuth()
-	const [role, setRole] = useState<Role>('player')
+	const prefilledCode = searchParams.get('code') ?? ''
+	const [role, setRole] = useState<Role>(prefilledCode ? 'gamemaster' : 'player')
+	const [gameCode, setGameCode] = useState(prefilledCode)
+	const [gameName, setGameName] = useState('')
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault()
+		if (role === 'player' || role === 'spectator') {
+			const code = gameCode.trim().toUpperCase()
+			if (code) navigate(`/room/${code}`)
+			return
+		}
+		if (role === 'gamemaster') {
+			const params = gameName.trim() ? `?name=${encodeURIComponent(gameName.trim())}` : ''
+			navigate(`/create-game${params}`)
+		}
+	}
 
 	if (isLoading) {
 		return (
@@ -18,6 +35,10 @@ export const GamePage = () => {
 				<div className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim' />
 			</div>
 		)
+	}
+
+	if (isLoggedIn && prefilledCode) {
+		return <Navigate to={`/room/${prefilledCode}`} replace />
 	}
 
 	return (
@@ -69,7 +90,7 @@ export const GamePage = () => {
 								{role === 'gamemaster' ? t('game.title_gamemaster') : t('game.title_player')}
 							</h2>
 
-							<form className='flex flex-col gap-[12px]'>
+							<form className='flex flex-col gap-[12px]' onSubmit={handleSubmit}>
 								<div className='relative'>
 									<Users
 										size={15}
@@ -92,26 +113,44 @@ export const GamePage = () => {
 									</div>
 								</div>
 
-								{role !== 'gamemaster' ? (
+								{role === 'gamemaster' && prefilledCode ? (
+									<div className='flex flex-col gap-[10px]'>
+										<p className='text-[12px] text-[rgba(100,140,220,0.5)] uppercase tracking-[0.5px]'>
+											{t('game.your_code_label')}
+										</p>
+										<div
+											className='w-full bg-[#060e24] border border-[rgba(15,255,200,0.25)] rounded-[12px] py-[14px] px-[20px] text-center text-[28px] font-[800] tracking-[6px] font-mono'
+											style={{ color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.35)' }}
+										>
+											{prefilledCode}
+										</div>
+									</div>
+								) : role !== 'gamemaster' ? (
 									<GameInputField
 										icon={<Hash size={15} strokeWidth={1.8} />}
 										type='text'
 										placeholder={t('game.game_code')}
+										value={gameCode}
+										onChange={e => setGameCode(e.target.value)}
 									/>
 								) : (
 									<GameInputField
 										icon={<Pencil size={15} strokeWidth={1.8} />}
 										type='text'
 										placeholder={t('game.game_name')}
+										value={gameName}
+										onChange={e => setGameName(e.target.value)}
 									/>
 								)}
 
-								<button
-									type='submit'
-									className='mt-[10px] w-full bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white py-[13px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.45)] hover:-translate-y-[1px] transition-all cursor-pointer'
-								>
-									{role === 'gamemaster' ? t('game.btn_create') : t('game.btn_join')}
-								</button>
+								{!(role === 'gamemaster' && prefilledCode) && (
+									<button
+										type='submit'
+										className='mt-[10px] w-full bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white py-[13px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.45)] hover:-translate-y-[1px] transition-all cursor-pointer'
+									>
+										{role === 'gamemaster' ? t('game.btn_create') : t('game.btn_join')}
+									</button>
+								)}
 							</form>
 						</>
 					)}
@@ -121,7 +160,12 @@ export const GamePage = () => {
 	)
 }
 
-const GameInputField = ({ icon, type, placeholder }: { icon: React.ReactNode; type: string; placeholder: string }) => (
+const GameInputField = ({
+	icon, type, placeholder, value, onChange,
+}: {
+	icon: React.ReactNode; type: string; placeholder: string
+	value?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>
+}) => (
 	<div className='relative'>
 		<span className='absolute left-[14px] top-1/2 -translate-y-1/2 text-[rgba(68,170,255,0.5)] pointer-events-none'>
 			{icon}
@@ -129,6 +173,8 @@ const GameInputField = ({ icon, type, placeholder }: { icon: React.ReactNode; ty
 		<input
 			type={type}
 			placeholder={placeholder}
+			value={value}
+			onChange={onChange}
 			className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.35)] rounded-[12px] py-[12px] pl-[40px] pr-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all'
 		/>
 	</div>

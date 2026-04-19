@@ -1,35 +1,94 @@
-// src/components/layout/Header.tsx
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Globe, Menu, X } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+import { Modal } from '../minicomponents/Modal'
 
-const UserIcon3D = () => (
-	<svg width='34' height='34' viewBox='0 0 34 34' fill='none' xmlns='http://www.w3.org/2000/svg'>
+// Not logged in — crimson / pink / red neon
+const UserIconDefault = () => (
+	<svg width='38' height='38' viewBox='0 0 38 38' fill='none' xmlns='http://www.w3.org/2000/svg'>
 		<defs>
-			<radialGradient id='hdr-user-orb' cx='36%' cy='30%' r='65%'>
-				<stop offset='0%' stopColor='#2255cc' />
-				<stop offset='60%' stopColor='#1133aa' />
-				<stop offset='100%' stopColor='#060d2a' />
-			</radialGradient>
-			<filter id='hdr-user-shd' x='-30%' y='-30%' width='160%' height='160%'>
-				<feDropShadow dx='0' dy='2' stdDeviation='3' floodColor='#4477ff' floodOpacity='0.6' />
+			<linearGradient id='ni-d-g' x1='7' y1='5' x2='31' y2='38' gradientUnits='userSpaceOnUse'>
+				<stop offset='0%'   stopColor='#ff79c6' />
+				<stop offset='48%'  stopColor='#cc1155' />
+				<stop offset='100%' stopColor='#ff1744' />
+			</linearGradient>
+			<filter id='ni-d-f' x='-70%' y='-70%' width='240%' height='240%'>
+				<feGaussianBlur in='SourceGraphic' stdDeviation='3' result='g1' />
+				<feGaussianBlur in='SourceGraphic' stdDeviation='1.2' result='g2' />
+				<feMerge>
+					<feMergeNode in='g1' />
+					<feMergeNode in='g1' />
+					<feMergeNode in='g2' />
+					<feMergeNode in='SourceGraphic' />
+				</feMerge>
 			</filter>
 		</defs>
-		<circle cx='17' cy='17' r='15.5' fill='url(#hdr-user-orb)' filter='url(#hdr-user-shd)' />
-		<ellipse cx='12' cy='10.5' rx='5' ry='3' fill='white' fillOpacity='0.18' transform='rotate(-20 12 10.5)' />
-		<circle cx='17' cy='13' r='5' fill='white' fillOpacity='0.95' />
-		<path d='M5.5 29C5.5 22.5 10.5 19 17 19C23.5 19 28.5 22.5 28.5 29Z' fill='white' fillOpacity='0.92' />
+		<g filter='url(#ni-d-f)'>
+			<circle cx='19' cy='13.5' r='5.8' stroke='url(#ni-d-g)' strokeWidth='1.9' />
+			<path d='M5.5 37 C5.5 27.5 11 22.5 19 22.5 C27 22.5 32.5 27.5 32.5 37'
+				stroke='url(#ni-d-g)' strokeWidth='1.9' strokeLinecap='round' />
+		</g>
+	</svg>
+)
+
+// Logged in — cyan → green neon
+const UserIconLoggedIn = () => (
+	<svg width='38' height='38' viewBox='0 0 38 38' fill='none' xmlns='http://www.w3.org/2000/svg'>
+		<defs>
+			<linearGradient id='ni-li-g' x1='7' y1='5' x2='31' y2='38' gradientUnits='userSpaceOnUse'>
+				<stop offset='0%'   stopColor='#00e5ff' />
+				<stop offset='100%' stopColor='#39ff6a' />
+			</linearGradient>
+			<filter id='ni-li-f' x='-70%' y='-70%' width='240%' height='240%'>
+				<feGaussianBlur in='SourceGraphic' stdDeviation='3' result='g1' />
+				<feGaussianBlur in='SourceGraphic' stdDeviation='1.2' result='g2' />
+				<feMerge>
+					<feMergeNode in='g1' />
+					<feMergeNode in='g1' />
+					<feMergeNode in='g2' />
+					<feMergeNode in='SourceGraphic' />
+				</feMerge>
+			</filter>
+		</defs>
+		<g filter='url(#ni-li-f)'>
+			<circle cx='19' cy='13.5' r='5.8' stroke='url(#ni-li-g)' strokeWidth='1.9' />
+			<path d='M5.5 37 C5.5 27.5 11 22.5 19 22.5 C27 22.5 32.5 27.5 32.5 37'
+				stroke='url(#ni-li-g)' strokeWidth='1.9' strokeLinecap='round' />
+		</g>
 	</svg>
 )
 
 export const Header = () => {
 	const { t, i18n } = useTranslation()
-	const [menuOpen, setMenuOpen] = useState(false)
+	const { isLoggedIn, logout } = useAuth()
+	const [menuOpen, setMenuOpen]       = useState(false)
+	const [dropdownOpen, setDropdownOpen] = useState(false)
+	const [logoutModal, setLogoutModal] = useState(false)
+	const dropdownRef = useRef<HTMLDivElement>(null)
 
 	const toggleLang = () =>
 		i18n.changeLanguage(i18n.language === 'ua' ? 'en' : 'ua')
 	const currentLang = (i18n.language ?? 'ua').toUpperCase().slice(0, 2)
+
+	const handleLogoutConfirm = () => {
+		logout()
+		setLogoutModal(false)
+		setMenuOpen(false)
+	}
+
+	// Close dropdown on outside click
+	useEffect(() => {
+		if (!dropdownOpen) return
+		const handler = (e: MouseEvent) => {
+			if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+				setDropdownOpen(false)
+			}
+		}
+		document.addEventListener('mousedown', handler)
+		return () => document.removeEventListener('mousedown', handler)
+	}, [dropdownOpen])
 
 	return (
 		<header className='border-b border-[rgba(100,160,255,0.12)] bg-[rgba(3,4,15,0.85)] backdrop-blur-[12px] sticky top-0 z-[100] relative'>
@@ -45,11 +104,16 @@ export const Header = () => {
 					</span>
 				</Link>
 
-				{/* Desktop nav — tablet+ */}
+				{/* Desktop nav */}
 				<div className='hidden md:flex items-center gap-[24px] lg:gap-[32px] text-[13px] lg:text-[14px] text-[rgba(180,200,255,0.55)]'>
-					<a className='hover:text-white transition-colors cursor-pointer'>
+					<NavLink
+						to='/games'
+						className={({ isActive }) =>
+							`hover:text-white transition-colors cursor-pointer ${isActive ? 'text-[rgba(180,200,255,0.9)]' : ''}`
+						}
+					>
 						{t('nav.games')}
-					</a>
+					</NavLink>
 					<a className='hover:text-white transition-colors cursor-pointer'>
 						{t('nav.about')}
 					</a>
@@ -62,15 +126,39 @@ export const Header = () => {
 					</button>
 				</div>
 
-				{/* Desktop enter button + user icon */}
+				{/* Desktop right */}
 				<div className='hidden md:flex items-center gap-[10px]'>
-					<Link
-						to='/auth'
-						aria-label='Профіль'
-						className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_8px_rgba(68,170,255,0.6)] cursor-pointer'
-					>
-						<UserIcon3D />
-					</Link>
+					{isLoggedIn ? (
+						<div ref={dropdownRef} className='relative'>
+							<button
+								onClick={() => setDropdownOpen(p => !p)}
+								aria-label='Профіль'
+								className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_10px_rgba(57,255,106,0.55)] cursor-pointer'
+							>
+								<UserIconLoggedIn />
+							</button>
+
+							{dropdownOpen && (
+								<div className='absolute top-[calc(100%+10px)] right-0 bg-[rgba(3,6,25,0.97)] border border-[rgba(68,170,255,0.18)] rounded-[12px] py-[6px] min-w-[130px] backdrop-blur-[14px] shadow-[0_8px_28px_rgba(0,0,0,0.5)] z-[200]'>
+									<button
+										onClick={() => { setDropdownOpen(false); setLogoutModal(true) }}
+										className='w-full px-[16px] py-[10px] text-[13px] text-[rgba(255,90,160,0.8)] hover:text-[#ff5fa0] hover:bg-[rgba(255,90,160,0.06)] transition-all cursor-pointer text-left rounded-[8px]'
+									>
+										{t('auth.btn_logout')}
+									</button>
+								</div>
+							)}
+						</div>
+					) : (
+						<Link
+							to='/auth'
+							aria-label='Профіль'
+							className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_10px_rgba(255,23,68,0.5)] cursor-pointer'
+						>
+							<UserIconDefault />
+						</Link>
+					)}
+
 					<Link to='/game'>
 						<button className='bg-transparent text-white border border-[rgba(68,170,255,0.5)] px-[14px] md:px-[22px] py-[8px] md:py-[10px] rounded-[10px] text-[13px] md:text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer whitespace-nowrap'>
 							{t('nav.enter')}
@@ -101,12 +189,13 @@ export const Header = () => {
 				}`}
 			>
 				<div className='px-[24px] py-[8px] flex flex-col'>
-					<a
+					<NavLink
+						to='/games'
 						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
 						onClick={() => setMenuOpen(false)}
 					>
 						{t('nav.games')}
-					</a>
+					</NavLink>
 					<a
 						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
 						onClick={() => setMenuOpen(false)}
@@ -114,13 +203,22 @@ export const Header = () => {
 						{t('nav.about')}
 					</a>
 
-					<Link
-						to='/auth'
-						className='text-[16px] text-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.4)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px]'
-						onClick={() => setMenuOpen(false)}
-					>
-						{t('auth.tab_login')}
-					</Link>
+					{isLoggedIn ? (
+						<button
+							onClick={() => { setMenuOpen(false); setLogoutModal(true) }}
+							className='text-[16px] text-[rgba(255,90,160,0.8)] hover:text-[#ff5fa0] transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px] text-left'
+						>
+							{t('auth.btn_logout')}
+						</button>
+					) : (
+						<Link
+							to='/auth'
+							className='text-[16px] text-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.4)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px]'
+							onClick={() => setMenuOpen(false)}
+						>
+							{t('auth.tab_login')}
+						</Link>
+					)}
 
 					<div className='flex items-center justify-between py-[14px] border-b border-[rgba(255,255,255,0.06)]'>
 						<span className='text-[13px] text-[rgba(180,200,255,0.35)] font-[300]'>
@@ -144,6 +242,17 @@ export const Header = () => {
 					</div>
 				</div>
 			</div>
+
+			<Modal
+				isOpen={logoutModal}
+				onClose={() => setLogoutModal(false)}
+				title={t('auth.logout_confirm_title')}
+				message={t('auth.logout_confirm_msg')}
+				variant='warn'
+				onConfirm={handleLogoutConfirm}
+				confirmLabel={t('auth.logout_confirm_yes')}
+				cancelLabel={t('auth.logout_confirm_no')}
+			/>
 		</header>
 	)
 }

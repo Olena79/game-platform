@@ -1,9 +1,28 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { User, Mail, Lock, X } from 'lucide-react'
+import { User, Mail, Lock, Phone, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { loginRequest, registerRequest } from '../../actions/auth'
+import { InputField } from '../minicomponents/InputField'
+import { AuthButton } from '../minicomponents/AuthButton'
+import { Modal } from '../minicomponents/Modal'
+
+interface FieldErrors {
+	name?: string
+	email?: string
+	phone?: string
+	password?: string
+}
+
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+
+const isStrongPassword = (v: string) =>
+	v.length >= 8 &&
+	/[A-Z]/.test(v) &&
+	/[a-z]/.test(v) &&
+	/\d/.test(v) &&
+	/[^A-Za-z0-9]/.test(v)
 
 export const AuthPage = () => {
 	const { t } = useTranslation()
@@ -11,27 +30,98 @@ export const AuthPage = () => {
 	const { login } = useAuth()
 
 	const [isLogin, setIsLogin] = useState(true)
-	const [name, setName]       = useState('')
-	const [email, setEmail]     = useState('')
-	const [password, setPassword] = useState('')
-	const [error, setError]     = useState('')
-	const [loading, setLoading] = useState(false)
+	const [name, setName]           = useState('')
+	const [surname, setSurname]     = useState('')
+	const [email, setEmail]         = useState('')
+	const [phone, setPhone]         = useState('')
+	const [password, setPassword]   = useState('')
+	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+	const [loading, setLoading]     = useState(false)
+
+	const [modal, setModal] = useState<{
+		open: boolean
+		title: string
+		message: string
+		variant: 'success' | 'error'
+		success: boolean
+	}>({ open: false, title: '', message: '', variant: 'success', success: false })
+
+	const closeModal = () => {
+		if (modal.success) {
+			setModal(m => ({ ...m, open: false }))
+			navigate(-1)
+		} else {
+			setModal(m => ({ ...m, open: false }))
+		}
+	}
+
+	const validate = (): boolean => {
+		const errs: FieldErrors = {}
+
+		if (!isLogin) {
+			if (!name || name.trim().length < 2)
+				errs.name = t('auth.err_name_short')
+		}
+
+		if (!email || !isValidEmail(email))
+			errs.email = t('auth.err_email_invalid')
+
+		if (!isLogin) {
+			if (!phone || phone.length < 10 || phone.length > 12)
+				errs.phone = t('auth.err_phone_invalid')
+		}
+
+		if (!password || !isStrongPassword(password))
+			errs.password = t('auth.err_password_weak')
+
+		setFieldErrors(errs)
+		return Object.keys(errs).length === 0
+	}
+
+	const resolveServerError = (msg: string): string => {
+		switch (msg) {
+			case 'EMAIL_EXISTS':        return t('auth.err_email_exists')
+			case 'PHONE_EXISTS':        return t('auth.err_phone_exists')
+			case 'INVALID_CREDENTIALS': return t('auth.err_credentials')
+			default: return msg
+		}
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		setError('')
+		if (!validate()) return
+
 		setLoading(true)
 		try {
 			const res = isLogin
 				? await loginRequest(email, password)
-				: await registerRequest(name, email, password)
+				: await registerRequest(name, surname, email, phone, password)
 			login(res.token, res.user)
-			navigate(-1)
+
+			setModal({
+				open: true,
+				title: isLogin ? t('auth.modal_success_login_title') : t('auth.modal_success_register_title'),
+				message: isLogin ? t('auth.modal_success_login_msg') : t('auth.modal_success_register_msg'),
+				variant: 'success',
+				success: true,
+			})
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error')
+			const msg = err instanceof Error ? err.message : 'Error'
+			setModal({
+				open: true,
+				title: t('auth.modal_error_title'),
+				message: resolveServerError(msg),
+				variant: 'error',
+				success: false,
+			})
 		} finally {
 			setLoading(false)
 		}
+	}
+
+	const switchTab = (tab: 'login' | 'register') => {
+		setIsLogin(tab === 'login')
+		setFieldErrors({})
 	}
 
 	return (
@@ -60,13 +150,13 @@ export const AuthPage = () => {
 						<X size={14} strokeWidth={2} />
 					</button>
 
-					{/* Таби */}
+					{/* Tabs */}
 					<div className='flex mb-[32px]'>
 						{(['login', 'register'] as const).map(tab => (
 							<button
 								key={tab}
-								onClick={() => { setIsLogin(tab === 'login'); setError('') }}
-								className={`flex-1 pb-[12px] text-[14px] font-[600] transition-all border-b-2 ${
+								onClick={() => switchTab(tab)}
+								className={`flex-1 pb-[12px] text-[14px] font-[600] transition-all border-b-2 cursor-pointer ${
 									(tab === 'login') === isLogin
 										? 'text-[#44aaff] border-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.5)]'
 										: 'text-[rgba(180,200,255,0.35)] border-[rgba(255,255,255,0.06)] hover:text-[rgba(180,200,255,0.65)]'
@@ -77,14 +167,27 @@ export const AuthPage = () => {
 						))}
 					</div>
 
-					<form onSubmit={handleSubmit} className='flex flex-col gap-[12px]'>
+					<form onSubmit={handleSubmit} className='flex flex-col gap-[12px]' noValidate>
 						{!isLogin && (
 							<InputField
 								icon={<User size={15} strokeWidth={1.8} />}
 								type='text'
 								placeholder={t('auth.name')}
 								value={name}
-								onChange={setName}
+								onChange={v => { setName(v); setFieldErrors(e => ({ ...e, name: undefined })) }}
+								error={fieldErrors.name}
+								autoComplete='name'
+							/>
+						)}
+
+						{!isLogin && (
+							<InputField
+								icon={<User size={15} strokeWidth={1.8} />}
+								type='text'
+								placeholder={t('auth.surname_placeholder')}
+								value={surname}
+								onChange={v => setSurname(v)}
+								autoComplete='family-name'
 							/>
 						)}
 
@@ -93,56 +196,52 @@ export const AuthPage = () => {
 							type='email'
 							placeholder={t('auth.email')}
 							value={email}
-							onChange={setEmail}
+							onChange={v => { setEmail(v); setFieldErrors(e => ({ ...e, email: undefined })) }}
+							error={fieldErrors.email}
+							autoComplete='email'
 						/>
+
+						{!isLogin && (
+							<InputField
+								icon={<Phone size={15} strokeWidth={1.8} />}
+								type='text'
+								placeholder={t('auth.phone_placeholder')}
+								value={phone}
+								onChange={v => { setPhone(v); setFieldErrors(e => ({ ...e, phone: undefined })) }}
+								error={fieldErrors.phone}
+								maxLength={12}
+								onlyDigits
+								autoComplete='tel'
+							/>
+						)}
 
 						<InputField
 							icon={<Lock size={15} strokeWidth={1.8} />}
 							type='password'
 							placeholder={t('auth.password')}
 							value={password}
-							onChange={setPassword}
+							onChange={v => { setPassword(v); setFieldErrors(e => ({ ...e, password: undefined })) }}
+							error={fieldErrors.password}
+							autoComplete={isLogin ? 'current-password' : 'new-password'}
 						/>
 
-						{error && (
-							<p className='text-[13px] text-[rgba(255,90,160,0.85)] text-center py-[2px]'>
-								{error}
-							</p>
-						)}
-
-						<button
-							type='submit'
-							disabled={loading}
-							className='mt-[10px] w-full bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white py-[13px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.45)] hover:-translate-y-[1px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0'
-						>
-							{loading ? '...' : isLogin ? t('auth.btn_login') : t('auth.btn_register')}
-						</button>
+						<div className='mt-[10px]'>
+							<AuthButton loading={loading}>
+								{isLogin ? t('auth.btn_login') : t('auth.btn_register')}
+							</AuthButton>
+						</div>
 					</form>
 				</div>
 			</div>
+
+			<Modal
+				isOpen={modal.open}
+				onClose={closeModal}
+				title={modal.title}
+				message={modal.message}
+				variant={modal.variant}
+				closeLabel={t('auth.modal_close')}
+			/>
 		</div>
 	)
 }
-
-const InputField = ({
-	icon, type, placeholder, value, onChange,
-}: {
-	icon: React.ReactNode
-	type: string
-	placeholder: string
-	value: string
-	onChange: (v: string) => void
-}) => (
-	<div className='relative'>
-		<span className='absolute left-[14px] top-1/2 -translate-y-1/2 text-[rgba(68,170,255,0.5)] pointer-events-none'>
-			{icon}
-		</span>
-		<input
-			type={type}
-			placeholder={placeholder}
-			value={value}
-			onChange={e => onChange(e.target.value)}
-			className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.35)] rounded-[12px] py-[12px] pl-[40px] pr-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all'
-		/>
-	</div>
-)

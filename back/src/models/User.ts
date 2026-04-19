@@ -2,9 +2,10 @@ import mongoose, { Document, Schema } from 'mongoose'
 
 export interface IUser extends Document {
 	name: string
+	surname: string
 	email: string
+	phone: string
 	password: string
-	role: 'player' | 'spectator' | 'gamemaster'
 	createdAt: Date
 	updatedAt: Date
 }
@@ -12,9 +13,10 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
 	{
 		name:     { type: String, required: true, trim: true },
+		surname:  { type: String, default: '', trim: true },
 		email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
+		phone:    { type: String, required: true, unique: true, trim: true },
 		password: { type: String, required: true },
-		role:     { type: String, enum: ['player', 'spectator', 'gamemaster'], default: 'player' },
 	},
 	{ timestamps: true }
 )

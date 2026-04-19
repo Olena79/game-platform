@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Header } from './components/layout/Header'
@@ -6,6 +5,9 @@ import { Footer } from './components/layout/Footer'
 import { HomePage } from './components/pages/HomePage'
 import { AuthPage } from './components/pages/AuthPage'
 import { GamePage } from './components/pages/GamePage'
+import { CreateGamePage } from './components/pages/CreateGamePage'
+import { OurGamesPage } from './components/pages/OurGamesPage'
+import { GameRoomPage } from './components/pages/GameRoomPage'
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
@@ -43,26 +45,34 @@ const Stars = () => {
 	return <div ref={ref} className='fixed inset-0 z-0 pointer-events-none overflow-hidden' />
 }
 
-const App = () => {
-	return (
-		<Router>
-			<div className='min-h-screen flex flex-col text-[#e0e8ff]'>
-				<Stars />
-				<div className='rainbow-line relative z-10' />
-				<Header />
+const SiteLayout = () => (
+	<div className='min-h-screen flex flex-col text-[#e0e8ff]'>
+		<Stars />
+		<div className='rainbow-line relative z-10' />
+		<Header />
+		<main className='flex-grow relative z-10'>
+			<Routes>
+				<Route path='/' element={<HomePage />} />
+				<Route path='/auth' element={<AuthPage />} />
+				<Route path='/game' element={<GamePage />} />
+				<Route path='/games' element={<OurGamesPage />} />
+				<Route path='/create-game' element={<CreateGamePage />} />
+				<Route path='/create-game/:id' element={<CreateGamePage />} />
+			</Routes>
+		</main>
+		<Footer />
+	</div>
+)
 
-				<main className='flex-grow relative z-10'>
-					<Routes>
-						<Route path='/' element={<HomePage />} />
-						<Route path='/auth' element={<AuthPage />} />
-						<Route path='/game' element={<GamePage />} />
-					</Routes>
-				</main>
-
-				<Footer />
-			</div>
-		</Router>
-	)
-}
+const App = () => (
+	<Router>
+		<Routes>
+			{/* Full-screen game room — no header/footer */}
+			<Route path='/room/:code' element={<GameRoomPage />} />
+			{/* All other pages */}
+			<Route path='/*' element={<SiteLayout />} />
+		</Routes>
+	</Router>
+)
 
 export default App
