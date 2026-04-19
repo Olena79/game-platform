@@ -112,9 +112,10 @@ export function registerGameRoom(io: Server) {
 		// ── Reactions ───────────────────────────────────────────────────────
 		socket.on('gr:react', (d: { gameCode: string; emoji: string }) => {
 			const state = rooms.get(d.gameCode)
-			if (!state) return
+			if (!state || !curUser) return
 			if (d.emoji in state.reactions) state.reactions[d.emoji]++
 			emit(io, d.gameCode, 'gr:reactions', state.reactions)
+			emit(io, d.gameCode, 'gr:player-reacted', { userId: curUser, emoji: d.emoji })
 		})
 
 		// ── Hand raise ──────────────────────────────────────────────────────

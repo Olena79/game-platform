@@ -1,11 +1,17 @@
-import sgMail from '@sendgrid/mail'
+import nodemailer from 'nodemailer'
 
-const apiKey = process.env.SENDGRID_API_KEY
-if (!apiKey) {
-	console.error('❌ SENDGRID_API_KEY не знайдено в .env')
-} else {
-	sgMail.setApiKey(apiKey)
-	console.log('✅ SendGrid ініціалізовано')
+const EMAIL_ENABLED = process.env.EMAIL_ENABLED !== 'false'
+
+function createTransport() {
+	return nodemailer.createTransport({
+		host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+		port:   Number(process.env.SMTP_PORT) || 587,
+		secure: false,
+		auth: {
+			user: process.env.SMTP_USER,
+			pass: process.env.SMTP_PASS,
+		},
+	})
 }
 
 interface GameInfo {
@@ -30,7 +36,7 @@ function formatDate(d: Date): string {
 	)
 }
 
-function buildHtml(playerName: string, game: GameInfo, siteUrl: string): string {
+function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): string {
 	const statsRows: string[] = []
 
 	statsRows.push(`<tr><td style="padding:6px 0;color:#64b4dc;font-size:13px;">
@@ -128,13 +134,96 @@ export async function sendRegistrationEmail(
 	playerName: string,
 	game: GameInfo,
 ): Promise<void> {
-	const siteUrl = process.env.CLIENT_URL || 'http://localhost:5173'
-	const from    = process.env.SENDGRID_FROM || process.env.SENDGRID_USER || ''
+	if (!EMAIL_ENABLED) return
+	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
+	const from    = process.env.SMTP_USER || ''
 
-	await sgMail.send({
-		from:    { email: from, name: 'MindFlow' },
+	const transporter = createTransport()
+	await transporter.sendMail({
+		from:    `"MindFlow" <${from}>`,
 		to,
 		subject: `🎮 Реєстрацію підтверджено — ${game.title} | Код: ${game.gameCode}`,
-		html:    buildHtml(playerName, game, siteUrl),
+		html:    buildGameHtml(playerName, game, siteUrl),
+	})
+}
+
+export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
+	if (!EMAIL_ENABLED) {
+		console.log(`[email] Welcome email skipped for ${to} (EMAIL_ENABLED=false)`)
+		return
+	}
+
+	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
+	const from    = process.env.SMTP_USER || ''
+
+	const html = `<!DOCTYPE html>
+<html lang="uk">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ласкаво просимо — MindFlow</title>
+</head>
+<body style="margin:0;padding:0;background:#030619;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#030619;min-height:100vh;">
+  <tr><td align="center" style="padding:40px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+      style="max-width:520px;background:#060d2a;border:1px solid rgba(68,170,255,0.22);border-radius:20px;overflow:hidden;">
+      <tr><td style="background:linear-gradient(90deg,#1133aa,#7722cc);padding:4px 0;"></td></tr>
+      <tr><td style="padding:36px 32px 28px;">
+
+        <p style="margin:0 0 28px;font-size:18px;font-weight:800;color:#ffffff;letter-spacing:1px;">
+          Mind<span style="color:#44aaff;">Flow</span>
+        </p>
+
+        <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.4;">
+          Привіт, друже!
+        </p>
+
+        <p style="margin:0 0 16px;font-size:14px;color:rgba(180,200,255,0.8);line-height:1.8;">
+          Наше співтовариство вітає нового мешканця світу ігор.
+        </p>
+
+        <p style="margin:0 0 16px;font-size:14px;color:rgba(180,200,255,0.75);line-height:1.8;">
+          Тут гра — це не втеча від реальності.<br>
+          Це спосіб бачити глибше, мислити ширше і зустрічатися з іншими на рівні сенсів.
+        </p>
+
+        <p style="margin:0 0 16px;font-size:14px;color:rgba(180,200,255,0.75);line-height:1.8;">
+          Ми збираємо людей, яким цікаво досліджувати:<br>
+          через діалог, через роль, через живу взаємодію.
+        </p>
+
+        <p style="margin:0 0 28px;font-size:14px;color:rgba(180,200,255,0.75);line-height:1.8;">
+          Без сценаріїв, де все вже вирішено — зате з простором, де народжується нове.<br>
+          Якщо тобі відгукується — приєднуйся.
+        </p>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+          <tr><td style="background:linear-gradient(135deg,#2255dd,#7744cc);border-radius:12px;">
+            <a href="${siteUrl}" target="_blank"
+              style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+              👉 Перейти до платформи
+            </a>
+          </td></tr>
+        </table>
+
+        <p style="margin:0;font-size:14px;color:rgba(180,200,255,0.6);line-height:1.6;">
+          До зустрічі в грі.
+        </p>
+
+      </td></tr>
+      <tr><td style="padding:14px 32px;border-top:1px solid rgba(68,170,255,0.1);">
+        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 MindFlow · Ігри для мислення</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`
+
+	const transporter = createTransport()
+	await transporter.sendMail({
+		from:    `"MindFlow" <${from}>`,
+		to,
+		subject: '👾 Ласкаво просимо до MindFlow!',
+		html,
 	})
 }

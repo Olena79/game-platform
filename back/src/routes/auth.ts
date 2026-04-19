@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
+import { sendWelcomeEmail } from '../services/email'
 
 const router = Router()
 
@@ -40,6 +41,10 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 		const hashed = await bcrypt.hash(password, 10)
 		const user = await User.create({ name, surname: surname || '', email, phone: cleanPhone, password: hashed })
 		const token = signToken(String(user._id))
+
+		sendWelcomeEmail(email, name).catch(err =>
+			console.error('Welcome email error:', err?.response?.body || err.message),
+		)
 
 		res.status(201).json({
 			token,

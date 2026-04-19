@@ -1,12 +1,32 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+
+const REACTION_BADGE_CSS = `
+@keyframes reactionBadge {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  10%  { transform: scale(1.4) rotate(8deg); opacity: 1; }
+  18%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+@keyframes reactFloat {
+  0%   { transform: translateY(0px) translateX(0px) scale(0.4); opacity: 0; }
+  10%  { transform: translateY(-35px) translateX(calc(var(--drift) * 0.15)) scale(1.25); opacity: 1; }
+  35%  { transform: translateY(-110px) translateX(calc(var(--drift) * 0.5)) scale(1.0); opacity: 1; }
+  75%  { transform: translateY(-250px) translateX(calc(var(--drift) * 0.85)) scale(0.9); opacity: 0.65; }
+  100% { transform: translateY(-360px) translateX(var(--drift)) scale(0.7); opacity: 0; }
+}
+`
+
+interface FloatItem { id: string; emoji: string; x: number; drift: number }
 import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from '@livekit/components-react'
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus } from 'lucide-react'
+import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
 import type { RoomPlayer, GameRoomState } from './types'
 
-const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '👏']
+const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
 
 interface Props {
 	state: GameRoomState
@@ -21,12 +41,14 @@ interface Props {
 	onLeave: () => void
 	onSetRole: (targetUserId: string, role: string) => void
 	onSetInfluence: (targetUserId: string, delta: number) => void
+	playerReactions?: Record<string, { emoji: string; key: number }>
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reaction }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
+	reaction?: { emoji: string; key: number }
 }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
@@ -58,20 +80,40 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence }: {
 			</div>
 
 			{/* Camera area */}
-			<div className='flex-1 flex items-center justify-center' style={{ background: '#080912', minHeight: '80px' }}>
+			<div className='flex-1 flex items-center justify-center relative' style={{ background: '#080912', minHeight: '80px' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='w-full h-full object-cover'
 					/>
 				) : (
-					<div className='w-[38px] h-[38px] rounded-full flex items-center justify-center text-[14px] font-[700]'
+					<div className='relative w-[38px] h-[38px] rounded-full flex items-center justify-center text-[14px] font-[700]'
 						style={{
 							background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e',
 							color: speaking ? '#0fffc8' : '#7a80a0',
 							border: speaking ? '1px solid rgba(15,255,200,0.3)' : 'none',
 						}}>
 						{player.initials}
+						{reaction && (
+							<div key={reaction.key} style={{
+								position: 'absolute', bottom: '-6px', right: '-6px',
+								fontSize: '18px', lineHeight: 1,
+								animation: 'reactionBadge 7s ease-out forwards',
+								pointerEvents: 'none',
+							}}>
+								{reaction.emoji}
+							</div>
+						)}
+					</div>
+				)}
+				{reaction && hasVideo && (
+					<div key={reaction.key} style={{
+						position: 'absolute', bottom: '6px', right: '6px',
+						fontSize: '22px', lineHeight: 1,
+						animation: 'reactionBadge 7s ease-out forwards',
+						pointerEvents: 'none',
+					}}>
+						{reaction.emoji}
 					</div>
 				)}
 			</div>
@@ -144,13 +186,73 @@ export const GridView = ({
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	onSetRole, onSetInfluence,
+	playerReactions = {},
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
 
+	const [floatItems, setFloatItems] = useState<FloatItem[]>([])
+	const prevReactionsRef = useRef<Record<string, number>>({})
+	const recentClickRef = useRef<Record<string, number>>({})
+	const initializedRef = useRef(false)
+
+	const spawnFloat = useCallback((emoji: string) => {
+		const id = `${emoji}-${Date.now()}-${Math.random()}`
+		const x = 12 + Math.random() * 76
+		const drift = (Math.random() - 0.5) * 60
+		setFloatItems(prev => [...prev, { id, emoji, x, drift }])
+		setTimeout(() => setFloatItems(prev => prev.filter(r => r.id !== id)), 3400)
+	}, [])
+
+	useEffect(() => {
+		if (!initializedRef.current) {
+			initializedRef.current = true
+			prevReactionsRef.current = { ...state.reactions }
+			return
+		}
+		const prev = prevReactionsRef.current
+		const curr = state.reactions
+		REACTIONS.forEach(emoji => {
+			const delta = (curr[emoji] ?? 0) - (prev[emoji] ?? 0)
+			if (delta > 0) {
+				const skipOne = Date.now() - (recentClickRef.current[emoji] ?? 0) < 1500
+				const toSpawn = skipOne ? delta - 1 : delta
+				for (let i = 0; i < toSpawn; i++) {
+					setTimeout(() => spawnFloat(emoji), i * 180)
+				}
+			}
+		})
+		prevReactionsRef.current = { ...curr }
+	}, [state.reactions, spawnFloat])
+
+	const handleReact = (emoji: string) => {
+		recentClickRef.current[emoji] = Date.now()
+		spawnFloat(emoji)
+		onReact(emoji)
+	}
+
 	return (
-		<div className='flex-1 flex flex-col overflow-hidden group' style={{ background: '#07080f' }}>
+		<div className='flex-1 flex flex-col overflow-hidden relative group' style={{ background: '#07080f' }}>
+		<style>{REACTION_BADGE_CSS}</style>
+
+		{/* Floating reactions layer */}
+		<div className='absolute inset-0 pointer-events-none' style={{ zIndex: 50, overflow: 'hidden' }}>
+			{floatItems.map(item => {
+				const Icon = NEON_ICONS[item.emoji] ?? NEON_ICONS['👍']
+				return (
+					<div key={item.id} style={{
+						position: 'absolute',
+						bottom: '80px',
+						left: `${item.x}%`,
+						['--drift' as string]: `${item.drift}px`,
+						animation: 'reactFloat 3.2s ease-out forwards',
+					}}>
+						<Icon size={42} />
+					</div>
+				)
+			})}
+		</div>
 			{/* Grid */}
 			<div className='flex-1 overflow-y-auto p-[10px]'
 				style={{
@@ -167,6 +269,7 @@ export const GridView = ({
 						myId={myId}
 						onSetRole={onSetRole}
 						onSetInfluence={onSetInfluence}
+						reaction={playerReactions[p.userId]}
 					/>
 				))}
 			</div>
@@ -175,23 +278,20 @@ export const GridView = ({
 			<div className='flex-shrink-0 flex items-center gap-[5px] px-[14px] py-[7px] flex-wrap'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				{REACTIONS.map(emoji => (
-					<button key={emoji} onClick={() => onReact(emoji)}
-						className='flex items-center gap-[4px] rounded-[20px] px-[10px] py-[4px] cursor-pointer transition-all hover:brightness-110'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35' }}>
-						<span className='text-[14px]'>{emoji}</span>
-						<span className='text-[11px] font-[600]' style={{ color: '#7a80a0' }}>{state.reactions[emoji] ?? 0}</span>
+					<button key={emoji} onClick={() => handleReact(emoji)}
+						className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
+						style={{ width: '46px', height: '46px', background: 'transparent', borderRadius: '10px' }}>
+						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
 					</button>
 				))}
 				<button onClick={() => onRaiseHand(!handRaised)}
-					className='ml-auto flex items-center gap-[5px] rounded-[20px] px-[10px] py-[4px] cursor-pointer transition-all'
+					className='flex flex-col items-center justify-center cursor-pointer transition-all'
 					style={{
-						background: handRaised ? 'rgba(200,168,48,0.1)' : 'rgba(15,17,32,0.5)',
-						border: handRaised ? '1px solid rgba(200,168,48,0.35)' : '1px solid #1c1f35',
+						width: '46px', height: '46px',
+						background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
+						borderRadius: '10px',
 					}}>
-					<span className='text-[13px]'>✋</span>
-					<span className='text-[11px]' style={{ color: '#c8a830' }}>
-						{state.players.filter(p => p.handRaised).length}
-					</span>
+					<NeonRaiseHand size={30} active={handRaised} />
 				</button>
 			</div>
 

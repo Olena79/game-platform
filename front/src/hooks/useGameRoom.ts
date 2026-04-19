@@ -19,6 +19,8 @@ export function useGameRoom(gameCode: string) {
 	const [endAnim, setEndAnim]               = useState(false)
 	const [error, setError]                   = useState<string | null>(null)
 	const [connStatus, setConnStatus]         = useState<'connecting' | 'connected' | 'failed'>('connecting')
+	const [playerReactions, setPlayerReactions] = useState<Record<string, { emoji: string; key: number }>>({})
+	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
 	const myId = user?.id ?? ''
 
@@ -72,6 +74,14 @@ export function useGameRoom(gameCode: string) {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
 		})
 
+		socket.on('gr:player-reacted', ({ userId, emoji }: { userId: string; emoji: string }) => {
+			setPlayerReactions(prev => ({ ...prev, [userId]: { emoji, key: Date.now() } }))
+			if (reactionTimersRef.current[userId]) clearTimeout(reactionTimersRef.current[userId])
+			reactionTimersRef.current[userId] = setTimeout(() => {
+				setPlayerReactions(prev => { const n = { ...prev }; delete n[userId]; return n })
+			}, 7000)
+		})
+
 		socket.on('gr:breakout-invited', (d: BreakoutInvite) => setBreakoutInvite(d))
 
 		socket.on('gr:breakout-return', () => {
@@ -110,7 +120,7 @@ export function useGameRoom(gameCode: string) {
 	const inBreakout = me?.breakoutRoomId ?? null
 
 	return {
-		state, connected, me, isGM, myId, inBreakout, error, connStatus,
+		state, connected, me, isGM, myId, inBreakout, error, connStatus, playerReactions,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,

@@ -39,7 +39,7 @@ class RoomErrorBoundary extends Component<{ children: ReactNode }, { err: string
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
 function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	const navigate = useNavigate()
-	const { state, me, isGM, myId, endAnim, setEndAnim,
+	const { state, me, isGM, myId, endAnim, setEndAnim, playerReactions,
 		breakoutInvite, setBreakoutInvite, joinBreakout, leaveBreakout,
 		sendChat, react, raiseHand, setRole, startGame, endGame,
 		transferCoins, payBank, setInfluence, muteAll,
@@ -177,6 +177,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							images={state.images}
 							onImageClose={() => showImage(null)}
 							onChangeImage={url => showImage(url)}
+							playerReactions={playerReactions}
 						/>
 					) : (
 						<GridView
@@ -192,6 +193,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onLeave={handleLeave}
 							onSetRole={setRole}
 							onSetInfluence={setInfluence}
+							playerReactions={playerReactions}
 						/>
 					)}
 				</div>

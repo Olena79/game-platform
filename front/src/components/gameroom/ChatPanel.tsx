@@ -60,7 +60,7 @@ export const ChatPanel = ({
 		>
 			{/* Tab headers */}
 			<div className='flex-shrink-0 flex' style={{ borderBottom: '1px solid #151824' }}>
-				{(['chat', 'scenario'] as const).map(t => (
+				{(['chat', ...(isGM ? ['scenario' as const] : [])] as const).map(t => (
 					<button key={t} onClick={() => setTab(t)}
 						className='flex-1 py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all'
 						style={{

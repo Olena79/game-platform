@@ -354,7 +354,7 @@ const GameCard = ({
 		<div className='group relative border border-[rgba(68,170,255,0.13)] rounded-[20px] p-[24px] bg-[rgba(3,6,25,0.52)] backdrop-blur-[10px] hover:border-[rgba(68,170,255,0.28)] hover:bg-[rgba(3,6,25,0.65)] transition-all duration-[200ms] flex flex-col gap-[14px]'>
 
 			{/* Cover image */}
-			<div className='w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[-4px] -mx-0 bg-[#060e24]'>
+			<div className='w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] -mx-0 bg-[#060e24]'>
 				<img
 					src={game.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'}
 					alt={game.title}
@@ -369,7 +369,8 @@ const GameCard = ({
 						onClick={onEdit}
 						disabled={editLoading}
 						title={t('our_games.edit')}
-						className='w-[28px] h-[28px] rounded-full flex items-center justify-center text-[rgba(68,170,255,0.35)] border border-[rgba(68,170,255,0.12)] hover:text-[#44aaff] hover:border-[rgba(68,170,255,0.4)] hover:bg-[rgba(68,170,255,0.06)] transition-all cursor-pointer disabled:opacity-40'
+						className='w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 hover:scale-110'
+						style={{ background: 'rgba(8,12,30,0.82)', border: '1px solid rgba(68,170,255,0.28)', color: 'rgba(68,170,255,0.7)', backdropFilter: 'blur(4px)' }}
 					>
 						{editLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#44aaff] pulse-dot-anim' />
@@ -380,7 +381,8 @@ const GameCard = ({
 						onClick={onDelete}
 						disabled={deleteLoading}
 						title={t('our_games.delete')}
-						className='w-[28px] h-[28px] rounded-full flex items-center justify-center text-[rgba(255,95,160,0.3)] border border-[rgba(255,95,160,0.1)] hover:text-[#ff5fa0] hover:border-[rgba(255,95,160,0.4)] hover:bg-[rgba(255,95,160,0.06)] transition-all cursor-pointer disabled:opacity-40'
+						className='w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 hover:scale-110'
+						style={{ background: 'rgba(8,12,30,0.82)', border: '1px solid rgba(255,95,160,0.28)', color: 'rgba(255,95,160,0.7)', backdropFilter: 'blur(4px)' }}
 					>
 						{deleteLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim' />

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from '@livekit/components-react'
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
@@ -8,7 +8,29 @@ import type { RoomPlayer, GameRoomState } from './types'
 import { ImagePanel } from './ImagePanel'
 import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
 
-const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '👏', '😢', '😡']
+const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
+
+interface FloatItem { id: string; emoji: string; x: number; drift: number }
+
+const REACTION_BADGE_CSS = `
+@keyframes reactionBadge {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  10%  { transform: scale(1.4) rotate(8deg); opacity: 1; }
+  18%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+`
+
+const FLOAT_CSS = `
+@keyframes reactFloat {
+  0%   { transform: translateY(0px) translateX(0px) scale(0.4); opacity: 0; }
+  10%  { transform: translateY(-35px) translateX(calc(var(--drift) * 0.15)) scale(1.25); opacity: 1; }
+  35%  { transform: translateY(-110px) translateX(calc(var(--drift) * 0.5)) scale(1.0); opacity: 1; }
+  75%  { transform: translateY(-250px) translateX(calc(var(--drift) * 0.85)) scale(0.9); opacity: 0.65; }
+  100% { transform: translateY(-360px) translateX(var(--drift)) scale(0.7); opacity: 0; }
+}
+`
 
 interface Props {
 	state: GameRoomState
@@ -25,6 +47,7 @@ interface Props {
 	images?: string[]
 	onImageClose?: () => void
 	onChangeImage?: (url: string) => void
+	playerReactions?: Record<string, { emoji: string; key: number }>
 }
 
 function MicBars({ active }: { active: boolean }) {
@@ -94,7 +117,65 @@ function PlayerStats({ player }: { player: RoomPlayer }) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function state_placeholder_coins(_p: RoomPlayer) { return null }
 
-function SpeakerDisplay({ state, speakerPlayer }: { state: GameRoomState; speakerPlayer: RoomPlayer | null }) {
+function CoverImageBlock({ state }: { state: GameRoomState }) {
+	const coverUrl = state.shownImageUrl || state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'
+	const isDefaultView = state.shownImageUrl === state.coverImage || !state.shownImageUrl
+
+	return (
+		<div className='flex-1 flex items-center justify-center flex-col gap-[10px] relative min-h-0'>
+			<div className='absolute inset-0 pointer-events-none'
+				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.06) 0%, transparent 65%)' }} />
+			<div className='relative flex-shrink-0' style={{ width: '600px', maxWidth: '90%' }}>
+				<div
+					className='rounded-[14px] w-full'
+					style={{
+						backgroundImage: `url(${coverUrl})`,
+						backgroundSize: 'contain',
+						backgroundRepeat: 'no-repeat',
+						backgroundPosition: 'center',
+						height: '340px',
+					}}
+				/>
+				{state.title && isDefaultView && (
+					<div className='absolute top-0 left-0 p-[18px] flex flex-col gap-[4px]'
+						style={{ pointerEvents: 'none' }}>
+						<p style={{
+							color: 'rgba(180,210,255,0.8)',
+							fontSize: '13px',
+							fontWeight: '500',
+							letterSpacing: '0.1em',
+							textTransform: 'uppercase',
+							textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.9)',
+						}}>
+							Вітаємо друзів на грі
+						</p>
+						<p style={{
+							color: '#0fffc8',
+							fontSize: '36px',
+							fontWeight: '800',
+							lineHeight: 1.1,
+							letterSpacing: '0.01em',
+							textShadow: '0 0 28px rgba(15,255,200,0.55), 0 2px 18px rgba(0,0,0,1), 0 0 55px rgba(15,255,200,0.25)',
+							wordBreak: 'break-word',
+							maxWidth: '480px',
+						}}>
+							{`«${state.title}»`}
+						</p>
+					</div>
+				)}
+			</div>
+			<p className='text-[13px] flex-shrink-0' style={{ color: 'rgba(100,140,220,0.4)' }}>
+				{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
+			</p>
+		</div>
+	)
+}
+
+function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
+	state: GameRoomState
+	speakerPlayer: RoomPlayer | null
+	playerReactions: Record<string, { emoji: string; key: number }>
+}) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = speakerPlayer
@@ -104,30 +185,11 @@ function SpeakerDisplay({ state, speakerPlayer }: { state: GameRoomState; speake
 	const camPub = participant?.getTrackPublication(Track.Source.Camera)
 	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
 
-	if (!speakerPlayer) {
-		return (
-			<div className='flex-1 flex items-center justify-center flex-col gap-[10px] relative min-h-0'>
-				<div className='absolute inset-0 pointer-events-none'
-					style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.06) 0%, transparent 65%)' }} />
-				<div
-					className='rounded-[14px] flex-shrink-0'
-					style={{
-						backgroundImage: `url(${state.shownImageUrl || state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'})`,
-						backgroundSize: 'contain',
-						backgroundRepeat: 'no-repeat',
-						backgroundPosition: 'center',
-						width: '600px',
-						maxWidth: '90%',
-						height: '340px',
-						opacity: 0.7,
-					}}
-				/>
-				<p className='text-[13px] flex-shrink-0' style={{ color: 'rgba(100,140,220,0.4)' }}>
-					{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
-				</p>
-			</div>
-		)
+	if (!speakerPlayer || state.status === 'lobby') {
+		return <CoverImageBlock state={state} />
 	}
+
+	const reaction = speakerPlayer ? playerReactions[speakerPlayer.userId] : undefined
 
 	return (
 		<div className='flex-1 flex items-center justify-center flex-col gap-[14px] relative'>
@@ -136,14 +198,24 @@ function SpeakerDisplay({ state, speakerPlayer }: { state: GameRoomState; speake
 
 			<div className='relative w-full h-full flex items-center justify-center'>
 				{hasVideo && camPub ? (
-					<div className='w-full h-full max-w-[480px] max-h-[270px] rounded-[14px] overflow-hidden'>
+					<div className='relative w-full h-full max-w-[480px] max-h-[270px] rounded-[14px] overflow-hidden'>
 						<VideoTrack
 							trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 							className='w-full h-full object-cover'
 						/>
+						{reaction && (
+							<div key={reaction.key} style={{
+								position: 'absolute', bottom: '12px', right: '16px',
+								fontSize: '40px', lineHeight: 1,
+								animation: 'reactionBadge 7s ease-out forwards',
+								pointerEvents: 'none',
+							}}>
+								{reaction.emoji}
+							</div>
+						)}
 					</div>
 				) : (
-					<div className='w-[88px] h-[88px] rounded-full flex items-center justify-center text-[30px] font-[700]'
+					<div className='relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-[30px] font-[700]'
 						style={{
 							background: '#0f1120',
 							border: '2px solid rgba(15,255,200,0.3)',
@@ -151,6 +223,16 @@ function SpeakerDisplay({ state, speakerPlayer }: { state: GameRoomState; speake
 							boxShadow: '0 0 24px rgba(15,255,200,0.12)',
 						}}>
 						{speakerPlayer.initials}
+						{reaction && (
+							<div key={reaction.key} style={{
+								position: 'absolute', bottom: '-10px', right: '-10px',
+								fontSize: '32px', lineHeight: 1,
+								animation: 'reactionBadge 7s ease-out forwards',
+								pointerEvents: 'none',
+							}}>
+								{reaction.emoji}
+							</div>
+						)}
 					</div>
 				)}
 			</div>
@@ -174,14 +256,74 @@ export const SpeakerView = ({
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	imageUrl, images = [], onImageClose, onChangeImage,
+	playerReactions = {},
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
 	const speakerPlayer = mainPlayers[0] ?? null
 
+	const [floatItems, setFloatItems] = useState<FloatItem[]>([])
+	const prevReactionsRef = useRef<Record<string, number>>({})
+	const recentClickRef = useRef<Record<string, number>>({})
+	const initializedRef = useRef(false)
+
+	const spawnFloat = useCallback((emoji: string) => {
+		const id = `${emoji}-${Date.now()}-${Math.random()}`
+		const x = 12 + Math.random() * 76
+		const drift = (Math.random() - 0.5) * 60
+		setFloatItems(prev => [...prev, { id, emoji, x, drift }])
+		setTimeout(() => setFloatItems(prev => prev.filter(r => r.id !== id)), 3400)
+	}, [])
+
+	useEffect(() => {
+		if (!initializedRef.current) {
+			initializedRef.current = true
+			prevReactionsRef.current = { ...state.reactions }
+			return
+		}
+		const prev = prevReactionsRef.current
+		const curr = state.reactions
+		REACTIONS.forEach(emoji => {
+			const delta = (curr[emoji] ?? 0) - (prev[emoji] ?? 0)
+			if (delta > 0) {
+				const skipOne = Date.now() - (recentClickRef.current[emoji] ?? 0) < 1500
+				const toSpawn = skipOne ? delta - 1 : delta
+				for (let i = 0; i < toSpawn; i++) {
+					setTimeout(() => spawnFloat(emoji), i * 180)
+				}
+			}
+		})
+		prevReactionsRef.current = { ...curr }
+	}, [state.reactions, spawnFloat])
+
+	const handleReact = (emoji: string) => {
+		recentClickRef.current[emoji] = Date.now()
+		spawnFloat(emoji)
+		onReact(emoji)
+	}
+
 	return (
-		<div className='flex-1 flex flex-col overflow-hidden' style={{ background: '#07080f' }}>
+		<div className='flex-1 flex flex-col overflow-hidden relative' style={{ background: '#07080f' }}>
+		<style>{REACTION_BADGE_CSS + FLOAT_CSS}</style>
+
+		{/* Floating reactions layer */}
+		<div className='absolute inset-0 pointer-events-none' style={{ zIndex: 50, overflow: 'hidden' }}>
+			{floatItems.map(item => {
+				const Icon = NEON_ICONS[item.emoji] ?? NEON_ICONS['👍']
+				return (
+					<div key={item.id} style={{
+						position: 'absolute',
+						bottom: '80px',
+						left: `${item.x}%`,
+						['--drift' as string]: `${item.drift}px`,
+						animation: 'reactFloat 3.2s ease-out forwards',
+					}}>
+						<Icon size={42} />
+					</div>
+				)
+			})}
+		</div>
 			{/* Top badges */}
 			<div className='flex items-center justify-between px-[12px] pt-[10px] pb-0 flex-shrink-0'>
 				<div className='flex items-center gap-[6px]'>
@@ -195,7 +337,7 @@ export const SpeakerView = ({
 			{/* Main area: image OR speaker */}
 			{imageUrl
 				? <ImagePanel imageUrl={imageUrl} isGM={isGM} images={images} onChangeImage={onChangeImage} onClose={onImageClose} fill />
-				: <SpeakerDisplay state={state} speakerPlayer={speakerPlayer} />
+				: <SpeakerDisplay state={state} speakerPlayer={speakerPlayer} playerReactions={playerReactions} />
 			}
 
 			{/* Players strip */}
@@ -204,7 +346,7 @@ export const SpeakerView = ({
 				{mainPlayers.map(p => (
 					<div key={p.userId} className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default'
 						style={{ background: '#0f1120', border: '1px solid #1c1f35' }}>
-						<StripTile player={p} />
+						<StripTile player={p} reaction={playerReactions[p.userId]} />
 					</div>
 				))}
 			</div>
@@ -217,16 +359,11 @@ export const SpeakerView = ({
 				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
 				<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
 				{REACTIONS.map(emoji => (
-					<button key={emoji} onClick={() => onReact(emoji)}
+					<button key={emoji} onClick={() => handleReact(emoji)}
 						className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
 						style={{ width: '46px', height: '46px', background: 'transparent', borderRadius: '10px' }}
 					>
 						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
-						{(state.reactions[emoji] ?? 0) > 0 && (
-							<span style={{ fontSize: '9px', color: '#0fffc8', fontWeight: 700, marginTop: '1px', lineHeight: 1 }}>
-								{state.reactions[emoji]}
-							</span>
-						)}
 					</button>
 				))}
 				<button onClick={() => onRaiseHand(!handRaised)}
@@ -237,18 +374,13 @@ export const SpeakerView = ({
 						borderRadius: '10px',
 					}}>
 					<NeonRaiseHand size={30} active={handRaised} />
-					{state.players.filter(p => p.handRaised).length > 0 && (
-						<span style={{ fontSize: '9px', color: '#c8a830', fontWeight: 700, marginTop: '1px', lineHeight: 1 }}>
-							{state.players.filter(p => p.handRaised).length}
-						</span>
-					)}
 				</button>
 			</div>
 		</div>
 	)
 }
 
-function StripTile({ player }: { player: RoomPlayer }) {
+function StripTile({ player, reaction }: { player: RoomPlayer; reaction?: { emoji: string; key: number } }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
@@ -256,13 +388,23 @@ function StripTile({ player }: { player: RoomPlayer }) {
 
 	return (
 		<>
-			<div className='w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-[700]'
+			<div className='relative w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-[700]'
 				style={{
 					background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e',
 					color: speaking ? '#0fffc8' : '#7a80a0',
 					border: speaking ? '1px solid rgba(15,255,200,0.3)' : 'none',
 				}}>
 				{player.initials}
+				{reaction && (
+					<div key={reaction.key} style={{
+						position: 'absolute', bottom: '-5px', right: '-5px',
+						fontSize: '15px', lineHeight: 1,
+						animation: 'reactionBadge 7s ease-out forwards',
+						pointerEvents: 'none',
+					}}>
+						{reaction.emoji}
+					</div>
+				)}
 			</div>
 			<span className='text-[10px] w-full text-center truncate' style={{ color: speaking ? '#0fffc8' : '#4a5070' }}>
 				{player.name.split(' ')[0]}
