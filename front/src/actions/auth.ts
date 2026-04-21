@@ -43,3 +43,10 @@ export const getMeRequest = (token: string): Promise<AuthUser> =>
 	fetch(`${API}/api/auth/me`, {
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<AuthUser>)
+
+export const googleAuthRequest = (credential: string): Promise<AuthResponse> =>
+	fetch(`${API}/api/auth/google`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ credential }),
+	}).then(handleResponse<AuthResponse>)

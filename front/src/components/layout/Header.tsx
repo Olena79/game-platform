@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { LOGO_URL } from '../../config/logo'
 import { useTranslation } from 'react-i18next'
 import { Globe, Menu, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -94,14 +95,13 @@ export const Header = () => {
 		<header className='border-b border-[rgba(100,160,255,0.12)] bg-[rgba(3,4,15,0.85)] backdrop-blur-[12px] sticky top-0 z-[100] relative'>
 			{/* ── Main bar ── */}
 			<div className='flex items-center justify-between px-[20px] md:px-[32px] lg:px-[48px] py-[14px] md:py-[18px]'>
-				<Link
-					to='/'
-					className='font-amatic text-[20px] md:text-[22px] font-[800] text-white no-underline'
-				>
-					Mind
-					<span className='text-[#44aaff] [text-shadow:0_0_20px_rgba(68,170,255,0.7)]'>
-						Flow
-					</span>
+				<Link to='/' className='no-underline flex items-center'>
+					{LOGO_URL
+						? <img src={LOGO_URL} alt='MindFlow' style={{ height: '34px', objectFit: 'contain' }} />
+						: <span className='font-amatic text-[20px] md:text-[22px] font-[800] text-white'>
+							Mind<span className='text-[#44aaff] [text-shadow:0_0_20px_rgba(68,170,255,0.7)]'>Flow</span>
+						</span>
+					}
 				</Link>
 
 				{/* Desktop nav */}

@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, Phone, X } from 'lucide-react'
+import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
-import { loginRequest, registerRequest } from '../../actions/auth'
+import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
 import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
 import { Modal } from '../minicomponents/Modal'
@@ -231,6 +232,40 @@ export const AuthPage = () => {
 							</AuthButton>
 						</div>
 					</form>
+
+					{/* Google OAuth — only renders when VITE_GOOGLE_CLIENT_ID is set */}
+					{import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+						<>
+							<div className='flex items-center gap-[12px] my-[18px]'>
+								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
+								<span className='text-[11px]' style={{ color: 'rgba(180,200,255,0.3)' }}>або</span>
+								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
+							</div>
+							<div className='flex justify-center'>
+								<GoogleLogin
+									theme='filled_black'
+									shape='pill'
+									size='large'
+									text='continue_with'
+									onSuccess={async (credentialResponse) => {
+										if (!credentialResponse.credential) return
+										setLoading(true)
+										try {
+											const res = await googleAuthRequest(credentialResponse.credential)
+											login(res.token, res.user)
+											setModal({ open: true, title: 'Успішно', message: 'Ви увійшли через Google', variant: 'success', success: true })
+										} catch (err) {
+											const msg = err instanceof Error ? err.message : 'Google auth failed'
+											setModal({ open: true, title: 'Помилка', message: msg, variant: 'error', success: false })
+										} finally {
+											setLoading(false)
+										}
+									}}
+									onError={() => setModal({ open: true, title: 'Помилка', message: 'Google login failed', variant: 'error', success: false })}
+								/>
+							</div>
+						</>
+					)}
 				</div>
 			</div>
 

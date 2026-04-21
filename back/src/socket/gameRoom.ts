@@ -6,6 +6,7 @@ import {
 } from './types'
 
 const rooms = new Map<string, GameRoomState>()
+const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 function initials(name: string): string {
 	return name.split(' ').map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '??'
@@ -38,6 +39,7 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		announcement: null,
 		timer: null,
 		activeVote: null,
+		spectatorVote: null,
 		breakoutRooms: [],
 		images: game.images ?? [],
 		coverImage: game.coverImage ?? '',
@@ -60,7 +62,7 @@ export function registerGameRoom(io: Server) {
 		let curUser: string | null = null
 
 		// ── Join ────────────────────────────────────────────────────────────
-		socket.on('gr:join', async (d: { gameCode: string; userId: string; name: string }) => {
+		socket.on('gr:join', async (d: { gameCode: string; userId: string; name: string; isSpectatorJoin?: boolean }) => {
 			let state = rooms.get(d.gameCode) ?? await loadRoom(d.gameCode)
 			if (!state) { socket.emit('gr:error', 'Room not found'); return }
 
@@ -69,6 +71,21 @@ export function registerGameRoom(io: Server) {
 			socket.join(`gr-${d.gameCode}`)
 
 			const isGamemaster = d.userId === state.gamemasterId
+
+			// Determine spectator status via single DB lookup.
+			// A user registered as a player cannot be treated as spectator (and vice-versa).
+			let isSpectator = false
+			if (!isGamemaster) {
+				try {
+					const game = await Game.findOne({ gameCode: d.gameCode })
+					const inPlayers   = game?.registeredPlayers.some(s => String(s.userId) === d.userId) ?? false
+					const inSpectators = game?.spectators.some(s => String(s.userId) === d.userId) ?? false
+					if (!inPlayers && (d.isSpectatorJoin === true || inSpectators)) {
+						isSpectator = true
+					}
+				} catch { /* ignore */ }
+			}
+
 			const existing = state.players.find(p => p.userId === d.userId)
 			if (existing) {
 				existing.socketId = socket.id
@@ -80,11 +97,12 @@ export function registerGameRoom(io: Server) {
 					name: d.name,
 					initials: initials(d.name),
 					role: '',
-					coins: isGamemaster ? 0 : state.coinsPerPlayer,
-					influence: isGamemaster ? 0 : state.influencePerPlayer,
+					coins: isGamemaster || isSpectator ? 0 : state.coinsPerPlayer,
+					influence: isGamemaster || isSpectator ? 0 : state.influencePerPlayer,
 					handRaised: false,
 					breakoutRoomId: null,
 					isGamemaster,
+					isSpectator,
 					connected: true,
 				}
 				state.players.push(p)
@@ -98,10 +116,12 @@ export function registerGameRoom(io: Server) {
 			if (!state || !curUser) return
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player) return
+			const rawText = d.text.trim().slice(0, 500)
+			const text = player.isSpectator ? `[Глядач] ${rawText}` : rawText
 			const msg: ChatMessage = {
 				id: uid(), userId: curUser,
 				name: player.name,
-				text: d.text.trim().slice(0, 500),
+				text,
 				ts: Date.now(),
 			}
 			state.messages.push(msg)
@@ -123,7 +143,9 @@ export function registerGameRoom(io: Server) {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
-			if (p) { p.handRaised = d.raised; pushState(io, state) }
+			if (!p || p.isSpectator) return
+			p.handRaised = d.raised
+			pushState(io, state)
 		})
 
 		// ── Set role ────────────────────────────────────────────────────────
@@ -134,14 +156,34 @@ export function registerGameRoom(io: Server) {
 			if (!requester) return
 			if (d.targetUserId !== curUser && !requester.isGamemaster) return
 			const target = state.players.find(p => p.userId === d.targetUserId)
-			if (target) { target.role = d.role.slice(0, 60); pushState(io, state) }
+			if (target && !target.isSpectator) { target.role = d.role.slice(0, 60); pushState(io, state) }
 		})
 
 		// ── Start / End ─────────────────────────────────────────────────────
 		socket.on('gr:start', (d: { gameCode: string }) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
+
+			// Cancel any pending delete timer (allows restart after game end)
+			const existing = endTimers.get(d.gameCode)
+			if (existing) { clearTimeout(existing); endTimers.delete(d.gameCode) }
+
+			// Reset transient game state for clean restart
 			state.status = 'started'
+			state.activeVote = null
+			state.spectatorVote = null
+			state.timer = null
+			state.announcement = null
+			state.breakoutRooms = []
+			state.players.forEach(p => {
+				p.handRaised = false
+				p.breakoutRoomId = null
+				if (!p.isGamemaster && !p.isSpectator) {
+					p.coins = state.coinsPerPlayer
+					p.influence = state.influencePerPlayer
+				}
+			})
+
 			pushState(io, state)
 		})
 
@@ -151,7 +193,8 @@ export function registerGameRoom(io: Server) {
 			state.status = 'ended'
 			pushState(io, state)
 			emit(io, d.gameCode, 'gr:end-anim', {})
-			setTimeout(() => rooms.delete(d.gameCode), 60_000)
+			const t = setTimeout(() => rooms.delete(d.gameCode), 60_000)
+			endTimers.set(d.gameCode, t)
 		})
 
 		// ── Coins: player → player ──────────────────────────────────────────
@@ -222,7 +265,7 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		})
 
-		// ── Voting ──────────────────────────────────────────────────────────
+		// ── Voting (players only) ───────────────────────────────────────────
 		socket.on('gr:vote-create', (d: {
 			gameCode: string; question: string; options: string[]
 			isAnonymous: boolean; multipleChoice: boolean
@@ -244,6 +287,8 @@ export function registerGameRoom(io: Server) {
 		socket.on('gr:vote-cast', (d: { gameCode: string; optionIds: string[] }) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !state.activeVote || state.activeVote.closed) return
+			const player = state.players.find(p => p.userId === curUser)
+			if (!player || player.isSpectator) return
 			const vote = state.activeVote
 			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
 			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
@@ -264,6 +309,54 @@ export function registerGameRoom(io: Server) {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			state.activeVote = null
+			pushState(io, state)
+		})
+
+		// ── Spectator voting ────────────────────────────────────────────────
+		socket.on('gr:spectator-vote-create', (d: {
+			gameCode: string; question: string; options: string[]
+			isAnonymous: boolean; multipleChoice: boolean
+		}) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			const vote: ActiveVote = {
+				id: uid(),
+				question: d.question.slice(0, 300),
+				options: d.options.map((t, i) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
+				isAnonymous: d.isAnonymous,
+				multipleChoice: d.multipleChoice,
+				closed: false,
+				spectatorOnly: true,
+			}
+			state.spectatorVote = vote
+			pushState(io, state)
+		})
+
+		socket.on('gr:spectator-vote-cast', (d: { gameCode: string; optionIds: string[] }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !state.spectatorVote || state.spectatorVote.closed) return
+			const player = state.players.find(p => p.userId === curUser)
+			if (!player || (!player.isSpectator && !player.isGamemaster)) return
+			const vote = state.spectatorVote
+			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
+			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
+			toVote.forEach(oid => {
+				const o = vote.options.find(o => o.id === oid)
+				if (o && curUser) o.voterIds.push(curUser)
+			})
+			pushState(io, state)
+		})
+
+		socket.on('gr:spectator-vote-close', (d: { gameCode: string }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			if (state.spectatorVote) { state.spectatorVote.closed = true; pushState(io, state) }
+		})
+
+		socket.on('gr:spectator-vote-clear', (d: { gameCode: string }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			state.spectatorVote = null
 			pushState(io, state)
 		})
 

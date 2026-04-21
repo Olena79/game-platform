@@ -50,21 +50,27 @@ interface Props {
 	playerReactions?: Record<string, { emoji: string; key: number }>
 }
 
-function MicBars({ active }: { active: boolean }) {
-	if (!active) return null
+function MicDot({ active }: { active: boolean }) {
 	return (
-		<div className='flex gap-[3px] items-end h-[18px]'>
-			{[6, 14, 18, 12, 7].map((h, i) => (
-				<div key={i} className='w-[3px] rounded-[2px]'
-					style={{
-						height: `${h}px`,
-						background: '#0fffc8',
-						animation: `barPulse 0.7s ease-in-out ${i * 0.1}s infinite alternate`,
-					}}
-				/>
-			))}
-		</div>
+		<div
+			className='w-[9px] h-[9px] rounded-full transition-all duration-200'
+			style={{
+				background: active ? '#0fffc8' : 'rgba(15,255,200,0.12)',
+				boxShadow: active
+					? '0 0 8px 3px rgba(15,255,200,0.65), 0 0 18px 6px rgba(15,255,200,0.2)'
+					: 'none',
+			}}
+		/>
 	)
+}
+
+function getSpeechBorderColor(count: number): string {
+	if (count < 3)  return '#4a5070'
+	if (count < 6)  return '#c8d0e8'
+	if (count < 10) return '#f5c800'
+	if (count < 15) return '#ff8c00'
+	if (count < 25) return '#ff5500'
+	return '#cc1133'
 }
 
 function PlayerTile({ player, size = 'strip' }: { player: RoomPlayer; size?: 'strip' | 'mini' }) {
@@ -122,49 +128,55 @@ function CoverImageBlock({ state }: { state: GameRoomState }) {
 	const isDefaultView = state.shownImageUrl === state.coverImage || !state.shownImageUrl
 
 	return (
-		<div className='flex-1 flex items-center justify-center flex-col gap-[10px] relative min-h-0'>
+		<div className='flex-1 relative min-h-0 overflow-hidden'>
 			<div className='absolute inset-0 pointer-events-none'
-				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.06) 0%, transparent 65%)' }} />
-			<div className='relative flex-shrink-0' style={{ width: '600px', maxWidth: '90%' }}>
-				<div
-					className='rounded-[14px] w-full'
-					style={{
-						backgroundImage: `url(${coverUrl})`,
-						backgroundSize: 'contain',
-						backgroundRepeat: 'no-repeat',
-						backgroundPosition: 'center',
-						height: '340px',
-					}}
-				/>
-				{state.title && isDefaultView && (
-					<div className='absolute top-0 left-0 p-[18px] flex flex-col gap-[4px]'
-						style={{ pointerEvents: 'none' }}>
-						<p style={{
-							color: 'rgba(180,210,255,0.8)',
-							fontSize: '13px',
-							fontWeight: '500',
-							letterSpacing: '0.1em',
-							textTransform: 'uppercase',
-							textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.9)',
-						}}>
-							Вітаємо друзів на грі
-						</p>
-						<p style={{
-							color: '#0fffc8',
-							fontSize: '36px',
-							fontWeight: '800',
-							lineHeight: 1.1,
-							letterSpacing: '0.01em',
-							textShadow: '0 0 28px rgba(15,255,200,0.55), 0 2px 18px rgba(0,0,0,1), 0 0 55px rgba(15,255,200,0.25)',
-							wordBreak: 'break-word',
-							maxWidth: '480px',
-						}}>
-							{`«${state.title}»`}
-						</p>
-					</div>
-				)}
-			</div>
-			<p className='text-[13px] flex-shrink-0' style={{ color: 'rgba(100,140,220,0.4)' }}>
+				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.06) 0%, transparent 65%)', zIndex: 1 }} />
+			<div
+				className='w-full h-full'
+				style={{
+					backgroundImage: `url(${coverUrl})`,
+					backgroundSize: 'cover',
+					backgroundRepeat: 'no-repeat',
+					backgroundPosition: 'center',
+				}}
+			/>
+			{/* Dark gradient so title text is always readable on any image */}
+			<div
+				className='absolute top-0 left-0 right-0 pointer-events-none'
+				style={{
+					height: '200px',
+					background: 'linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 60%, transparent 100%)',
+					zIndex: 1,
+				}}
+			/>
+			{state.title && isDefaultView && (
+				<div className='absolute top-0 left-0 p-[18px] flex flex-col gap-[4px]' style={{ zIndex: 2, pointerEvents: 'none' }}>
+					<p style={{
+						color: 'rgba(180,210,255,0.8)',
+						fontSize: '13px',
+						fontWeight: '500',
+						letterSpacing: '0.1em',
+						textTransform: 'uppercase',
+						textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.9)',
+					}}>
+						Вітаємо друзів на грі
+					</p>
+					<p style={{
+						color: '#0fffc8',
+						fontSize: '36px',
+						fontWeight: '800',
+						lineHeight: 1.1,
+						letterSpacing: '0.01em',
+						textShadow: '0 0 28px rgba(15,255,200,0.55), 0 2px 18px rgba(0,0,0,1), 0 0 55px rgba(15,255,200,0.25)',
+						wordBreak: 'break-word',
+						maxWidth: '480px',
+					}}>
+						{`«${state.title}»`}
+					</p>
+				</div>
+			)}
+			<p className='absolute bottom-[8px] left-0 right-0 text-center text-[13px]'
+				style={{ color: 'rgba(100,140,220,0.5)', zIndex: 2, pointerEvents: 'none' }}>
 				{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
 			</p>
 		</div>
@@ -192,30 +204,41 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 	const reaction = speakerPlayer ? playerReactions[speakerPlayer.userId] : undefined
 
 	return (
-		<div className='flex-1 flex items-center justify-center flex-col gap-[14px] relative'>
+		<div className='flex-1 relative overflow-hidden min-h-0'>
 			<div className='absolute inset-0 pointer-events-none'
-				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)' }} />
+				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
 
-			<div className='relative w-full h-full flex items-center justify-center'>
-				{hasVideo && camPub ? (
-					<div className='relative w-full h-full max-w-[480px] max-h-[270px] rounded-[14px] overflow-hidden'>
-						<VideoTrack
-							trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
-							className='w-full h-full object-cover'
-						/>
-						{reaction && (
-							<div key={reaction.key} style={{
-								position: 'absolute', bottom: '12px', right: '16px',
-								fontSize: '40px', lineHeight: 1,
-								animation: 'reactionBadge 7s ease-out forwards',
-								pointerEvents: 'none',
-							}}>
-								{reaction.emoji}
-							</div>
+			{hasVideo && camPub ? (
+				<>
+					<VideoTrack
+						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
+						className='absolute inset-0 w-full h-full object-contain'
+					/>
+					{reaction && (
+						<div key={reaction.key} style={{
+							position: 'absolute', bottom: '56px', right: '20px', zIndex: 3,
+							fontSize: '48px', lineHeight: 1,
+							animation: 'reactionBadge 7s ease-out forwards',
+							pointerEvents: 'none',
+						}}>
+							{reaction.emoji}
+						</div>
+					)}
+					<div className='absolute bottom-0 left-0 right-0 z-[2] flex flex-col items-center gap-[4px] pt-[28px] pb-[10px]'
+						style={{ background: 'linear-gradient(to top, rgba(7,8,15,0.82) 0%, transparent 100%)' }}>
+						<span className='text-[18px] font-[700]' style={{ color: '#dde1f0' }}>{speakerPlayer.name}</span>
+						{speakerPlayer.role && (
+							<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
+								style={{ color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }}>
+								{speakerPlayer.role}
+							</span>
 						)}
+						<MicDot active={speaking} />
 					</div>
-				) : (
-					<div className='relative w-[88px] h-[88px] rounded-full flex items-center justify-center text-[30px] font-[700]'
+				</>
+			) : (
+				<div className='w-full h-full flex flex-col items-center justify-center gap-[12px] relative z-[2]'>
+					<div className='relative w-[100px] h-[100px] rounded-full flex items-center justify-center text-[34px] font-[700]'
 						style={{
 							background: '#0f1120',
 							border: '2px solid rgba(15,255,200,0.3)',
@@ -225,8 +248,8 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 						{speakerPlayer.initials}
 						{reaction && (
 							<div key={reaction.key} style={{
-								position: 'absolute', bottom: '-10px', right: '-10px',
-								fontSize: '32px', lineHeight: 1,
+								position: 'absolute', bottom: '-12px', right: '-12px',
+								fontSize: '36px', lineHeight: 1,
 								animation: 'reactionBadge 7s ease-out forwards',
 								pointerEvents: 'none',
 							}}>
@@ -234,19 +257,18 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 							</div>
 						)}
 					</div>
-				)}
-			</div>
-
-			<div className='flex flex-col items-center gap-[5px]'>
-				<span className='text-[19px] font-[700]' style={{ color: '#dde1f0' }}>{speakerPlayer.name}</span>
-				{speakerPlayer.role && (
-					<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
-						style={{ color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }}>
-						{speakerPlayer.role}
-					</span>
-				)}
-				<MicBars active={speaking} />
-			</div>
+					<div className='flex flex-col items-center gap-[5px]'>
+						<span className='text-[19px] font-[700]' style={{ color: '#dde1f0' }}>{speakerPlayer.name}</span>
+						{speakerPlayer.role && (
+							<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
+								style={{ color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }}>
+								{speakerPlayer.role}
+							</span>
+						)}
+						<MicDot active={speaking} />
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }
@@ -262,6 +284,14 @@ export const SpeakerView = ({
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
 	const speakerPlayer = mainPlayers[0] ?? null
+
+	const { localParticipant } = useLocalParticipant()
+	const localSpeaking = useIsSpeaking(localParticipant)
+	const handRaisedRef = useRef(handRaised)
+	handRaisedRef.current = handRaised
+	useEffect(() => {
+		if (localSpeaking && handRaisedRef.current) onRaiseHand(false)
+	}, [localSpeaking, onRaiseHand])
 
 	const [floatItems, setFloatItems] = useState<FloatItem[]>([])
 	const prevReactionsRef = useRef<Record<string, number>>({})
@@ -344,18 +374,15 @@ export const SpeakerView = ({
 			<div className='flex-shrink-0 overflow-x-auto px-[10px] py-[6px] flex gap-[7px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				{mainPlayers.map(p => (
-					<div key={p.userId} className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35' }}>
-						<StripTile player={p} reaction={playerReactions[p.userId]} />
-					</div>
+					<StripTileWrapper key={p.userId} player={p} reaction={playerReactions[p.userId]} gameStarted={state.status === 'started'} />
 				))}
 			</div>
 
 			{/* Controls + Reactions — one row */}
 			<div className='flex-shrink-0 flex items-center gap-[5px] px-[10px] py-[6px] flex-wrap'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				<CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />
-				<CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />
+				{!me?.isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
+				{!me?.isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
 				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
 				<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
 				{REACTIONS.map(emoji => (
@@ -366,16 +393,53 @@ export const SpeakerView = ({
 						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
 					</button>
 				))}
-				<button onClick={() => onRaiseHand(!handRaised)}
-					className='flex flex-col items-center justify-center cursor-pointer transition-all'
-					style={{
-						width: '46px', height: '46px',
-						background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
-						borderRadius: '10px',
-					}}>
-					<NeonRaiseHand size={30} active={handRaised} />
-				</button>
+				{!me?.isSpectator && (
+					<button onClick={() => onRaiseHand(!handRaised)}
+						className='flex flex-col items-center justify-center cursor-pointer transition-all'
+						style={{
+							width: '46px', height: '46px',
+							background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
+							borderRadius: '10px',
+						}}>
+						<NeonRaiseHand size={30} active={handRaised} />
+					</button>
+				)}
 			</div>
+		</div>
+	)
+}
+
+function StripTileWrapper({ player, reaction, gameStarted }: {
+	player: RoomPlayer; reaction?: { emoji: string; key: number }; gameStarted: boolean
+}) {
+	const participants = useParticipants()
+	const { localParticipant } = useLocalParticipant()
+	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
+	const speaking = useIsSpeaking(participant)
+	const isPlayer = !player.isGamemaster && !player.isSpectator
+
+	const [speechCount, setSpeechCount] = useState(0)
+	const prevSpeakingRef = useRef(false)
+
+	useEffect(() => {
+		setSpeechCount(0)
+		prevSpeakingRef.current = false
+	}, [gameStarted])
+
+	useEffect(() => {
+		const was = prevSpeakingRef.current
+		prevSpeakingRef.current = speaking
+		if (speaking && !was && isPlayer && gameStarted) setSpeechCount(c => c + 1)
+	}, [speaking]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const borderColor = isPlayer
+		? (gameStarted ? getSpeechBorderColor(speechCount) : '#4a5070')
+		: (speaking ? 'rgba(15,255,200,0.4)' : '#1c1f35')
+
+	return (
+		<div className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default transition-all'
+			style={{ background: (!isPlayer && speaking) ? 'rgba(15,255,200,0.05)' : '#0f1120', border: `1px solid ${borderColor}` }}>
+			<StripTile player={player} reaction={reaction} />
 		</div>
 	)
 }
@@ -403,6 +467,11 @@ function StripTile({ player, reaction }: { player: RoomPlayer; reaction?: { emoj
 						pointerEvents: 'none',
 					}}>
 						{reaction.emoji}
+					</div>
+				)}
+				{player.handRaised && (
+					<div style={{ position: 'absolute', top: '-6px', left: '-6px', pointerEvents: 'none' }}>
+						<NeonRaiseHand size={14} active />
 					</div>
 				)}
 			</div>

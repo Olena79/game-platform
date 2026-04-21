@@ -2,13 +2,15 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from '../context/AuthContext'
 import type { GameRoomState, ChatMessage } from '../components/gameroom/types'
+import { resolveGameCode } from '../actions/games'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 
 export interface LKData { token: string; url: string; roomName: string }
 export interface BreakoutInvite { roomId: string; roomName: string; imageUrl: string }
 
-export function useGameRoom(gameCode: string) {
+// rawCode is whatever is in the URL — could be gameCode or spectatorCode
+export function useGameRoom(rawCode: string) {
 	const { user, token: authToken } = useAuth()
 	const socketRef = useRef<Socket | null>(null)
 	const [state, setState]                   = useState<GameRoomState | null>(null)
@@ -17,12 +19,26 @@ export function useGameRoom(gameCode: string) {
 	const [lkBreakout, setLkBreakout]         = useState<LKData | null>(null)
 	const [breakoutInvite, setBreakoutInvite] = useState<BreakoutInvite | null>(null)
 	const [endAnim, setEndAnim]               = useState(false)
+	const [startAnim, setStartAnim]           = useState(false)
 	const [error, setError]                   = useState<string | null>(null)
 	const [connStatus, setConnStatus]         = useState<'connecting' | 'connected' | 'failed'>('connecting')
 	const [playerReactions, setPlayerReactions] = useState<Record<string, { emoji: string; key: number }>>({})
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+	const prevStatusRef = useRef<string>('')
+
+	// Resolved code info — populated after code resolution
+	const [resolved, setResolved] = useState<{ gameCode: string; isSpectatorJoin: boolean } | null>(null)
 
 	const myId = user?.id ?? ''
+
+	// Step 1: resolve the raw code to the real gameCode + isSpectator flag
+	useEffect(() => {
+		if (!rawCode) return
+		setResolved(null)
+		resolveGameCode(rawCode)
+			.then(r => setResolved({ gameCode: r.gameCode, isSpectatorJoin: r.isSpectator }))
+			.catch(() => setError('Кімнату не знайдено'))
+	}, [rawCode])
 
 	const fetchLKToken = useCallback(async (roomName: string): Promise<LKData | null> => {
 		if (!authToken || !user) return null
@@ -41,8 +57,11 @@ export function useGameRoom(gameCode: string) {
 		} catch { return null }
 	}, [authToken, user])
 
+	// Step 2: connect socket once the code is resolved
 	useEffect(() => {
-		if (!user || !authToken || !gameCode) return
+		if (!user || !authToken || !resolved) return
+
+		const { gameCode, isSpectatorJoin } = resolved
 
 		const socket = io(API, { transports: ['websocket', 'polling'] })
 		socketRef.current = socket
@@ -54,6 +73,7 @@ export function useGameRoom(gameCode: string) {
 				gameCode,
 				userId: user.id,
 				name: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
+				isSpectatorJoin,
 			})
 			const token = await fetchLKToken(`mindflow-${gameCode}`)
 			if (token) setLk(token)
@@ -61,7 +81,11 @@ export function useGameRoom(gameCode: string) {
 
 		socket.on('connect_error', () => setConnStatus('failed'))
 
-		socket.on('gr:state', (s: GameRoomState) => setState(s))
+		socket.on('gr:state', (s: GameRoomState) => {
+			if ((prevStatusRef.current === 'lobby' || prevStatusRef.current === 'ended') && s.status === 'started') setStartAnim(true)
+			prevStatusRef.current = s.status
+			setState(s)
+		})
 		socket.on('gr:error', (msg: string) => setError(msg))
 
 		socket.on('gr:chat', (msg: ChatMessage) => {
@@ -83,13 +107,8 @@ export function useGameRoom(gameCode: string) {
 		})
 
 		socket.on('gr:breakout-invited', (d: BreakoutInvite) => setBreakoutInvite(d))
-
-		socket.on('gr:breakout-return', () => {
-			setLkBreakout(null)
-		})
-
+		socket.on('gr:breakout-return', () => setLkBreakout(null))
 		socket.on('gr:end-anim', () => setEndAnim(true))
-
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
 
 		return () => {
@@ -97,7 +116,9 @@ export function useGameRoom(gameCode: string) {
 			socketRef.current = null
 			setConnected(false)
 		}
-	}, [gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [resolved?.gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const gameCode = resolved?.gameCode ?? rawCode
 
 	const emit = useCallback((event: string, data?: object) => {
 		socketRef.current?.emit(event, { gameCode, ...(data ?? {}) })
@@ -124,6 +145,7 @@ export function useGameRoom(gameCode: string) {
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,
+		startAnim, setStartAnim,
 		joinBreakout, leaveBreakout,
 		// ── Actions ──
 		sendChat:      (text: string)             => emit('gr:chat',           { text }),
@@ -146,6 +168,11 @@ export function useGameRoom(gameCode: string) {
 		castVote:      (optionIds: string[])      => emit('gr:vote-cast',      { optionIds }),
 		closeVote:     ()                         => emit('gr:vote-close'),
 		clearVote:     ()                         => emit('gr:vote-clear'),
+		createSpectatorVote: (question: string, options: string[], isAnonymous: boolean, multipleChoice: boolean) =>
+			emit('gr:spectator-vote-create', { question, options, isAnonymous, multipleChoice }),
+		castSpectatorVote:   (optionIds: string[]) => emit('gr:spectator-vote-cast',  { optionIds }),
+		closeSpectatorVote:  ()                    => emit('gr:spectator-vote-close'),
+		clearSpectatorVote:  ()                    => emit('gr:spectator-vote-clear'),
 		createBreakout:(name: string, imageUrl: string, timerSeconds: number | null) =>
 			emit('gr:breakout-create', { name, imageUrl, timerSeconds }),
 		inviteBreakout:(roomId: string, playerIds: string[]) =>

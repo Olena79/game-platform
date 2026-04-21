@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Component, ReactNode } from 'react'
+import React, { useState, useCallback, useEffect, useRef, Component, ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
 	LiveKitRoom as LKRoom, RoomAudioRenderer as LKAudioRenderer,
@@ -8,8 +8,13 @@ const LiveKitRoom = LKRoom as React.ComponentType<any>
 const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
 import { useAuth } from '../../context/AuthContext'
+import { sfx } from '../../utils/sounds'
+
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 import { AnnouncementBanner } from '../gameroom/AnnouncementBanner'
 import { GameEndOverlay } from '../gameroom/GameEndOverlay'
+import { GameStartOverlay } from '../gameroom/GameStartOverlay'
+import { TimerFloatOverlay } from '../gameroom/TimerFloatOverlay'
 import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
@@ -39,18 +44,22 @@ class RoomErrorBoundary extends Component<{ children: ReactNode }, { err: string
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
 function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	const navigate = useNavigate()
-	const { state, me, isGM, myId, endAnim, setEndAnim, playerReactions,
+	const { state, me, isGM, myId, endAnim, setEndAnim, startAnim, setStartAnim, playerReactions,
 		breakoutInvite, setBreakoutInvite, joinBreakout, leaveBreakout,
 		sendChat, react, raiseHand, setRole, startGame, endGame,
 		transferCoins, payBank, setInfluence, muteAll,
 		announce, setTimer, startTimer, stopTimer, clearTimer,
 		createVote, castVote, closeVote, clearVote,
+		createSpectatorVote, castSpectatorVote, closeSpectatorVote, clearSpectatorVote,
 		createBreakout, inviteBreakout, endBreakout, showImage,
 	} = room
 
+	const isSpectator = me?.isSpectator ?? false
+
+	const { token: authToken } = useAuth()
 	const { localParticipant } = useLocalParticipant()
 	const [view, setView]                 = useState<'speaker' | 'grid'>('speaker')
-	const [micOn, setMicOn]               = useState(true)
+	const [micOn, setMicOn]               = useState(false)
 	const [camOn, setCamOn]               = useState(false)
 	const [showCoinModal, setShowCoin]    = useState(false)
 	const [showVoteModal, setShowVote]    = useState(false)
@@ -58,6 +67,42 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	const [showBreakout, setShowBreakout] = useState(false)
 	const [showAnnounce, setShowAnnounce] = useState(false)
 	const [showImgPicker, setShowImgPicker] = useState(false)
+	const [showStopConfirm, setShowStopConfirm] = useState(false)
+	const [showSpectatorVote, setShowSpectatorVote] = useState(false)
+	const [notes, setNotes]               = useState('')
+
+	// ── Sound effects ────────────────────────────────────────────────────────────
+	const sfxInitRef        = useRef(false)
+	const raisedHandsRef    = useRef<Set<string>>(new Set())
+	const prevAnnouncRef    = useRef<string | null>(null)
+	const prevVoteIdRef     = useRef<string | null>(null)
+
+	useEffect(() => {
+		if (!state) return
+		if (!sfxInitRef.current) {
+			// skip sounds on first load — just capture initial state
+			sfxInitRef.current   = true
+			raisedHandsRef.current   = new Set(state.players.filter(p => p.handRaised).map(p => p.userId))
+			prevAnnouncRef.current   = state.announcement ?? null
+			prevVoteIdRef.current    = state.activeVote?.id ?? null
+			return
+		}
+
+		// Hand raise
+		state.players.forEach(p => {
+			if (p.handRaised && !raisedHandsRef.current.has(p.userId)) sfx.handRaise()
+		})
+		raisedHandsRef.current = new Set(state.players.filter(p => p.handRaised).map(p => p.userId))
+
+		// Announcement appears
+		if (state.announcement && !prevAnnouncRef.current) sfx.announcement()
+		prevAnnouncRef.current = state.announcement ?? null
+
+		// Vote appears
+		const voteId = state.activeVote?.id ?? null
+		if (voteId && voteId !== prevVoteIdRef.current) sfx.vote()
+		prevVoteIdRef.current = voteId
+	}, [state])
 
 	const toggleMic = useCallback(async () => {
 		if (!localParticipant) return
@@ -92,16 +137,14 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 			<RoomAudioRenderer />
 
 			{/* Announcement banner */}
-			{state.announcement && (
-				<AnnouncementBanner
-					text={state.announcement}
-					isGM={isGM}
-					onClose={() => announce(null)}
-				/>
-			)}
+			<AnnouncementBanner
+				text={state.announcement ?? null}
+				isGM={isGM}
+				onClose={() => announce(null)}
+			/>
 
-			{/* Lobby start button */}
-			{state.status === 'lobby' && isGM && (
+			{/* Lobby / restart button */}
+			{(state.status === 'lobby' || state.status === 'ended') && isGM && (
 				<div className='flex-shrink-0 flex items-center justify-center gap-[10px] py-[8px] px-[16px]'
 					style={{ background: 'rgba(15,255,200,0.06)', borderBottom: '1px solid rgba(15,255,200,0.12)' }}>
 					<span className='text-[12px]' style={{ color: 'rgba(15,255,200,0.5)' }}>
@@ -119,7 +162,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 			<div className='flex-1 flex overflow-hidden min-h-0'>
 
 				{/* Left / Main area */}
-				<div className='flex-1 flex flex-col overflow-hidden min-w-0'>
+				<div className='flex-1 flex flex-col overflow-hidden min-w-0 relative'>
+
+					{/* Floating timer overlay */}
+					{state.timer && <TimerFloatOverlay timer={state.timer} />}
 
 					{/* View switcher */}
 					<div className='flex-shrink-0 flex items-center gap-[7px] px-[12px] py-[7px]'
@@ -199,25 +245,31 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 				</div>
 
 				{/* Right panel: Chat + Tools */}
-				<div className='w-[255px] flex-shrink-0 flex flex-col overflow-hidden min-h-0'>
+				<div className='w-[255px] lg:w-[382px] flex-shrink-0 flex flex-col overflow-hidden min-h-0'>
 					<ChatPanel
 						state={state}
 						myId={myId}
 						isGM={isGM}
+						isSpectator={isSpectator}
+						notes={notes}
+						onNotesChange={setNotes}
 						onSendChat={sendChat}
 						onCastVote={castVote}
 						onCloseVote={closeVote}
 						onClearVote={clearVote}
+						onCastSpectatorVote={castSpectatorVote}
+						onCloseSpectatorVote={closeSpectatorVote}
+						onClearSpectatorVote={clearSpectatorVote}
 						onAnnounce={() => setShowAnnounce(true)}
 						onVoting={() => setShowVote(true)}
+						onSpectatorVoting={() => setShowSpectatorVote(true)}
 						onMuteAll={muteAll}
-						onEndGame={() => { if (confirm('Зупинити гру?')) endGame() }}
+						onEndGame={() => setShowStopConfirm(true)}
 						onTimer={() => setShowTimer(true)}
 						onTimerStart={startTimer}
 						onTimerStop={stopTimer}
 						onTimerClear={clearTimer}
 						onBreakout={() => setShowBreakout(true)}
-						onShowImagePicker={() => setShowImgPicker(true)}
 					/>
 				</div>
 			</div>
@@ -246,6 +298,9 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					</div>
 				</div>
 			)}
+
+			{/* Start overlay */}
+			{startAnim && <GameStartOverlay onDone={() => setStartAnim(false)} />}
 
 			{/* End overlay */}
 			{endAnim && <GameEndOverlay onDone={() => setEndAnim(false)} />}
@@ -354,6 +409,51 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					</div>
 				</div>
 			)}
+
+			{/* Stop game confirm modal */}
+			{showStopConfirm && (
+				<div className='fixed inset-0 z-[80] flex items-center justify-center' style={{ background: 'rgba(7,8,15,0.82)' }}>
+					<div className='w-[320px] rounded-[18px] p-[22px] flex flex-col gap-[16px]'
+						style={{ background: '#0b0d1a', border: '1px solid rgba(255,56,80,0.2)' }}>
+						<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>Зупинити гру?</h3>
+						<p className='text-[13px]' style={{ color: 'rgba(100,140,220,0.6)' }}>
+							Гру буде завершено для всіх учасників. Нотатки буде надіслано на вашу пошту.
+						</p>
+						<div className='flex gap-[8px]'>
+							<button onClick={() => setShowStopConfirm(false)}
+								className='flex-1 py-[9px] rounded-[9px] text-[12px] cursor-pointer'
+								style={{ background: 'rgba(15,17,32,0.5)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }}>
+								Скасувати
+							</button>
+							<button onClick={async () => {
+								setShowStopConfirm(false)
+								if (notes.trim() && authToken) {
+									try {
+										await fetch(`${API}/api/games/send-notes`, {
+											method: 'POST',
+											headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+											body: JSON.stringify({ notes: notes.trim(), gameTitle: state.title, gameCode }),
+										})
+									} catch (err) { console.error('[send-notes]', err) }
+								}
+								endGame()
+							}}
+								className='flex-1 py-[9px] rounded-[9px] text-[12px] font-[600] cursor-pointer'
+								style={{ background: 'rgba(255,56,80,0.1)', border: '1px solid rgba(255,56,80,0.3)', color: '#ff3850' }}>
+								Зупинити
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Spectator vote modal (GM only) */}
+			{showSpectatorVote && (
+				<VotingModal
+					onCreate={(q, opts, anon, multi) => { createSpectatorVote(q, opts, anon, multi); setShowSpectatorVote(false) }}
+					onClose={() => setShowSpectatorVote(false)}
+				/>
+			)}
 		</div>
 	)
 }
@@ -413,7 +513,7 @@ function GameRoomInner() {
 			token={activeLk.token}
 			serverUrl={activeLk.url}
 			connect={true}
-			audio={true}
+			audio={false}
 			video={false}
 			style={{ height: '100vh', background: '#07080f' }}
 		>

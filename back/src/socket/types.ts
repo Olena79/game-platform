@@ -9,6 +9,7 @@ export interface RoomPlayer {
 	handRaised: boolean
 	breakoutRoomId: string | null
 	isGamemaster: boolean
+	isSpectator: boolean
 	connected: boolean
 }
 
@@ -33,6 +34,7 @@ export interface ActiveVote {
 	isAnonymous: boolean
 	multipleChoice: boolean
 	closed: boolean
+	spectatorOnly?: boolean
 }
 
 export interface BreakoutRoom {
@@ -63,6 +65,7 @@ export interface GameRoomState {
 	announcement: string | null
 	timer: RoomTimer | null
 	activeVote: ActiveVote | null
+	spectatorVote: ActiveVote | null
 	breakoutRooms: BreakoutRoom[]
 	images: string[]
 	coverImage: string

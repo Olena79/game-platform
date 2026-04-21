@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+// Google OAuth — requires: npm install @react-oauth/google
+// Add VITE_GOOGLE_CLIENT_ID to front/.env
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { HomePage } from './components/pages/HomePage'
@@ -64,15 +67,21 @@ const SiteLayout = () => (
 	</div>
 )
 
-const App = () => (
-	<Router>
-		<Routes>
-			{/* Full-screen game room — no header/footer */}
-			<Route path='/room/:code' element={<GameRoomPage />} />
-			{/* All other pages */}
-			<Route path='/*' element={<SiteLayout />} />
-		</Routes>
-	</Router>
-)
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+
+const App = () => {
+	const content = (
+		<Router>
+			<Routes>
+				{/* Full-screen game room — no header/footer */}
+				<Route path='/room/:code' element={<GameRoomPage />} />
+				{/* All other pages */}
+				<Route path='/*' element={<SiteLayout />} />
+			</Routes>
+		</Router>
+	)
+	if (!GOOGLE_CLIENT_ID) return content
+	return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{content}</GoogleOAuthProvider>
+}
 
 export default App

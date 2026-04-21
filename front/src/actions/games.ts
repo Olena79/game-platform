@@ -24,7 +24,9 @@ export interface GameData {
 	coverImage: string
 	images: string[]
 	gameCode: string
+	spectatorCode?: string
 	registeredPlayers: RegisteredPlayer[]
+	spectators: RegisteredPlayer[]
 	createdAt: string
 }
 
@@ -35,6 +37,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
 	if (!res.ok) throw new Error(data.message || 'Request failed')
 	return data as T
 }
+
+export const resolveGameCode = (code: string): Promise<{ gameCode: string; isSpectator: boolean }> =>
+	fetch(`${API}/api/games/resolve/${encodeURIComponent(code)}`).then(handleResponse<{ gameCode: string; isSpectator: boolean }>)
 
 export const getGames = (): Promise<GameData[]> =>
 	fetch(`${API}/api/games`).then(handleResponse<GameData[]>)
@@ -81,3 +86,21 @@ export const deleteGame = (token: string, id: string): Promise<{ ok: boolean }> 
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<{ ok: boolean }>)
+
+export const registerAsSpectator = (
+	token: string,
+	id: string,
+): Promise<{ spectators: RegisteredPlayer[]; spectatorCode: string }> =>
+	fetch(`${API}/api/games/${id}/register-spectator`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ spectators: RegisteredPlayer[]; spectatorCode: string }>)
+
+export const unregisterAsSpectator = (
+	token: string,
+	id: string,
+): Promise<{ spectators: RegisteredPlayer[] }> =>
+	fetch(`${API}/api/games/${id}/register-spectator`, {
+		method: 'DELETE',
+		headers: { Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ spectators: RegisteredPlayer[] }>)

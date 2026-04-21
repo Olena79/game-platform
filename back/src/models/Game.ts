@@ -23,7 +23,9 @@ export interface IGame extends Document {
 	coverImage: string
 	images: string[]
 	gameCode: string
+	spectatorCode: string
 	registeredPlayers: IRegisteredPlayer[]
+	spectators: IRegisteredPlayer[]
 	createdAt: Date
 	updatedAt: Date
 }
@@ -55,7 +57,9 @@ const GameSchema = new Schema<IGame>(
 		coverImage:         { type: String, default: '' },
 		images:             { type: [String], default: [] },
 		gameCode:           { type: String, unique: true, sparse: true },
+		spectatorCode:      { type: String, unique: true, sparse: true },
 		registeredPlayers:  { type: [RegisteredPlayerSchema], default: [] },
+		spectators:         { type: [RegisteredPlayerSchema], default: [] },
 	},
 	{ timestamps: true, collection: 'our_games' }
 )

@@ -44,11 +44,21 @@ interface Props {
 	playerReactions?: Record<string, { emoji: string; key: number }>
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reaction }: {
+function getSpeechBorderColor(count: number): string {
+	if (count < 3)  return '#4a5070'
+	if (count < 6)  return '#c8d0e8'
+	if (count < 10) return '#f5c800'
+	if (count < 15) return '#ff8c00'
+	if (count < 25) return '#ff5500'
+	return '#cc1133'
+}
+
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reaction, gameStarted }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
 	reaction?: { emoji: string; key: number }
+	gameStarted: boolean
 }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
@@ -59,19 +69,38 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
 	const micPub = participant?.getTrackPublication(Track.Source.Microphone)
 	const micMuted = !micPub || micPub.isMuted
+	const isPlayer = !player.isGamemaster && !player.isSpectator
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)
+	const [speechCount, setSpeechCount] = useState(0)
+	const prevSpeakingRef = useRef(false)
 
-	const canEditRole = isGM || player.userId === myId
+	useEffect(() => {
+		setSpeechCount(0)
+		prevSpeakingRef.current = false
+	}, [gameStarted])
+
+	useEffect(() => {
+		const was = prevSpeakingRef.current
+		prevSpeakingRef.current = speaking
+		if (speaking && !was && isPlayer && gameStarted) setSpeechCount(c => c + 1)
+	}, [speaking]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const canEditRole = !player.isSpectator && (isGM || player.userId === myId)
+
+	const borderColor = isPlayer
+		? (gameStarted ? getSpeechBorderColor(speechCount) : '#4a5070')
+		: (speaking ? 'rgba(15,255,200,0.4)' : '#1c1f35')
 
 	return (
 		<div
 			className='relative rounded-[9px] overflow-hidden flex flex-col'
 			style={{
 				background: '#0f1120',
-				border: speaking ? '1px solid rgba(15,255,200,0.4)' : '1px solid #1c1f35',
-				boxShadow: speaking ? '0 0 10px rgba(15,255,200,0.08)' : 'none',
+				border: `1px solid ${borderColor}`,
+				boxShadow: (!isPlayer && speaking) ? '0 0 10px rgba(15,255,200,0.08)' : 'none',
+				transition: 'border-color 0.5s ease',
 			}}
 		>
 			{/* Mic icon */}
@@ -80,14 +109,14 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 			</div>
 
 			{/* Camera area */}
-			<div className='flex-1 flex items-center justify-center relative' style={{ background: '#080912', minHeight: '80px' }}>
+			<div className='flex-shrink-0 flex items-center justify-center relative overflow-hidden' style={{ background: '#080912', height: '120px' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='w-full h-full object-cover'
 					/>
 				) : (
-					<div className='relative w-[38px] h-[38px] rounded-full flex items-center justify-center text-[14px] font-[700]'
+					<div className='relative w-[57px] h-[57px] rounded-full flex items-center justify-center text-[20px] font-[700]'
 						style={{
 							background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e',
 							color: speaking ? '#0fffc8' : '#7a80a0',
@@ -116,16 +145,17 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 						{reaction.emoji}
 					</div>
 				)}
+				{player.handRaised && (
+					<div style={{ position: 'absolute', bottom: '4px', left: '4px', zIndex: 15, pointerEvents: 'none' }}>
+						<NeonRaiseHand size={16} active />
+					</div>
+				)}
 			</div>
 
 			{/* Footer */}
 			<div className='px-[7px] py-[5px] flex items-center justify-between gap-[4px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				<div className='flex-1 min-w-0'>
-					<div className='text-[11px] font-[600] truncate'
-						style={{ color: speaking ? '#0fffc8' : '#dde1f0' }}>
-						{player.name}
-					</div>
 					{editRole ? (
 						<input
 							autoFocus
@@ -133,20 +163,32 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 							onChange={e => setRoleInput(e.target.value.slice(0, 60))}
 							onBlur={() => { onSetRole(player.userId, roleInput); setEditRole(false) }}
 							onKeyDown={e => { if (e.key === 'Enter') { onSetRole(player.userId, roleInput); setEditRole(false) } }}
-							className='w-full text-[10px] rounded-[4px] px-[4px] py-[1px] focus:outline-none'
+							className='w-full text-[11px] rounded-[4px] px-[4px] py-[1px] focus:outline-none'
 							style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.3)', color: 'rgba(180,200,255,0.9)' }}
 						/>
 					) : (
-						<div className='flex items-center gap-[3px]'>
-							<span className='text-[10px] truncate' style={{ color: '#4a5070' }}>{player.role || '—'}</span>
-							{canEditRole && (
-								<button onClick={() => { setRoleInput(player.role); setEditRole(true) }}
-									className='cursor-pointer opacity-0 group-hover:opacity-100 transition-all'
-									style={{ color: 'rgba(68,170,255,0.4)' }}>
-									<Pencil size={8} strokeWidth={2} />
-								</button>
-							)}
-						</div>
+						<>
+							{/* Role — primary, click anywhere to edit */}
+							<div
+								className='flex items-center gap-[3px]'
+								onClick={canEditRole ? () => { setRoleInput(player.role); setEditRole(true) } : undefined}
+								style={{ cursor: canEditRole ? 'text' : 'default' }}
+							>
+								<span className='text-[12px] font-[700] truncate'
+									style={{ color: player.role ? (speaking ? '#0fffc8' : '#c07fff') : 'rgba(100,120,200,0.35)' }}>
+									{player.role || '—'}
+								</span>
+								{canEditRole && (
+									<Pencil size={8} strokeWidth={2} className='flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all'
+										style={{ color: 'rgba(68,170,255,0.4)' }} />
+								)}
+							</div>
+							{/* Name — secondary */}
+							<div className='text-[10px] truncate'
+								style={{ color: speaking ? 'rgba(15,255,200,0.75)' : 'rgba(180,200,255,0.55)' }}>
+								{player.name}
+							</div>
+						</>
 					)}
 				</div>
 				<div className='flex gap-[5px] flex-shrink-0 text-[10px]' style={{ color: '#4a5070' }}>
@@ -158,11 +200,6 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 			{/* GM actions overlay */}
 			{isGM && !player.isGamemaster && (
 				<div className='absolute top-[4px] right-[4px] flex gap-[2px]'>
-					<button onClick={() => { setRoleInput(player.role); setEditRole(true) }}
-						className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
-						style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#4a5070' }}>
-						<Pencil size={9} strokeWidth={2} />
-					</button>
 					<button onClick={() => onSetInfluence(player.userId, 1)}
 						className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
 						style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#4a5070' }}
@@ -191,6 +228,14 @@ export const GridView = ({
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
+
+	const { localParticipant } = useLocalParticipant()
+	const localSpeaking = useIsSpeaking(localParticipant)
+	const handRaisedRef = useRef(handRaised)
+	handRaisedRef.current = handRaised
+	useEffect(() => {
+		if (localSpeaking && handRaisedRef.current) onRaiseHand(false)
+	}, [localSpeaking, onRaiseHand])
 
 	const [floatItems, setFloatItems] = useState<FloatItem[]>([])
 	const prevReactionsRef = useRef<Record<string, number>>({})
@@ -257,7 +302,7 @@ export const GridView = ({
 			<div className='flex-1 overflow-y-auto p-[10px]'
 				style={{
 					display: 'grid',
-					gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+					gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
 					gap: '7px',
 					alignContent: 'start',
 				}}>
@@ -270,6 +315,7 @@ export const GridView = ({
 						onSetRole={onSetRole}
 						onSetInfluence={onSetInfluence}
 						reaction={playerReactions[p.userId]}
+						gameStarted={state.status === 'started'}
 					/>
 				))}
 			</div>
@@ -284,22 +330,24 @@ export const GridView = ({
 						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
 					</button>
 				))}
-				<button onClick={() => onRaiseHand(!handRaised)}
-					className='flex flex-col items-center justify-center cursor-pointer transition-all'
-					style={{
-						width: '46px', height: '46px',
-						background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
-						borderRadius: '10px',
-					}}>
-					<NeonRaiseHand size={30} active={handRaised} />
-				</button>
+				{!me?.isSpectator && (
+					<button onClick={() => onRaiseHand(!handRaised)}
+						className='flex flex-col items-center justify-center cursor-pointer transition-all'
+						style={{
+							width: '46px', height: '46px',
+							background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
+							borderRadius: '10px',
+						}}>
+						<NeonRaiseHand size={30} active={handRaised} />
+					</button>
+				)}
 			</div>
 
 			{/* Controls */}
 			<div className='flex-shrink-0 flex items-center gap-[7px] px-[14px] py-[9px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				<CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />
-				<CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />
+				{!me?.isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />}
+				{!me?.isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />}
 				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={14}/>} label='Вийти' variant='red' />
 			</div>
 		</div>

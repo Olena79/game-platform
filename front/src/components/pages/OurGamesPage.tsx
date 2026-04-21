@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, deleteGame, GameData } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, GameData } from '../../actions/games'
 
 export const OurGamesPage = () => {
 	const { t } = useTranslation()
@@ -15,8 +15,10 @@ export const OurGamesPage = () => {
 	const [pageLoading, setPageLoading]   = useState(true)
 	const [editLoading, setEditLoading]   = useState<string | null>(null)
 	const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
-	const [registerLoading, setRegisterLoading]     = useState<string | null>(null)
-	const [unregisterLoading, setUnregisterLoading] = useState<string | null>(null)
+	const [registerLoading, setRegisterLoading]         = useState<string | null>(null)
+	const [unregisterLoading, setUnregisterLoading]     = useState<string | null>(null)
+	const [spectatorLoading, setSpectatorLoading]       = useState<string | null>(null)
+	const [unspectatorLoading, setUnspectatorLoading]   = useState<string | null>(null)
 
 	const [modal, setModal] = useState<{
 		open: boolean; title: string; message: string; variant: 'success' | 'error'
@@ -122,6 +124,50 @@ export const OurGamesPage = () => {
 		}
 	}
 
+	const handleRegisterSpectator = async (gameId: string) => {
+		if (!token) { navigate('/auth'); return }
+		setSpectatorLoading(gameId)
+		try {
+			const res = await registerAsSpectator(token, gameId)
+			setGames(prev => prev.map(g =>
+				g._id === gameId ? { ...g, spectators: res.spectators, spectatorCode: res.spectatorCode } : g
+			))
+			setModal({
+				open: true,
+				title: 'Зареєстровано як глядач!',
+				message: 'Листа з кодом глядача надіслано на вашу пошту.',
+				variant: 'success',
+				gameCode: res.spectatorCode,
+			})
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : 'Error'
+			const text =
+				msg === 'ALREADY_REGISTERED'           ? 'Ви вже зареєстровані.' :
+				msg === 'ALREADY_REGISTERED_AS_PLAYER' ? 'Ви вже зареєстровані як гравець.' :
+				msg === 'CREATOR_CANNOT_REGISTER'      ? t('our_games.err_creator_register') :
+				msg
+			setModal({ open: true, title: t('our_games.err_register_title'), message: text, variant: 'error' })
+		} finally {
+			setSpectatorLoading(null)
+		}
+	}
+
+	const handleUnregisterSpectator = async (gameId: string) => {
+		if (!token) return
+		setUnspectatorLoading(gameId)
+		try {
+			const res = await unregisterAsSpectator(token, gameId)
+			setGames(prev => prev.map(g =>
+				g._id === gameId ? { ...g, spectators: res.spectators } : g
+			))
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : 'Error'
+			setModal({ open: true, title: t('our_games.err_register_title'), message: msg, variant: 'error' })
+		} finally {
+			setUnspectatorLoading(null)
+		}
+	}
+
 	if (pageLoading) {
 		return (
 			<div className='min-h-[88vh] flex items-center justify-center'>
@@ -180,10 +226,14 @@ export const OurGamesPage = () => {
 								deleteLoading={deleteLoading === game._id}
 								registerLoading={registerLoading === game._id}
 								unregisterLoading={unregisterLoading === game._id}
+								spectatorLoading={spectatorLoading === game._id}
+								unspectatorLoading={unspectatorLoading === game._id}
 								onEdit={() => handleEdit(game._id)}
 								onDelete={() => setDeleteConfirm({ open: true, gameId: game._id })}
 								onRegister={() => handleRegister(game._id)}
 								onUnregister={() => handleUnregister(game._id)}
+								onRegisterSpectator={() => handleRegisterSpectator(game._id)}
+								onUnregisterSpectator={() => handleUnregisterSpectator(game._id)}
 								onShowPlayers={() => setPlayersModal({ open: true, game })}
 								onEnterGame={() => navigate(`/game?code=${game.gameCode}`)}
 							/>
@@ -265,7 +315,10 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 const GameCard = ({
 	game, currentUserId, isLoggedIn,
 	editLoading, deleteLoading, registerLoading, unregisterLoading,
-	onEdit, onDelete, onRegister, onUnregister, onShowPlayers, onEnterGame,
+	spectatorLoading, unspectatorLoading,
+	onEdit, onDelete, onRegister, onUnregister,
+	onRegisterSpectator, onUnregisterSpectator,
+	onShowPlayers, onEnterGame,
 }: {
 	game: GameData
 	currentUserId?: string
@@ -274,17 +327,23 @@ const GameCard = ({
 	deleteLoading: boolean
 	registerLoading: boolean
 	unregisterLoading: boolean
+	spectatorLoading: boolean
+	unspectatorLoading: boolean
 	onEdit: () => void
 	onDelete: () => void
 	onRegister: () => void
 	onUnregister: () => void
+	onRegisterSpectator: () => void
+	onUnregisterSpectator: () => void
 	onShowPlayers: () => void
 	onEnterGame: () => void
 }) => {
 	const { t, i18n } = useTranslation()
 
+	const spectators   = game.spectators ?? []
 	const isCreator    = !!currentUserId && String(game.creatorId) === String(currentUserId)
 	const isRegistered = !!currentUserId && game.registeredPlayers.some(p => String(p.userId) === String(currentUserId))
+	const isSpectator  = !!currentUserId && spectators.some(p => String(p.userId) === String(currentUserId))
 	const isFull       = game.registeredPlayers.length >= game.maxPlayers
 	const regCount     = game.registeredPlayers.length
 
@@ -437,6 +496,15 @@ const GameCard = ({
 				)}
 			</div>
 
+			{/* GM codes block */}
+			{isCreator && game.spectatorCode && (
+				<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
+					style={{ background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }}>
+					<span className='text-[10px]' style={{ color: 'rgba(180,130,255,0.45)' }}>👁 Код глядача:</span>
+					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: '#c07fff' }}>{game.spectatorCode}</span>
+				</div>
+			)}
+
 			{/* Bottom row: players count + register/unregister button */}
 			<div className='flex items-center justify-between mt-auto pt-[4px]'>
 				<button
@@ -445,9 +513,45 @@ const GameCard = ({
 				>
 					<UserCheck size={12} strokeWidth={1.8} />
 					{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
+					{spectators.length > 0 && (
+						<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
+							· {spectators.length} 👁
+						</span>
+					)}
 				</button>
 
-				{registerBtn}
+				<div className='flex gap-[6px] items-center'>
+					{/* Spectator button (non-creator, non-registered-player, logged-in) */}
+					{!isCreator && isLoggedIn && !isRegistered && (
+						isSpectator ? (
+							<button
+								onClick={onUnregisterSpectator}
+								disabled={unspectatorLoading}
+								className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
+								style={{ color: 'rgba(180,130,255,0.7)', background: 'rgba(180,130,255,0.07)', border: '1px solid rgba(180,130,255,0.2)' }}
+							>
+								{unspectatorLoading
+									? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.7)' }} />
+									: '👁 Вийти'
+								}
+							</button>
+						) : (
+							<button
+								onClick={onRegisterSpectator}
+								disabled={spectatorLoading}
+								className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
+								style={{ color: 'rgba(180,130,255,0.8)', background: 'rgba(180,130,255,0.06)', border: '1px solid rgba(180,130,255,0.18)' }}
+							>
+								{spectatorLoading
+									? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.8)' }} />
+									: '👁 Глядач'
+								}
+							</button>
+						)
+					)}
+
+					{registerBtn}
+				</div>
 			</div>
 		</div>
 	)

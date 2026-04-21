@@ -106,7 +106,12 @@ export const NeonRaiseHand = ({ size = 36, active = false }: Props & { active?: 
 	const color = active ? '#ffee00' : '#f0c040'
 	return (
 		<svg width={size} height={size} viewBox='0 0 40 40' fill='none'
-			style={{ filter: glow(color, active ? 10 : 7), flexShrink: 0 }}>
+			style={{
+				filter: glow(color, active ? 12 : 7),
+				flexShrink: 0,
+				transform: active ? 'translateY(-3px)' : 'none',
+				transition: 'transform 0.18s ease, filter 0.18s ease',
+			}}>
 			<path
 				d='M17 37
 				C14 37 10 34 10 32
@@ -131,7 +136,7 @@ export const NeonRaiseHand = ({ size = 36, active = false }: Props & { active?: 
 				strokeWidth='2.5'
 				strokeLinejoin='round'
 				strokeLinecap='round'
-				fill='none'
+				fill={active ? 'rgba(255,238,0,0.32)' : 'none'}
 			/>
 		</svg>
 	)

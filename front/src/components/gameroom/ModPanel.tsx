@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Megaphone, Vote, VolumeX, Settings, Square, ScrollText, Timer, DoorOpen, Pencil, Plus, Minus, Image } from 'lucide-react'
+import { Megaphone, Vote, VolumeX, Settings, Square, ScrollText, Timer, DoorOpen, Pencil, Plus, Minus, Users } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
 
 function useTimer(timer: RoomTimer | null) {
@@ -28,6 +28,7 @@ interface Props {
 	state: GameRoomState
 	onAnnounce: () => void
 	onVoting: () => void
+	onSpectatorVoting: () => void
 	onMuteAll: () => void
 	onEndGame: () => void
 	onTimer: () => void
@@ -35,12 +36,11 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
-	onShowImagePicker: () => void
 }
 
 export const ModPanel = ({
-	state, onAnnounce, onVoting, onMuteAll, onEndGame,
-	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout, onShowImagePicker,
+	state, onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
+	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
 }: Props) => {
 	const remaining = useTimer(state.timer)
 	const t = state.timer
@@ -99,10 +99,10 @@ export const ModPanel = ({
 			<div className='grid grid-cols-3 gap-[5px]'>
 				{toolBtn(<Megaphone size={14} />, 'Оголошення', onAnnounce, 'default', !!state.announcement)}
 				{toolBtn(<Vote size={14} />, 'Голосування', onVoting, 'default', !!state.activeVote)}
+				{toolBtn(<Users size={14} />, 'Глядачі', onSpectatorVoting, 'default', !!state.spectatorVote)}
 				{toolBtn(<Timer size={14} />, 'Таймер', onTimer)}
 				{toolBtn(<VolumeX size={14} />, 'Мют всіх', onMuteAll, 'warn')}
 				{toolBtn(<DoorOpen size={14} />, `Кімнати (${state.breakoutRooms.length})`, onBreakout)}
-				{toolBtn(<Image size={14} />, 'Картинка', onShowImagePicker, 'default', !!state.shownImageUrl)}
 				{toolBtn(<Square size={14} />, 'Зупинити гру', onEndGame, 'danger')}
 			</div>
 		</div>
