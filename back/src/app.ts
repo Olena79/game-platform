@@ -33,6 +33,12 @@ app.use('/api/auth', authRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/livekit', livekitRoutes)
 
+app.use(
+	require('cors')({
+		origin: '*',
+	}),
+)
+
 registerGameRoom(io)
 
 const PORT = process.env.PORT || 5000
