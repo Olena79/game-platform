@@ -15,12 +15,16 @@ const isDev = process.env.NODE_ENV !== 'production'
 
 const io = new Server(httpServer, {
 	cors: {
-		origin: isDev ? true : process.env.CLIENT_URL,
+		origin: isDev ? true : process.env.CLIENT_URL || 'http://localhost:3000',
 		methods: ['GET', 'POST'],
 	},
 })
 
-app.use(cors({ origin: isDev ? true : process.env.CLIENT_URL }))
+app.use(
+	cors({
+		origin: isDev ? true : process.env.CLIENT_URL || 'http://localhost:3000',
+	}),
+)
 app.use(express.json())
 
 app.get('/', (_req, res) => res.json({ status: 'ok', message: 'MindFlow API' }))
@@ -35,6 +39,11 @@ const PORT = process.env.PORT || 5000
 
 connectDB()
 	.then(() => {
-		httpServer.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
+		httpServer.listen(PORT, () =>
+			console.log(`Server running on http://localhost:${PORT}`),
+		)
 	})
-	.catch(err => { console.error('MongoDB connection failed:', err); process.exit(1) })
+	.catch(err => {
+		console.error('MongoDB connection failed:', err)
+		process.exit(1)
+	})
