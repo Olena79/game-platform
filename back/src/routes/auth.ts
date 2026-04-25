@@ -6,25 +6,27 @@ import { User } from '../models/User'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { sendWelcomeEmail } from '../services/email'
 
-interface GoogleTokenPayload {
+interface GoogleUserInfo {
 	sub: string
 	email: string
 	name: string
 	given_name?: string
 	family_name?: string
-	aud: string
-	email_verified: string
 }
 
-function verifyGoogleToken(credential: string): Promise<GoogleTokenPayload> {
+function getUserInfoFromAccessToken(accessToken: string): Promise<GoogleUserInfo> {
 	return new Promise((resolve, reject) => {
-		const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
-		https.get(url, res => {
+		const options = {
+			hostname: 'www.googleapis.com',
+			path: '/oauth2/v3/userinfo',
+			headers: { Authorization: `Bearer ${accessToken}` },
+		}
+		https.get(options, res => {
 			let data = ''
 			res.on('data', (chunk: Buffer) => { data += chunk.toString() })
 			res.on('end', () => {
 				if (res.statusCode !== 200) { reject(new Error('Invalid Google token')); return }
-				try { resolve(JSON.parse(data) as GoogleTokenPayload) }
+				try { resolve(JSON.parse(data) as GoogleUserInfo) }
 				catch (e) { reject(e) }
 			})
 		}).on('error', reject)
@@ -112,20 +114,13 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 	}
 })
 
-// POST /api/auth/google — sign in / register via Google ID token
-// Requires env: GOOGLE_CLIENT_ID
+// POST /api/auth/google — sign in / register via Google OAuth (access token)
 router.post('/google', async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { credential } = req.body as { credential?: string }
-		if (!credential) { res.status(400).json({ message: 'Google credential required' }); return }
+		const { accessToken } = req.body as { accessToken?: string }
+		if (!accessToken) { res.status(400).json({ message: 'Google access token required' }); return }
 
-		const info = await verifyGoogleToken(credential)
-
-		const expectedClientId = process.env.GOOGLE_CLIENT_ID
-		if (expectedClientId && info.aud !== expectedClientId) {
-			res.status(401).json({ message: 'GOOGLE_CLIENT_ID_MISMATCH' })
-			return
-		}
+		const info = await getUserInfoFromAccessToken(accessToken)
 
 		let user = await User.findOne({ $or: [{ googleId: info.sub }, { email: info.email }] })
 

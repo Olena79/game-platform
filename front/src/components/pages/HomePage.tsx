@@ -1,5 +1,12 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+
+const TelegramIcon = () => (
+	<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+		<path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+	</svg>
+)
 
 const IconBlue3D = () => (
 	<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -105,12 +112,21 @@ export const HomePage = () => {
 					</p>
 
 					<div className='flex flex-wrap gap-[12px] md:gap-[14px]'>
-						<button className="bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] font-amatic font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.5)] hover:-translate-y-[1px] transition-all cursor-pointer">
+						<Link
+							to='/create-game'
+							className="inline-block bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] font-amatic font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.5)] hover:-translate-y-[1px] transition-all cursor-pointer no-underline"
+						>
 							{t('home.hero.btn_try')}
-						</button>
-						<button className='bg-transparent text-[rgba(180,200,255,0.7)] border border-[rgba(255,255,255,0.15)] px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] hover:border-[rgba(255,255,255,0.35)] hover:text-white transition-all cursor-pointer'>
+						</Link>
+						<a
+							href='https://t.me/+PPQQaaV5SrVkODgy'
+							target='_blank'
+							rel='noopener noreferrer'
+							className='inline-flex items-center gap-[8px] bg-transparent text-[rgba(180,200,255,0.7)] border border-[rgba(255,255,255,0.15)] px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] hover:border-[rgba(255,255,255,0.35)] hover:text-white transition-all cursor-pointer no-underline'
+						>
+							<TelegramIcon />
 							{t('home.hero.btn_learn')}
-						</button>
+						</a>
 					</div>
 				</div>
 			</section>
@@ -158,18 +174,6 @@ export const HomePage = () => {
 				</div>
 			</section>
 
-			{/* LAUNCHER */}
-			<div className='mx-[20px] md:mx-[32px] lg:mx-[48px] mb-[48px] md:mb-[64px] lg:mb-[80px] px-[24px] md:px-[40px] lg:px-[48px] py-[32px] md:py-[40px] lg:py-[48px] border border-[rgba(68,170,255,0.18)] rounded-[20px] md:rounded-[28px] text-center'>
-				<h2 className="font-amatic text-[26px] md:text-[32px] lg:text-[38px] font-[700] text-white mb-[10px]">
-					{t('home.launcher.title')}
-				</h2>
-				<p className='text-[14px] md:text-[16px] text-[rgba(180,200,255,0.4)] mb-[24px] md:mb-[28px] font-[300]'>
-					{t('home.launcher.desc')}
-				</p>
-				<div className='rounded-[14px] md:rounded-[18px] border border-[rgba(68,170,255,0.15)] h-[120px] md:h-[150px] lg:h-[170px] flex items-center justify-center text-[rgba(100,150,255,0.3)] text-[13px] md:text-[14px] italic px-[16px] text-center'>
-					{t('home.launcher.placeholder')}
-				</div>
-			</div>
 		</div>
 	)
 }

@@ -1,24 +1,50 @@
 import nodemailer from 'nodemailer'
+import sgMail from '@sendgrid/mail'
 
 const EMAIL_ENABLED = process.env.EMAIL_ENABLED !== 'false'
 
-// Set LOGO_URL env var to replace the text logo with an image in all emails.
-const LOGO_URL = process.env.LOGO_URL ?? ''
-const logoHtml = (accentColor = '#44aaff') => LOGO_URL
-	? `<img src="${LOGO_URL}" alt="MindFlow" style="height:40px;margin-bottom:24px;display:block;">`
-	: `<p style="margin:0 0 24px;font-size:18px;font-weight:800;color:#ffffff;letter-spacing:1px;">Mind<span style="color:${accentColor};">Flow</span></p>`
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+	const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || ''
+	const from = { email: fromEmail, name: 'Games of Senses' }
 
-function createTransport() {
-	return nodemailer.createTransport({
-		host:   process.env.SMTP_HOST || 'smtp.gmail.com',
-		port:   Number(process.env.SMTP_PORT) || 587,
-		secure: false,
-		auth: {
-			user: process.env.SMTP_USER,
-			pass: process.env.SMTP_PASS,
-		},
-	})
+	if (process.env.SENDGRID_API_KEY) {
+		sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+		await sgMail.send({ from, to, subject, html })
+	} else {
+		const transporter = nodemailer.createTransport({
+			host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+			port:   Number(process.env.SMTP_PORT) || 587,
+			secure: false,
+			auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+		})
+		await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
+	}
 }
+
+const logoHtml = () => `
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+  <tr valign="middle">
+    <td valign="middle" style="padding-right:14px;">
+      <table cellpadding="0" cellspacing="0" border="0"
+        style="width:52px;height:52px;border-radius:26px;border:2px solid #00ffe1;background:#0a0d20;text-align:center;">
+        <tr>
+          <td align="center" valign="middle" height="52"
+            style="text-align:center;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;color:#00ffe1;">
+            G
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td valign="middle" style="vertical-align:middle;">
+      <p style="margin:0 0 1px;font-family:Arial,Helvetica,sans-serif;font-size:8px;color:#00ffe1;letter-spacing:4px;text-transform:uppercase;">CLUB</p>
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;line-height:1.2;">GAMES OF</p>
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#cc44ff;letter-spacing:0.5px;line-height:1.2;">SENSES</p>
+      <table cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;">
+        <tr><td style="width:170px;height:1px;background:#cc44ff;font-size:0;line-height:0;">&nbsp;</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>`
 
 interface GameInfo {
 	title: string
@@ -70,7 +96,7 @@ function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): str
 	return `<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Реєстрацію підтверджено — MindFlow</title>
+<title>Реєстрацію підтверджено — Games of Senses</title>
 </head>
 <body style="margin:0;padding:0;background:#030619;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#030619;min-height:100vh;">
@@ -80,7 +106,7 @@ function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): str
       <tr><td style="background:linear-gradient(90deg,#1133aa,#7722cc);padding:4px 0;"></td></tr>
       <tr><td style="padding:32px 32px 28px;">
 
-        ${logoHtml('#44aaff')}
+        ${logoHtml()}
 
         <p style="margin:0 0 20px;font-size:15px;color:rgba(180,200,255,0.75);line-height:1.6;">
           Вітаємо, <strong style="color:#ffffff;">${playerName}</strong>!<br>
@@ -102,18 +128,21 @@ function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): str
         </table>
 
         <table width="100%" cellpadding="0" cellspacing="0" border="0"
-          style="background:rgba(15,255,200,0.05);border:1px solid rgba(15,255,200,0.2);border-radius:14px;margin-bottom:28px;">
+          style="background:rgba(15,255,200,0.05);border:1px solid rgba(15,255,200,0.2);border-radius:14px;margin-bottom:10px;">
           <tr><td style="padding:20px 24px;">
             <p style="margin:0 0 6px;font-size:11px;color:rgba(15,255,200,0.55);text-transform:uppercase;letter-spacing:0.8px;">Ваш код для входу в гру</p>
             <p style="margin:0;font-size:32px;font-weight:800;letter-spacing:8px;color:#0fffc8;font-family:monospace;">${game.gameCode}</p>
           </td></tr>
         </table>
+        <p style="margin:0 0 20px;font-size:11px;color:rgba(15,255,200,0.35);text-align:center;">
+          Введіть цей код на сторінці гри або скористайтесь кнопкою нижче
+        </p>
 
-        <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
-          <tr><td style="background:linear-gradient(135deg,#2255dd,#7744cc);border-radius:12px;">
-            <a href="${siteUrl}" target="_blank"
+        <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;width:100%;">
+          <tr><td style="background:linear-gradient(135deg,#2255dd,#7744cc);border-radius:12px;text-align:center;">
+            <a href="${siteUrl}/game?code=${game.gameCode}" target="_blank"
               style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
-              Перейти на MindFlow →
+              🎮 Приєднатися до гри →
             </a>
           </td></tr>
         </table>
@@ -124,7 +153,7 @@ function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): str
 
       </td></tr>
       <tr><td style="padding:14px 32px;border-top:1px solid rgba(68,170,255,0.1);">
-        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 MindFlow · Ігри для мислення</p>
+        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 Games of Senses</p>
       </td></tr>
     </table>
   </td></tr>
@@ -140,15 +169,12 @@ export async function sendRegistrationEmail(
 ): Promise<void> {
 	if (!EMAIL_ENABLED) return
 	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
-	const from    = process.env.SMTP_USER || ''
 
-	const transporter = createTransport()
-	await transporter.sendMail({
-		from:    `"MindFlow" <${from}>`,
+	await sendEmail(
 		to,
-		subject: `🎮 Реєстрацію підтверджено — ${game.title} | Код: ${game.gameCode}`,
-		html:    buildGameHtml(playerName, game, siteUrl),
-	})
+		`🎮 Реєстрацію підтверджено — ${game.title} | Код: ${game.gameCode}`,
+		buildGameHtml(playerName, game, siteUrl),
+	)
 }
 
 export async function sendSpectatorRegistrationEmail(
@@ -158,8 +184,6 @@ export async function sendSpectatorRegistrationEmail(
 ): Promise<void> {
 	if (!EMAIL_ENABLED) return
 	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
-	const from    = process.env.SMTP_USER || ''
-
 	const joinLink = `${siteUrl}/game?code=${game.spectatorCode}`
 	const dateRow = game.scheduledAt
 		? `<tr><td style="padding:6px 0;color:#0fffc8;font-size:13px;">📅 Дата: <span style="color:#b0ffe8;">${formatDate(game.scheduledAt)}</span></td></tr>`
@@ -168,7 +192,7 @@ export async function sendSpectatorRegistrationEmail(
 	const html = `<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Реєстрацію глядача підтверджено — MindFlow</title>
+<title>Реєстрацію глядача підтверджено — Games of Senses</title>
 </head>
 <body style="margin:0;padding:0;background:#030619;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#030619;min-height:100vh;">
@@ -178,7 +202,7 @@ export async function sendSpectatorRegistrationEmail(
       <tr><td style="background:linear-gradient(90deg,#5511aa,#9922cc);padding:4px 0;"></td></tr>
       <tr><td style="padding:32px 32px 28px;">
 
-        ${logoHtml('#c07fff')}
+        ${logoHtml()}
 
         <p style="margin:0 0 20px;font-size:15px;color:rgba(200,180,255,0.75);line-height:1.6;">
           Вітаємо, <strong style="color:#ffffff;">${spectatorName}</strong>!<br>
@@ -229,7 +253,7 @@ export async function sendSpectatorRegistrationEmail(
 
       </td></tr>
       <tr><td style="padding:14px 32px;border-top:1px solid rgba(180,130,255,0.1);">
-        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 MindFlow · Ігри для мислення</p>
+        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 Games of Senses</p>
       </td></tr>
     </table>
   </td></tr>
@@ -237,13 +261,11 @@ export async function sendSpectatorRegistrationEmail(
 </body>
 </html>`
 
-	const transporter = createTransport()
-	await transporter.sendMail({
-		from:    `"MindFlow" <${from}>`,
+	await sendEmail(
 		to,
-		subject: `👁 Реєстрацію глядача підтверджено — ${game.title} | Код: ${game.spectatorCode}`,
+		`👁 Реєстрацію глядача підтверджено — ${game.title} | Код: ${game.spectatorCode}`,
 		html,
-	})
+	)
 }
 
 export async function sendNotesEmail(
@@ -254,7 +276,6 @@ export async function sendNotesEmail(
 	notes: string,
 ): Promise<void> {
 	if (!EMAIL_ENABLED) return
-	const from = process.env.SMTP_USER || ''
 	const notesHtml = notes
 		.split('\n')
 		.map(line =>
@@ -267,7 +288,7 @@ export async function sendNotesEmail(
 	const html = `<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Нотатки гри — MindFlow</title>
+<title>Нотатки гри — Games of Senses</title>
 </head>
 <body style="margin:0;padding:0;background:#030619;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#030619;min-height:100vh;">
@@ -277,7 +298,7 @@ export async function sendNotesEmail(
       <tr><td style="background:linear-gradient(90deg,#1133aa,#7722cc);padding:4px 0;"></td></tr>
       <tr><td style="padding:32px 32px 28px;">
 
-        ${logoHtml('#44aaff')}
+        ${logoHtml()}
 
         <p style="margin:0 0 6px;font-size:14px;color:rgba(180,200,255,0.7);line-height:1.6;">
           Вітаємо, <strong style="color:#ffffff;">${gmName}</strong>!
@@ -299,7 +320,7 @@ export async function sendNotesEmail(
 
       </td></tr>
       <tr><td style="padding:14px 32px;border-top:1px solid rgba(68,170,255,0.1);">
-        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 MindFlow · Ігри для мислення</p>
+        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 Games of Senses</p>
       </td></tr>
     </table>
   </td></tr>
@@ -307,13 +328,11 @@ export async function sendNotesEmail(
 </body>
 </html>`
 
-	const transporter = createTransport()
-	await transporter.sendMail({
-		from:    `"MindFlow" <${from}>`,
+	await sendEmail(
 		to,
-		subject: `📝 Нотатки гри «${gameTitle}» (${gameCode}) — MindFlow`,
+		`📝 Нотатки гри «${gameTitle}» (${gameCode}) — Games of Senses`,
 		html,
-	})
+	)
 }
 
 export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
@@ -323,12 +342,11 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
 	}
 
 	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
-	const from    = process.env.SMTP_USER || ''
 
 	const html = `<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Ласкаво просимо — MindFlow</title>
+<title>Ласкаво просимо — Games of Senses</title>
 </head>
 <body style="margin:0;padding:0;background:#030619;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#030619;min-height:100vh;">
@@ -338,7 +356,7 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
       <tr><td style="background:linear-gradient(90deg,#1133aa,#7722cc);padding:4px 0;"></td></tr>
       <tr><td style="padding:36px 32px 28px;">
 
-        ${logoHtml('#44aaff')}
+        ${logoHtml()}
 
         <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.4;">
           Привіт, друже!
@@ -378,7 +396,7 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
 
       </td></tr>
       <tr><td style="padding:14px 32px;border-top:1px solid rgba(68,170,255,0.1);">
-        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 MindFlow · Ігри для мислення</p>
+        <p style="margin:0;font-size:11px;color:rgba(180,200,255,0.2);">© 2025 Games of Senses</p>
       </td></tr>
     </table>
   </td></tr>
@@ -386,11 +404,5 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
 </body>
 </html>`
 
-	const transporter = createTransport()
-	await transporter.sendMail({
-		from:    `"MindFlow" <${from}>`,
-		to,
-		subject: '👾 Ласкаво просимо до MindFlow!',
-		html,
-	})
+	await sendEmail(to, '👾 Ласкаво просимо до Games of Senses!', html)
 }

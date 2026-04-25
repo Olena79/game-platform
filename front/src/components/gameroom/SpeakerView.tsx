@@ -32,10 +32,12 @@ const FLOAT_CSS = `
 }
 `
 
+
 interface Props {
 	state: GameRoomState
 	myId: string
 	isGM: boolean
+	isSpectator: boolean
 	micOn: boolean
 	camOn: boolean
 	onToggleMic: () => void
@@ -124,59 +126,57 @@ function PlayerStats({ player }: { player: RoomPlayer }) {
 function state_placeholder_coins(_p: RoomPlayer) { return null }
 
 function CoverImageBlock({ state }: { state: GameRoomState }) {
-	const coverUrl = state.shownImageUrl || state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'
-	const isDefaultView = state.shownImageUrl === state.coverImage || !state.shownImageUrl
+	const coverUrl = state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'
 
 	return (
-		<div className='flex-1 relative min-h-0 overflow-hidden'>
-			<div className='absolute inset-0 pointer-events-none'
-				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.06) 0%, transparent 65%)', zIndex: 1 }} />
+		<div className='flex-1 relative min-h-0 overflow-hidden' style={{ background: '#07080f' }}>
+			{/* Cover image */}
 			<div
-				className='w-full h-full'
+				className='absolute inset-0'
 				style={{
 					backgroundImage: `url(${coverUrl})`,
 					backgroundSize: 'cover',
-					backgroundRepeat: 'no-repeat',
 					backgroundPosition: 'center',
+					opacity: 0.35,
+					zIndex: 0,
 				}}
 			/>
-			{/* Dark gradient so title text is always readable on any image */}
-			<div
-				className='absolute top-0 left-0 right-0 pointer-events-none'
+			{/* Green radial glow */}
+			<div className='absolute inset-0 pointer-events-none'
+				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
+			{/* Dark gradient for title readability */}
+			<div className='absolute top-0 left-0 right-0 pointer-events-none'
 				style={{
-					height: '200px',
-					background: 'linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 60%, transparent 100%)',
-					zIndex: 1,
+					height: '260px',
+					background: 'linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)',
+					zIndex: 2,
 				}}
 			/>
-			{state.title && isDefaultView && (
-				<div className='absolute top-0 left-0 p-[18px] flex flex-col gap-[4px]' style={{ zIndex: 2, pointerEvents: 'none' }}>
-					<p style={{
-						color: 'rgba(180,210,255,0.8)',
-						fontSize: '13px',
+			{state.title && (
+				<div className='absolute top-0 left-0 p-[18px] flex flex-col gap-[6px]' style={{ zIndex: 3, pointerEvents: 'none' }}>
+					<p className='text-[13px] md:text-[20px] lg:text-[40px]' style={{
+						color: 'rgba(180,210,255,0.75)',
 						fontWeight: '500',
-						letterSpacing: '0.1em',
+						letterSpacing: '0.08em',
 						textTransform: 'uppercase',
 						textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.9)',
 					}}>
 						Вітаємо друзів на грі
 					</p>
-					<p style={{
+					<p className='text-[36px] md:text-[54px] lg:text-[108px]' style={{
 						color: '#0fffc8',
-						fontSize: '36px',
 						fontWeight: '800',
 						lineHeight: 1.1,
 						letterSpacing: '0.01em',
 						textShadow: '0 0 28px rgba(15,255,200,0.55), 0 2px 18px rgba(0,0,0,1), 0 0 55px rgba(15,255,200,0.25)',
 						wordBreak: 'break-word',
-						maxWidth: '480px',
 					}}>
 						{`«${state.title}»`}
 					</p>
 				</div>
 			)}
 			<p className='absolute bottom-[8px] left-0 right-0 text-center text-[13px]'
-				style={{ color: 'rgba(100,140,220,0.5)', zIndex: 2, pointerEvents: 'none' }}>
+				style={{ color: 'rgba(100,140,220,0.45)', zIndex: 3, pointerEvents: 'none' }}>
 				{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
 			</p>
 		</div>
@@ -274,7 +274,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 }
 
 export const SpeakerView = ({
-	state, myId, isGM,
+	state, myId, isGM, isSpectator,
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	imageUrl, images = [], onImageClose, onChangeImage,
@@ -283,7 +283,7 @@ export const SpeakerView = ({
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
-	const speakerPlayer = mainPlayers[0] ?? null
+	const speakerPlayer = mainPlayers.find(p => !p.isSpectator) ?? null
 
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
@@ -370,10 +370,10 @@ export const SpeakerView = ({
 				: <SpeakerDisplay state={state} speakerPlayer={speakerPlayer} playerReactions={playerReactions} />
 			}
 
-			{/* Players strip */}
+			{/* Players strip (spectators excluded) */}
 			<div className='flex-shrink-0 overflow-x-auto px-[10px] py-[6px] flex gap-[7px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				{mainPlayers.map(p => (
+				{mainPlayers.filter(p => !p.isSpectator).map(p => (
 					<StripTileWrapper key={p.userId} player={p} reaction={playerReactions[p.userId]} gameStarted={state.status === 'started'} />
 				))}
 			</div>
@@ -381,8 +381,8 @@ export const SpeakerView = ({
 			{/* Controls + Reactions — one row */}
 			<div className='flex-shrink-0 flex items-center gap-[5px] px-[10px] py-[6px] flex-wrap'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				{!me?.isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
-				{!me?.isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
+				{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
+				{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
 				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
 				<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
 				{REACTIONS.map(emoji => (
@@ -393,7 +393,7 @@ export const SpeakerView = ({
 						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
 					</button>
 				))}
-				{!me?.isSpectator && (
+				{!isSpectator && (
 					<button onClick={() => onRaiseHand(!handRaised)}
 						className='flex flex-col items-center justify-center cursor-pointer transition-all'
 						style={{

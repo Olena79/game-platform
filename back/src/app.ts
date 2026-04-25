@@ -27,7 +27,7 @@ app.use(
 )
 app.use(express.json())
 
-app.get('/', (_req, res) => res.json({ status: 'ok', message: 'MindFlow API' }))
+app.get('/', (_req, res) => res.json({ status: 'ok', message: 'Games of Senses API' }))
 app.get('/health', (req, res) => {
 	res.status(200).send('OK')
 })

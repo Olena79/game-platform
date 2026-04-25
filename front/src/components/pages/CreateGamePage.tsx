@@ -112,7 +112,7 @@ export const CreateGamePage = () => {
 	const [influencePerPlayer, setInfluencePerPlayer] = useState(10)
 	const [scheduledAt, setScheduledAt]           = useState('')
 
-	const DEFAULT_COVER = 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'
+	const DEFAULT_COVER = 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'
 
 	const [coverImage, setCoverImage]         = useState('')
 	const [images, setImages]                 = useState<string[]>([])

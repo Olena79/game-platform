@@ -2,12 +2,46 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, Phone, X } from 'lucide-react'
-import { GoogleLogin } from '@react-oauth/google'
+import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
 import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
 import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
 import { Modal } from '../minicomponents/Modal'
+
+const GoogleIcon = () => (
+	<svg width="17" height="17" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+		<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+		<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+		<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+		<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+	</svg>
+)
+
+interface GoogleSignInButtonProps {
+	loading: boolean
+	onSuccess: (accessToken: string) => void
+	onError: () => void
+}
+
+const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonProps) => {
+	const { t } = useTranslation()
+	const googleLogin = useGoogleLogin({
+		onSuccess: tokenResponse => onSuccess(tokenResponse.access_token),
+		onError,
+	})
+	return (
+		<button
+			type='button'
+			onClick={() => googleLogin()}
+			disabled={loading}
+			className='w-full flex items-center justify-center gap-[10px] py-[12px] rounded-[12px] text-[13px] font-[500] text-[rgba(220,230,255,0.8)] border border-[rgba(255,255,255,0.11)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.22)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[rgba(220,230,255,1)] hover:shadow-[0_0_18px_rgba(255,255,255,0.05)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
+		>
+			<GoogleIcon />
+			{t('auth.btn_google')}
+		</button>
+	)
+}
 
 interface FieldErrors {
 	name?: string
@@ -138,7 +172,7 @@ export const AuthPage = () => {
 				<div className='flex justify-center mb-[28px]'>
 					<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium'>
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
-						MindFlow
+						Games of Senses
 					</span>
 				</div>
 
@@ -241,29 +275,23 @@ export const AuthPage = () => {
 								<span className='text-[11px]' style={{ color: 'rgba(180,200,255,0.3)' }}>або</span>
 								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
 							</div>
-							<div className='flex justify-center'>
-								<GoogleLogin
-									theme='filled_black'
-									shape='pill'
-									size='large'
-									text='continue_with'
-									onSuccess={async (credentialResponse) => {
-										if (!credentialResponse.credential) return
-										setLoading(true)
-										try {
-											const res = await googleAuthRequest(credentialResponse.credential)
-											login(res.token, res.user)
-											setModal({ open: true, title: 'Успішно', message: 'Ви увійшли через Google', variant: 'success', success: true })
-										} catch (err) {
-											const msg = err instanceof Error ? err.message : 'Google auth failed'
-											setModal({ open: true, title: 'Помилка', message: msg, variant: 'error', success: false })
-										} finally {
-											setLoading(false)
-										}
-									}}
-									onError={() => setModal({ open: true, title: 'Помилка', message: 'Google login failed', variant: 'error', success: false })}
-								/>
-							</div>
+							<GoogleSignInButton
+								loading={loading}
+								onSuccess={async (accessToken) => {
+									setLoading(true)
+									try {
+										const res = await googleAuthRequest(accessToken)
+										login(res.token, res.user)
+										setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
+									} catch (err) {
+										const msg = err instanceof Error ? err.message : 'Google auth failed'
+										setModal({ open: true, title: t('auth.modal_error_title'), message: msg, variant: 'error', success: false })
+									} finally {
+										setLoading(false)
+									}
+								}}
+								onError={() => setModal({ open: true, title: t('auth.modal_error_title'), message: 'Google login failed', variant: 'error', success: false })}
+							/>
 						</>
 					)}
 				</div>

@@ -134,8 +134,8 @@ export const OurGamesPage = () => {
 			))
 			setModal({
 				open: true,
-				title: 'Зареєстровано як глядач!',
-				message: 'Листа з кодом глядача надіслано на вашу пошту.',
+				title: t('our_games.success_spectator_title'),
+				message: t('our_games.success_spectator_msg'),
 				variant: 'success',
 				gameCode: res.spectatorCode,
 			})
@@ -190,7 +190,7 @@ export const OurGamesPage = () => {
 					<div>
 						<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium mb-[14px]'>
 							<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
-							MindFlow
+							Games of Senses
 						</span>
 						<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-white leading-[1.1]'>
 							{t('our_games.title')}
@@ -369,22 +369,22 @@ const GameCard = ({
 				{t('our_games.btn_enter_game')}
 			</button>
 		)
-	} else {
-		if (isRegistered) {
-			registerBtn = (
-				<button
-					onClick={onUnregister}
-					disabled={unregisterLoading}
-					className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-					style={{ color: '#ff5fa0', background: 'rgba(255,95,160,0.07)', border: '1px solid rgba(255,95,160,0.25)' }}
-				>
-					{unregisterLoading
-						? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim inline-block' />
-						: t('our_games.btn_unregister')
-					}
-				</button>
-			)
-		} else if (isFull) {
+	} else if (isRegistered) {
+		registerBtn = (
+			<button
+				onClick={onUnregister}
+				disabled={unregisterLoading}
+				className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-50'
+				style={{ color: '#ff5fa0', background: 'rgba(255,95,160,0.07)', border: '1px solid rgba(255,95,160,0.25)' }}
+			>
+				{unregisterLoading
+					? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim inline-block' />
+					: t('our_games.btn_unregister')
+				}
+			</button>
+		)
+	} else if (!isSpectator) {
+		if (isFull) {
 			registerBtn = (
 				<button
 					disabled
@@ -402,7 +402,7 @@ const GameCard = ({
 				>
 					{registerLoading
 						? <span className='w-[4px] h-[4px] rounded-full bg-white pulse-dot-anim inline-block' />
-						: t('our_games.btn_register')
+						: t('game.role_player')
 					}
 				</button>
 			)
@@ -415,7 +415,7 @@ const GameCard = ({
 			{/* Cover image */}
 			<div className='w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] -mx-0 bg-[#060e24]'>
 				<img
-					src={game.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1776487495/none-399125188_ca4czg.webp'}
+					src={game.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'}
 					alt={game.title}
 					className='w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity duration-[200ms]'
 				/>
@@ -454,19 +454,19 @@ const GameCard = ({
 			{/* Title + creator */}
 			<div className='pr-[70px]'>
 				<h3 className='text-[17px] font-[700] text-white leading-[1.3] mb-[4px]'>
-					<span className='text-[rgba(100,140,220,0.45)] text-[13px] font-[400]'>
+					<span className='text-[rgba(180,200,255,0.65)] text-[13px] font-[400]'>
 						{t('our_games.title_prefix')} —{' '}
 					</span>
 					{game.title}
 				</h3>
-				<p className='text-[12px] text-[rgba(100,140,220,0.45)]'>
+				<p className='text-[12px] text-[rgba(140,170,230,0.7)]'>
 					{t('our_games.gamemaster_prefix')} — {game.creatorName}
 				</p>
 			</div>
 
 			{/* Short description */}
 			{game.description && (
-				<p className='text-[13px] text-[rgba(180,200,255,0.5)] leading-[1.6] line-clamp-3'>
+				<p className='text-[13px] text-[rgba(180,200,255,0.75)] leading-[1.6] line-clamp-3'>
 					{game.description}
 				</p>
 			)}
@@ -505,52 +505,59 @@ const GameCard = ({
 				</div>
 			)}
 
-			{/* Bottom row: players count + register/unregister button */}
-			<div className='flex items-center justify-between mt-auto pt-[4px]'>
-				<button
-					onClick={onShowPlayers}
-					className='flex items-center gap-[5px] text-[11px] text-[rgba(68,170,255,0.4)] hover:text-[rgba(68,170,255,0.85)] cursor-pointer transition-colors'
-				>
-					<UserCheck size={12} strokeWidth={1.8} />
-					{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
-					{spectators.length > 0 && (
-						<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
-							· {spectators.length} 👁
-						</span>
-					)}
-				</button>
+			{/* Bottom row: players count + register/unregister buttons */}
+			<div className='mt-auto flex flex-col gap-[8px]'>
+				{!isCreator && isLoggedIn && !isRegistered && !isSpectator && !isFull && (
+					<span className='text-[12px] font-[500] text-right text-[rgba(180,200,255,0.75)]'>
+						{t('our_games.register_as_label')}
+					</span>
+				)}
+				<div className='flex items-center justify-between pt-[2px]'>
+					<button
+						onClick={onShowPlayers}
+						className='flex items-center gap-[5px] text-[11px] text-[rgba(68,170,255,0.4)] hover:text-[rgba(68,170,255,0.85)] cursor-pointer transition-colors'
+					>
+						<UserCheck size={12} strokeWidth={1.8} />
+						{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
+						{spectators.length > 0 && (
+							<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
+								· {spectators.length} 👁
+							</span>
+						)}
+					</button>
 
-				<div className='flex gap-[6px] items-center'>
-					{/* Spectator button (non-creator, non-registered-player, logged-in) */}
-					{!isCreator && isLoggedIn && !isRegistered && (
-						isSpectator ? (
-							<button
-								onClick={onUnregisterSpectator}
-								disabled={unspectatorLoading}
-								className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-								style={{ color: 'rgba(180,130,255,0.7)', background: 'rgba(180,130,255,0.07)', border: '1px solid rgba(180,130,255,0.2)' }}
-							>
-								{unspectatorLoading
-									? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.7)' }} />
-									: '👁 Вийти'
-								}
-							</button>
-						) : (
-							<button
-								onClick={onRegisterSpectator}
-								disabled={spectatorLoading}
-								className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-								style={{ color: 'rgba(180,130,255,0.8)', background: 'rgba(180,130,255,0.06)', border: '1px solid rgba(180,130,255,0.18)' }}
-							>
-								{spectatorLoading
-									? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.8)' }} />
-									: '👁 Глядач'
-								}
-							</button>
-						)
-					)}
+					<div className='flex gap-[6px] items-center'>
+						{/* Spectator button (non-creator, non-registered-player, logged-in) */}
+						{!isCreator && isLoggedIn && !isRegistered && (
+							isSpectator ? (
+								<button
+									onClick={onUnregisterSpectator}
+									disabled={unspectatorLoading}
+									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
+									style={{ color: 'rgba(180,130,255,0.7)', background: 'rgba(180,130,255,0.07)', border: '1px solid rgba(180,130,255,0.2)' }}
+								>
+									{unspectatorLoading
+										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.7)' }} />
+										: t('our_games.btn_unregister')
+									}
+								</button>
+							) : (
+								<button
+									onClick={onRegisterSpectator}
+									disabled={spectatorLoading}
+									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
+									style={{ color: 'rgba(180,130,255,0.8)', background: 'rgba(180,130,255,0.06)', border: '1px solid rgba(180,130,255,0.18)' }}
+								>
+									{spectatorLoading
+										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.8)' }} />
+										: `👁 ${t('game.role_spectator')}`
+									}
+								</button>
+							)
+						)}
 
-					{registerBtn}
+						{registerBtn}
+					</div>
 				</div>
 			</div>
 		</div>

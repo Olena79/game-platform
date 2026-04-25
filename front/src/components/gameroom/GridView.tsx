@@ -32,6 +32,7 @@ interface Props {
 	state: GameRoomState
 	myId: string
 	isGM: boolean
+	isSpectator: boolean
 	micOn: boolean
 	camOn: boolean
 	onToggleMic: () => void
@@ -218,8 +219,15 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 	)
 }
 
+const getPageSize = () => {
+	if (typeof window === 'undefined') return 32
+	if (window.innerWidth >= 1024) return 32
+	if (window.innerWidth >= 768) return 16
+	return 6
+}
+
 export const GridView = ({
-	state, myId, isGM,
+	state, myId, isGM, isSpectator,
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	onSetRole, onSetInfluence,
@@ -227,7 +235,26 @@ export const GridView = ({
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
-	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
+	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected && !p.isSpectator)
+
+	const participants = useParticipants()
+	const speakingIds = new Set(participants.filter(p => p.isSpeaking).map(p => p.identity))
+	const sortedPlayers = [...mainPlayers].sort((a, b) => {
+		const aS = speakingIds.has(a.userId) ? 1 : 0
+		const bS = speakingIds.has(b.userId) ? 1 : 0
+		return bS - aS
+	})
+
+	const [currentPage, setCurrentPage] = useState(0)
+	const [pageSize, setPageSize] = useState(getPageSize)
+	useEffect(() => {
+		const handler = () => { setPageSize(getPageSize()); setCurrentPage(0) }
+		window.addEventListener('resize', handler)
+		return () => window.removeEventListener('resize', handler)
+	}, [])
+
+	const totalPages = Math.max(1, Math.ceil(sortedPlayers.length / pageSize))
+	const pagedPlayers = sortedPlayers.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
 
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
@@ -298,6 +325,32 @@ export const GridView = ({
 				)
 			})}
 		</div>
+			{/* Pagination nav */}
+			{totalPages > 1 && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[10px] px-[10px] py-[5px]'
+					style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
+					<button
+						onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+						disabled={currentPage === 0}
+						className='px-[10px] py-[3px] rounded-[6px] text-[12px] cursor-pointer disabled:opacity-30'
+						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}
+					>
+						←
+					</button>
+					<span className='text-[11px]' style={{ color: '#4a5070' }}>
+						{currentPage + 1} / {totalPages}
+					</span>
+					<button
+						onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+						disabled={currentPage === totalPages - 1}
+						className='px-[10px] py-[3px] rounded-[6px] text-[12px] cursor-pointer disabled:opacity-30'
+						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}
+					>
+						→
+					</button>
+				</div>
+			)}
+
 			{/* Grid */}
 			<div className='flex-1 overflow-y-auto p-[10px]'
 				style={{
@@ -306,7 +359,7 @@ export const GridView = ({
 					gap: '7px',
 					alignContent: 'start',
 				}}>
-				{mainPlayers.map(p => (
+				{pagedPlayers.map(p => (
 					<GridPlayerCard
 						key={p.userId}
 						player={p}
@@ -330,7 +383,7 @@ export const GridView = ({
 						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
 					</button>
 				))}
-				{!me?.isSpectator && (
+				{!isSpectator && (
 					<button onClick={() => onRaiseHand(!handRaised)}
 						className='flex flex-col items-center justify-center cursor-pointer transition-all'
 						style={{
@@ -346,8 +399,8 @@ export const GridView = ({
 			{/* Controls */}
 			<div className='flex-shrink-0 flex items-center gap-[7px] px-[14px] py-[9px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				{!me?.isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />}
-				{!me?.isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />}
+				{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />}
+				{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />}
 				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={14}/>} label='Вийти' variant='red' />
 			</div>
 		</div>

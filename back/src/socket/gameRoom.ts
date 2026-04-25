@@ -72,17 +72,15 @@ export function registerGameRoom(io: Server) {
 
 			const isGamemaster = d.userId === state.gamemasterId
 
-			// Determine spectator status via single DB lookup.
-			// A user registered as a player cannot be treated as spectator (and vice-versa).
+			// Determine spectator status: the code type is authoritative.
+			// A registered player always keeps player status regardless of code used.
+			// Anyone else: spectator iff they explicitly used the spectator code.
 			let isSpectator = false
 			if (!isGamemaster) {
 				try {
 					const game = await Game.findOne({ gameCode: d.gameCode })
-					const inPlayers   = game?.registeredPlayers.some(s => String(s.userId) === d.userId) ?? false
-					const inSpectators = game?.spectators.some(s => String(s.userId) === d.userId) ?? false
-					if (!inPlayers && (d.isSpectatorJoin === true || inSpectators)) {
-						isSpectator = true
-					}
+					const inPlayers = game?.registeredPlayers?.some(s => String(s.userId) === d.userId) ?? false
+					isSpectator = !inPlayers && d.isSpectatorJoin === true
 				} catch { /* ignore */ }
 			}
 

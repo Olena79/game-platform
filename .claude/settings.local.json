@@ -6,7 +6,8 @@
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
       "Bash(npm ls *)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

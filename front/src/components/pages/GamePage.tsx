@@ -54,7 +54,7 @@ export const GamePage = () => {
 				<div className='flex justify-center mb-[28px]'>
 					<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium'>
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
-						MindFlow
+						Games of Senses
 					</span>
 				</div>
 

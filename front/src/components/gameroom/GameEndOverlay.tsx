@@ -52,7 +52,7 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 					transform: phase === 'show' ? 'translateY(0) scale(1)' : 'translateY(22px) scale(0.94)',
 					transition: 'opacity 700ms ease, transform 700ms ease',
 				}}>
-				<span className='text-[11px] uppercase tracking-[4px] font-[600]' style={{ color: 'rgba(15,255,200,0.55)' }}>MindFlow</span>
+				<span className='text-[11px] uppercase tracking-[4px] font-[600]' style={{ color: 'rgba(15,255,200,0.55)' }}>Games of Senses</span>
 				<div className='flex flex-col items-center gap-[6px]'>
 					<h1 className='font-amatic text-[64px] md:text-[80px] font-[700] leading-[1]'
 						style={{ color: '#0fffc8', textShadow: '0 0 40px rgba(15,255,200,0.5)' }}>

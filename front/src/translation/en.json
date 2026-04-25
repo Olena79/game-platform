@@ -6,7 +6,7 @@
 		"lang_label": "Interface language"
 	},
 	"footer": {
-		"copy": "© 2025 MindFlow · Games for Thinking"
+		"copy": "© 2025 Games of Senses"
 	},
 	"home": {
 		"hero": {
@@ -16,8 +16,8 @@
 			"title_highlight": "thinking",
 			"title_line3": "in action.",
 			"subtitle": "Dive into a space where play is a way to know yourself, understand systems, and co-create reality with others.",
-			"btn_try": "Try the game ↗",
-			"btn_learn": "Learn more"
+			"btn_try": "Create your own game",
+			"btn_learn": "Join player community"
 		},
 		"features": {
 			"eyebrow": "Features",
@@ -136,8 +136,11 @@
 		"players_modal_title": "Registered Players",
 		"players_empty": "No players registered yet",
 		"game_code_label": "Game code:",
-		"success_register_title": "Registration confirmed!",
-		"success_register_msg": "You have successfully registered. Your game code:",
+		"success_register_title": "Done!",
+		"success_register_msg": "You are registered as a player. Your game code is below. If you forget it, we've already sent it to your email along with a link to the game. If you don't see the email, check your Spam folder.",
+		"success_spectator_title": "Done!",
+		"success_spectator_msg": "You are registered as a spectator. Your spectator code is below. If you forget it, we've already sent it to your email along with a link to the game. If you don't see the email, check your Spam folder.",
+		"register_as_label": "Register as:",
 		"err_register_title": "Registration error",
 		"err_already_registered": "You are already registered for this game",
 		"err_max_players": "Sorry, this game is at full capacity",
@@ -173,6 +176,7 @@
 		"err_password_weak": "Password: min 8 chars, uppercase, lowercase, digit, special char",
 		"err_email_exists": "This email is already registered",
 		"err_phone_exists": "This phone number is already registered",
-		"err_credentials": "Invalid email or password"
+		"err_credentials": "Invalid email or password",
+		"btn_google": "Continue with Google"
 	}
 }
