@@ -104,9 +104,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		inviteBreakout,
 		endBreakout,
 		showImage,
+		isSpectatorJoin,
 	} = room
 
-	const isSpectator = me?.isSpectator ?? false
+	const isSpectator = (me?.isSpectator ?? false) || isSpectatorJoin
 
 	const { token: authToken } = useAuth()
 	const { localParticipant } = useLocalParticipant()

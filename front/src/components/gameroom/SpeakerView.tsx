@@ -227,12 +227,12 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 					<div className='absolute bottom-0 left-0 right-0 z-[2] flex flex-col items-center gap-[4px] pt-[28px] pb-[10px]'
 						style={{ background: 'linear-gradient(to top, rgba(7,8,15,0.82) 0%, transparent 100%)' }}>
 						<span className='text-[18px] font-[700]' style={{ color: '#dde1f0' }}>{speakerPlayer.name}</span>
-						{speakerPlayer.role && (
-							<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
-								style={{ color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }}>
-								{speakerPlayer.role}
-							</span>
-						)}
+						<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
+							style={speakerPlayer.role
+								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
+								: { color: 'rgba(100,120,200,0.4)', background: 'transparent', border: '1px solid rgba(100,120,200,0.15)' }}>
+							{speakerPlayer.role || 'Введіть вашу роль'}
+						</span>
 						<MicDot active={speaking} />
 					</div>
 				</>
@@ -259,12 +259,12 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 					</div>
 					<div className='flex flex-col items-center gap-[5px]'>
 						<span className='text-[19px] font-[700]' style={{ color: '#dde1f0' }}>{speakerPlayer.name}</span>
-						{speakerPlayer.role && (
-							<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
-								style={{ color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }}>
-								{speakerPlayer.role}
-							</span>
-						)}
+						<span className='text-[11px] px-[12px] py-[3px] rounded-[20px]'
+							style={speakerPlayer.role
+								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
+								: { color: 'rgba(100,120,200,0.4)', background: 'transparent', border: '1px solid rgba(100,120,200,0.15)' }}>
+							{speakerPlayer.role || 'Введіть вашу роль'}
+						</span>
 						<MicDot active={speaking} />
 					</div>
 				</div>
@@ -283,10 +283,29 @@ export const SpeakerView = ({
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
-	const speakerPlayer = mainPlayers.find(p => !p.isSpectator) ?? null
 
+	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
+
+	// Debounced active speaker — stays on main screen 3s after going silent
+	const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
+	const speakerClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const currentSpeaker = participants.filter(p => p.isSpeaking)[0] ?? null
+	useEffect(() => {
+		if (currentSpeaker) {
+			if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current)
+			setActiveSpeakerId(currentSpeaker.identity)
+		} else {
+			speakerClearTimer.current = setTimeout(() => setActiveSpeakerId(null), 3000)
+		}
+		return () => { if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current) }
+	}, [currentSpeaker?.identity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Show active speaker; fall back to first non-spectator if nobody speaks
+	const speakerPlayer = (activeSpeakerId
+		? mainPlayers.find(p => p.userId === activeSpeakerId && !p.isSpectator)
+		: null) ?? mainPlayers.find(p => !p.isSpectator) ?? null
 	const handRaisedRef = useRef(handRaised)
 	handRaisedRef.current = handRaised
 	useEffect(() => {

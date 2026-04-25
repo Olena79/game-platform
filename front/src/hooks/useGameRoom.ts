@@ -139,9 +139,10 @@ export function useGameRoom(rawCode: string) {
 	const me = state?.players.find(p => p.userId === myId) ?? null
 	const isGM = me?.isGamemaster ?? false
 	const inBreakout = me?.breakoutRoomId ?? null
+	const isSpectatorJoin = resolved?.isSpectatorJoin ?? false
 
 	return {
-		state, connected, me, isGM, myId, inBreakout, error, connStatus, playerReactions,
+		state, connected, me, isGM, myId, inBreakout, isSpectatorJoin, error, connStatus, playerReactions,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,

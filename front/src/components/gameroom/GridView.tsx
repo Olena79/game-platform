@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 
 const REACTION_BADGE_CSS = `
 @keyframes reactionBadge {
@@ -54,6 +54,22 @@ function getSpeechBorderColor(count: number): string {
 	return '#cc1133'
 }
 
+// Returns optimal cols/rows so tiles fill the container like Google Meet
+function computeGrid(n: number, w: number, h: number) {
+	if (n <= 0) return { cols: 1, rows: 1 }
+	const GAP = 7, PAD = 7
+	let bestCols = 1
+	let bestArea = 0
+	for (let cols = 1; cols <= n; cols++) {
+		const rows = Math.ceil(n / cols)
+		const tileW = (w - PAD * 2 - GAP * (cols - 1)) / cols
+		const tileH = (h - PAD * 2 - GAP * (rows - 1)) / rows
+		const area = tileW * tileH
+		if (area > bestArea) { bestArea = area; bestCols = cols }
+	}
+	return { cols: bestCols, rows: Math.ceil(n / bestCols) }
+}
+
 function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reaction, gameStarted }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
@@ -102,6 +118,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 				border: `1px solid ${borderColor}`,
 				boxShadow: (!isPlayer && speaking) ? '0 0 10px rgba(15,255,200,0.08)' : 'none',
 				transition: 'border-color 0.5s ease',
+				height: '100%',
 			}}
 		>
 			{/* Mic icon */}
@@ -109,8 +126,8 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 				{micMuted ? '🔇' : '🎤'}
 			</div>
 
-			{/* Camera area */}
-			<div className='flex-shrink-0 flex items-center justify-center relative overflow-hidden' style={{ background: '#080912', height: '120px' }}>
+			{/* Camera area — fills remaining height */}
+			<div className='flex-1 min-h-0 flex items-center justify-center relative overflow-hidden' style={{ background: '#080912' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
@@ -154,7 +171,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 			</div>
 
 			{/* Footer */}
-			<div className='px-[7px] py-[5px] flex items-center justify-between gap-[4px]'
+			<div className='flex-shrink-0 px-[7px] py-[5px] flex items-center justify-between gap-[4px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				<div className='flex-1 min-w-0'>
 					{editRole ? (
@@ -164,12 +181,12 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 							onChange={e => setRoleInput(e.target.value.slice(0, 60))}
 							onBlur={() => { onSetRole(player.userId, roleInput); setEditRole(false) }}
 							onKeyDown={e => { if (e.key === 'Enter') { onSetRole(player.userId, roleInput); setEditRole(false) } }}
+							placeholder='Введіть вашу роль'
 							className='w-full text-[11px] rounded-[4px] px-[4px] py-[1px] focus:outline-none'
 							style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.3)', color: 'rgba(180,200,255,0.9)' }}
 						/>
 					) : (
 						<>
-							{/* Role — primary, click anywhere to edit */}
 							<div
 								className='flex items-center gap-[3px]'
 								onClick={canEditRole ? () => { setRoleInput(player.role); setEditRole(true) } : undefined}
@@ -184,7 +201,6 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 										style={{ color: 'rgba(68,170,255,0.4)' }} />
 								)}
 							</div>
-							{/* Name — secondary */}
 							<div className='text-[10px] truncate'
 								style={{ color: speaking ? 'rgba(15,255,200,0.75)' : 'rgba(180,200,255,0.55)' }}>
 								{player.name}
@@ -223,7 +239,7 @@ const getPageSize = () => {
 	if (typeof window === 'undefined') return 32
 	if (window.innerWidth >= 1024) return 32
 	if (window.innerWidth >= 768) return 16
-	return 6
+	return 8
 }
 
 export const GridView = ({
@@ -236,14 +252,35 @@ export const GridView = ({
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected && !p.isSpectator)
+	const spectatorCount = state.players.filter(p => p.isSpectator && p.connected).length
 
 	const participants = useParticipants()
-	const speakingIds = new Set(participants.filter(p => p.isSpeaking).map(p => p.identity))
-	const sortedPlayers = [...mainPlayers].sort((a, b) => {
-		const aS = speakingIds.has(a.userId) ? 1 : 0
-		const bS = speakingIds.has(b.userId) ? 1 : 0
-		return bS - aS
-	})
+	const { localParticipant } = useLocalParticipant()
+	const localSpeaking = useIsSpeaking(localParticipant)
+
+	// Debounced active speaker — stays pinned for 3s after going silent
+	const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
+	const speakerClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const currentSpeaker = participants.filter(p => p.isSpeaking)[0] ?? null
+	useEffect(() => {
+		if (currentSpeaker) {
+			if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current)
+			setActiveSpeakerId(currentSpeaker.identity)
+		} else {
+			speakerClearTimer.current = setTimeout(() => setActiveSpeakerId(null), 3000)
+		}
+		return () => { if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current) }
+	}, [currentSpeaker?.identity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Active speaker moves to position 0, rest of order stays stable
+	const sortedPlayers = useMemo(() => {
+		const arr = [...mainPlayers]
+		if (activeSpeakerId) {
+			const idx = arr.findIndex(p => p.userId === activeSpeakerId)
+			if (idx > 0) { const [s] = arr.splice(idx, 1); arr.unshift(s) }
+		}
+		return arr
+	}, [mainPlayers, activeSpeakerId])
 
 	const [currentPage, setCurrentPage] = useState(0)
 	const [pageSize, setPageSize] = useState(getPageSize)
@@ -255,9 +292,23 @@ export const GridView = ({
 
 	const totalPages = Math.max(1, Math.ceil(sortedPlayers.length / pageSize))
 	const pagedPlayers = sortedPlayers.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+	const hiddenCount = sortedPlayers.length - pagedPlayers.length
 
-	const { localParticipant } = useLocalParticipant()
-	const localSpeaking = useIsSpeaking(localParticipant)
+	// ResizeObserver → optimal grid cols/rows for current container size
+	const gridRef = useRef<HTMLDivElement>(null)
+	const [containerSize, setContainerSize] = useState({ w: 800, h: 500 })
+	useEffect(() => {
+		const el = gridRef.current
+		if (!el) return
+		const obs = new ResizeObserver(entries => {
+			const r = entries[0].contentRect
+			setContainerSize({ w: r.width, h: r.height })
+		})
+		obs.observe(el)
+		return () => obs.disconnect()
+	}, [])
+	const { cols, rows } = computeGrid(pagedPlayers.length, containerSize.w, containerSize.h)
+
 	const handRaisedRef = useRef(handRaised)
 	handRaisedRef.current = handRaised
 	useEffect(() => {
@@ -325,40 +376,29 @@ export const GridView = ({
 				)
 			})}
 		</div>
-			{/* Pagination nav */}
-			{totalPages > 1 && (
-				<div className='flex-shrink-0 flex items-center justify-center gap-[10px] px-[10px] py-[5px]'
+
+			{/* Spectator counter — only for "глядач" role, no tile shown */}
+			{spectatorCount > 0 && (
+				<div className='flex-shrink-0 flex items-center gap-[6px] px-[12px] py-[4px]'
 					style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
-					<button
-						onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-						disabled={currentPage === 0}
-						className='px-[10px] py-[3px] rounded-[6px] text-[12px] cursor-pointer disabled:opacity-30'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}
-					>
-						←
-					</button>
 					<span className='text-[11px]' style={{ color: '#4a5070' }}>
-						{currentPage + 1} / {totalPages}
+						👁 Глядачі: {spectatorCount}
 					</span>
-					<button
-						onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-						disabled={currentPage === totalPages - 1}
-						className='px-[10px] py-[3px] rounded-[6px] text-[12px] cursor-pointer disabled:opacity-30'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}
-					>
-						→
-					</button>
 				</div>
 			)}
 
-			{/* Grid */}
-			<div className='flex-1 overflow-y-auto p-[10px]'
+			{/* Grid — tiles fill full container (Google Meet style) */}
+			<div
+				ref={gridRef}
+				className='flex-1 overflow-hidden'
 				style={{
 					display: 'grid',
-					gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+					gridTemplateColumns: `repeat(${cols}, 1fr)`,
+					gridTemplateRows: `repeat(${rows}, 1fr)`,
 					gap: '7px',
-					alignContent: 'start',
-				}}>
+					padding: '7px',
+				}}
+			>
 				{pagedPlayers.map(p => (
 					<GridPlayerCard
 						key={p.userId}
@@ -372,6 +412,20 @@ export const GridView = ({
 					/>
 				))}
 			</div>
+
+			{/* ↓ +N — click to go to next page (cycles) */}
+			{totalPages > 1 && (
+				<div className='flex-shrink-0 flex items-center justify-center py-[4px]'
+					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+					<button
+						onClick={() => setCurrentPage(p => (p + 1) % totalPages)}
+						className='px-[14px] py-[4px] rounded-[6px] text-[12px] cursor-pointer transition-all hover:brightness-125'
+						style={{ background: '#0f1120', border: '1px solid rgba(68,170,255,0.25)', color: 'rgba(68,170,255,0.8)' }}
+					>
+						↓ +{hiddenCount}
+					</button>
+				</div>
+			)}
 
 			{/* Reactions bar */}
 			<div className='flex-shrink-0 flex items-center gap-[5px] px-[14px] py-[7px] flex-wrap'
