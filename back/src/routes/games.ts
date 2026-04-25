@@ -1,8 +1,9 @@
 import { Router, Response } from 'express'
 import { Types } from 'mongoose'
 import { Game } from '../models/Game'
+import { GameLike } from '../models/GameLike'
 import { User } from '../models/User'
-import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
+import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendRegistrationEmail, sendSpectatorRegistrationEmail, sendNotesEmail } from '../services/email'
 
 const router = Router()
@@ -32,11 +33,21 @@ router.get('/resolve/:code', async (req, res: Response): Promise<void> => {
 	}
 })
 
-// GET /api/games — публічний список
-router.get('/', async (_req, res: Response): Promise<void> => {
+// GET /api/games — публічний список з likesCount та isLiked (якщо авторизований)
+router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const games = await Game.find().sort({ createdAt: -1 })
-		res.json(games)
+
+		let likedSet = new Set<string>()
+		if (req.userId) {
+			const likedIds = await GameLike.find({ userId: req.userId }).distinct('gameId')
+			likedSet = new Set(likedIds.map(id => String(id)))
+		}
+
+		res.json(games.map(g => ({
+			...g.toObject(),
+			isLiked: likedSet.has(String(g._id)),
+		})))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
@@ -310,6 +321,58 @@ router.delete('/:id/register-spectator', authMiddleware, async (req: AuthRequest
 		game.spectators.splice(idx, 1)
 		await game.save()
 		res.json({ spectators: game.spectators })
+	} catch {
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+// POST /api/games/:id/like — поставити лайк
+router.post('/:id/like', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const { id } = req.params
+		if (!Types.ObjectId.isValid(id)) { res.status(400).json({ message: 'Invalid ID' }); return }
+
+		const game = await Game.findById(id)
+		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
+
+		try {
+			await GameLike.create({ userId: req.userId, gameId: id })
+		} catch (e: any) {
+			if (e.code === 11000) {
+				// Already liked — idempotent
+				res.json({ likesCount: game.likesCount, isLiked: true })
+				return
+			}
+			throw e
+		}
+
+		const updated = await Game.findByIdAndUpdate(id, { $inc: { likesCount: 1 } }, { new: true })
+		res.json({ likesCount: updated!.likesCount, isLiked: true })
+	} catch {
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+// DELETE /api/games/:id/like — прибрати лайк
+router.delete('/:id/like', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const { id } = req.params
+		if (!Types.ObjectId.isValid(id)) { res.status(400).json({ message: 'Invalid ID' }); return }
+
+		const result = await GameLike.deleteOne({ userId: req.userId, gameId: id })
+		if (result.deletedCount === 0) {
+			// Not liked — idempotent
+			const game = await Game.findById(id)
+			res.json({ likesCount: game?.likesCount ?? 0, isLiked: false })
+			return
+		}
+
+		const updated = await Game.findByIdAndUpdate(
+			id,
+			[{ $set: { likesCount: { $max: [0, { $subtract: ['$likesCount', 1] }] } } }],
+			{ new: true },
+		)
+		res.json({ likesCount: updated!.likesCount, isLiked: false })
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}

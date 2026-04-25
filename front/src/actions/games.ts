@@ -27,6 +27,8 @@ export interface GameData {
 	spectatorCode?: string
 	registeredPlayers: RegisteredPlayer[]
 	spectators: RegisteredPlayer[]
+	likesCount: number
+	isLiked: boolean
 	createdAt: string
 }
 
@@ -104,3 +106,21 @@ export const unregisterAsSpectator = (
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<{ spectators: RegisteredPlayer[] }>)
+
+export const likeGame = (
+	token: string,
+	id: string,
+): Promise<{ likesCount: number; isLiked: boolean }> =>
+	fetch(`${API}/api/games/${id}/like`, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ likesCount: number; isLiked: boolean }>)
+
+export const unlikeGame = (
+	token: string,
+	id: string,
+): Promise<{ likesCount: number; isLiked: boolean }> =>
+	fetch(`${API}/api/games/${id}/like`, {
+		method: 'DELETE',
+		headers: { Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ likesCount: number; isLiked: boolean }>)

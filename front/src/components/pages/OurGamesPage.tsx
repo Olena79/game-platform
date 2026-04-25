@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck } from 'lucide-react'
+import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, GameData } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, GameData } from '../../actions/games'
+
+type SortKey = 'date' | 'players_asc' | 'players_desc' | 'likes'
+type FilterKey = 'next7days' | 'next30days' | 'upTo10' | 'moreThan10'
 
 export const OurGamesPage = () => {
 	const { t } = useTranslation()
@@ -33,6 +36,95 @@ export const OurGamesPage = () => {
 		open: false, game: null,
 	})
 
+	// ── Search / Sort / Filter ──────────────────────────────────────────────────
+	const [searchQuery, setSearchQuery]     = useState('')
+	const [debouncedSearch, setDebouncedSearch] = useState('')
+	const [sortKey, setSortKey]             = useState<SortKey>('date')
+	const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set())
+
+	// 300ms debounce on search input
+	useEffect(() => {
+		const id = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+		return () => clearTimeout(id)
+	}, [searchQuery])
+
+	const toggleFilter = useCallback((f: FilterKey) => {
+		setActiveFilters(prev => {
+			const next = new Set(prev)
+			next.has(f) ? next.delete(f) : next.add(f)
+			return next
+		})
+	}, [])
+
+	// ── Likes (API, optimistic update with rollback) ───────────────────────────
+	const toggleLike = useCallback(async (gameId: string) => {
+		if (!isLoggedIn || !token) return
+		const game = games.find(g => g._id === gameId)
+		if (!game) return
+
+		const wasLiked = game.isLiked
+		// Optimistic update
+		setGames(prev => prev.map(g => g._id === gameId
+			? { ...g, isLiked: !wasLiked, likesCount: Math.max(0, g.likesCount + (wasLiked ? -1 : 1)) }
+			: g
+		))
+		try {
+			const res = wasLiked ? await unlikeGame(token, gameId) : await likeGame(token, gameId)
+			// Sync actual counts from server
+			setGames(prev => prev.map(g => g._id === gameId
+				? { ...g, isLiked: res.isLiked, likesCount: res.likesCount }
+				: g
+			))
+		} catch {
+			// Rollback on error
+			setGames(prev => prev.map(g => g._id === gameId
+				? { ...g, isLiked: wasLiked, likesCount: game.likesCount }
+				: g
+			))
+		}
+	}, [isLoggedIn, token, games])
+
+	// ── Computed visible list (single pass: search → filter → sort) ────────────
+	const visibleGames = useMemo(() => {
+		const now = Date.now()
+		const in7  = now + 7  * 86_400_000
+		const in30 = now + 30 * 86_400_000
+
+		const filtered = games.filter(g => {
+			// Search by title or gamemaster name
+			if (debouncedSearch) {
+				const q = debouncedSearch.toLowerCase()
+				if (!g.title.toLowerCase().includes(q) && !g.creatorName.toLowerCase().includes(q)) return false
+			}
+			// Date filters (both can be active, AND logic)
+			if (activeFilters.has('next7days')) {
+				const ts = g.scheduledAt ? new Date(g.scheduledAt).getTime() : null
+				if (!ts || ts < now || ts > in7) return false
+			}
+			if (activeFilters.has('next30days')) {
+				const ts = g.scheduledAt ? new Date(g.scheduledAt).getTime() : null
+				if (!ts || ts < now || ts > in30) return false
+			}
+			// Player-count filters by maxPlayers capacity
+			if (activeFilters.has('upTo10')    && g.maxPlayers > 10) return false
+			if (activeFilters.has('moreThan10') && g.maxPlayers <= 10) return false
+			return true
+		})
+
+		return [...filtered].sort((a, b) => {
+			if (sortKey === 'date') {
+				const at = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity
+				const bt = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity
+				return at - bt
+			}
+			if (sortKey === 'players_asc')  return a.registeredPlayers.length - b.registeredPlayers.length
+			if (sortKey === 'players_desc') return b.registeredPlayers.length - a.registeredPlayers.length
+			if (sortKey === 'likes')        return b.likesCount - a.likesCount
+			return 0
+		})
+	}, [games, debouncedSearch, activeFilters, sortKey])
+
+	// ── Data fetch ──────────────────────────────────────────────────────────────
 	useEffect(() => {
 		getGames()
 			.then(setGames)
@@ -40,6 +132,7 @@ export const OurGamesPage = () => {
 			.finally(() => setPageLoading(false))
 	}, [])
 
+	// ── Handlers (unchanged) ────────────────────────────────────────────────────
 	const handleEdit = async (gameId: string) => {
 		if (!token) { navigate('/auth'); return }
 		setEditLoading(gameId)
@@ -176,6 +269,20 @@ export const OurGamesPage = () => {
 		)
 	}
 
+	const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+		{ key: 'date',        label: 'Найближча дата' },
+		{ key: 'players_asc',  label: '↑ Гравці' },
+		{ key: 'players_desc', label: '↓ Гравці' },
+		{ key: 'likes',        label: '♥ Популярні' },
+	]
+
+	const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
+		{ key: 'next7days',   label: '7 днів' },
+		{ key: 'next30days',  label: '30 днів' },
+		{ key: 'upTo10',      label: '≤ 10 гравців' },
+		{ key: 'moreThan10',  label: '> 10 гравців' },
+	]
+
 	return (
 		<div className='relative min-h-[88vh] px-[20px] md:px-[40px] lg:px-[64px] py-[40px] md:py-[60px] overflow-hidden'>
 			<div className='absolute inset-0 flex items-start justify-center pointer-events-none z-0 pt-[80px]'>
@@ -186,7 +293,8 @@ export const OurGamesPage = () => {
 			</div>
 
 			<div className='relative z-10 max-w-[1200px] mx-auto'>
-				<div className='flex flex-col md:flex-row md:items-end md:justify-between gap-[20px] mb-[40px]'>
+				{/* Header */}
+				<div className='flex flex-col md:flex-row md:items-end md:justify-between gap-[20px] mb-[32px]'>
 					<div>
 						<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium mb-[14px]'>
 							<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
@@ -207,21 +315,102 @@ export const OurGamesPage = () => {
 					)}
 				</div>
 
-				{games.length === 0 ? (
+				{/* ── Search / Sort / Filter bar ─────────────────────────────────── */}
+				<div className='flex flex-col gap-[10px] mb-[28px]'>
+					{/* Search */}
+					<div className='relative'>
+						<Search
+							size={14}
+							className='absolute left-[12px] top-1/2 -translate-y-1/2 pointer-events-none'
+							style={{ color: 'rgba(68,170,255,0.45)' }}
+						/>
+						<input
+							value={searchQuery}
+							onChange={e => setSearchQuery(e.target.value)}
+							placeholder='Пошук за назвою або ігромайстером...'
+							className='w-full pl-[36px] pr-[14px] py-[10px] rounded-[10px] text-[13px] focus:outline-none transition-all'
+							style={{
+								background: 'rgba(8,12,30,0.7)',
+								border: '1px solid rgba(68,170,255,0.18)',
+								color: 'rgba(180,200,255,0.85)',
+							}}
+						/>
+					</div>
+
+					{/* Sort + Filter in one row */}
+					<div className='flex flex-wrap items-center gap-[6px]'>
+						{/* Sort label */}
+						<span className='text-[11px] mr-[2px]' style={{ color: 'rgba(100,130,200,0.5)' }}>Сорт:</span>
+						{SORT_OPTIONS.map(({ key, label }) => (
+							<button
+								key={key}
+								onClick={() => setSortKey(key)}
+								className='px-[10px] py-[5px] rounded-[8px] text-[11px] font-[500] transition-all cursor-pointer'
+								style={sortKey === key
+									? { background: 'rgba(68,170,255,0.15)', border: '1px solid rgba(68,170,255,0.38)', color: 'rgba(100,180,255,0.95)' }
+									: { background: 'rgba(8,12,30,0.6)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }
+								}
+							>
+								{label}
+							</button>
+						))}
+
+						{/* Divider */}
+						<span className='w-[1px] h-[16px] mx-[4px] flex-shrink-0' style={{ background: 'rgba(68,170,255,0.12)' }} />
+
+						{/* Filter label */}
+						<span className='text-[11px] mr-[2px]' style={{ color: 'rgba(100,130,200,0.5)' }}>Фільтр:</span>
+						{FILTER_OPTIONS.map(({ key, label }) => {
+							const on = activeFilters.has(key)
+							return (
+								<button
+									key={key}
+									onClick={() => toggleFilter(key)}
+									className='px-[10px] py-[5px] rounded-[8px] text-[11px] font-[500] transition-all cursor-pointer'
+									style={on
+										? { background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.32)', color: '#0fffc8' }
+										: { background: 'rgba(8,12,30,0.6)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }
+									}
+								>
+									{label}
+								</button>
+							)
+						})}
+
+						{/* Clear filters */}
+						{activeFilters.size > 0 && (
+							<button
+								onClick={() => setActiveFilters(new Set())}
+								className='px-[8px] py-[5px] rounded-[8px] text-[11px] transition-all cursor-pointer ml-[2px]'
+								style={{ color: 'rgba(255,95,160,0.6)', border: '1px solid rgba(255,95,160,0.18)', background: 'rgba(255,95,160,0.05)' }}
+							>
+								✕ Скинути
+							</button>
+						)}
+					</div>
+				</div>
+
+				{/* ── Games grid ─────────────────────────────────────────────────── */}
+				{visibleGames.length === 0 ? (
 					<div className='flex flex-col items-center justify-center py-[100px] text-center'>
 						<div className='w-[60px] h-[60px] rounded-full bg-[rgba(68,170,255,0.07)] border border-[rgba(68,170,255,0.14)] flex items-center justify-center mb-[20px]'>
 							<Gamepad2 size={26} strokeWidth={1.4} className='text-[rgba(68,170,255,0.45)]' />
 						</div>
-						<p className='text-[rgba(180,200,255,0.3)] text-[15px]'>{t('our_games.empty')}</p>
+						<p className='text-[rgba(180,200,255,0.3)] text-[15px]'>
+							{debouncedSearch || activeFilters.size > 0 ? 'Нічого не знайдено' : t('our_games.empty')}
+						</p>
 					</div>
 				) : (
 					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]'>
-						{games.map(game => (
+						{visibleGames.map(game => (
 							<GameCard
 								key={game._id}
 								game={game}
 								currentUserId={user?.id}
 								isLoggedIn={isLoggedIn}
+								likeCount={game.likesCount}
+								isLikedByMe={game.isLiked}
+								onToggleLike={() => toggleLike(game._id)}
 								editLoading={editLoading === game._id}
 								deleteLoading={deleteLoading === game._id}
 								registerLoading={registerLoading === game._id}
@@ -314,6 +503,7 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 
 const GameCard = ({
 	game, currentUserId, isLoggedIn,
+	likeCount, isLikedByMe, onToggleLike,
 	editLoading, deleteLoading, registerLoading, unregisterLoading,
 	spectatorLoading, unspectatorLoading,
 	onEdit, onDelete, onRegister, onUnregister,
@@ -323,6 +513,9 @@ const GameCard = ({
 	game: GameData
 	currentUserId?: string
 	isLoggedIn: boolean
+	likeCount: number
+	isLikedByMe: boolean
+	onToggleLike: () => void
 	editLoading: boolean
 	deleteLoading: boolean
 	registerLoading: boolean
@@ -505,7 +698,7 @@ const GameCard = ({
 				</div>
 			)}
 
-			{/* Bottom row: players count + register/unregister buttons */}
+			{/* Bottom row: players count + like + register buttons */}
 			<div className='mt-auto flex flex-col gap-[8px]'>
 				{!isCreator && isLoggedIn && !isRegistered && !isSpectator && !isFull && (
 					<span className='text-[12px] font-[500] text-right text-[rgba(180,200,255,0.75)]'>
@@ -513,21 +706,48 @@ const GameCard = ({
 					</span>
 				)}
 				<div className='flex items-center justify-between pt-[2px]'>
-					<button
-						onClick={onShowPlayers}
-						className='flex items-center gap-[5px] text-[11px] text-[rgba(68,170,255,0.4)] hover:text-[rgba(68,170,255,0.85)] cursor-pointer transition-colors'
-					>
-						<UserCheck size={12} strokeWidth={1.8} />
-						{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
-						{spectators.length > 0 && (
-							<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
-								· {spectators.length} 👁
-							</span>
-						)}
-					</button>
+					{/* Left: players count + like button */}
+					<div className='flex items-center gap-[10px]'>
+						<button
+							onClick={onShowPlayers}
+							className='flex items-center gap-[5px] text-[11px] text-[rgba(68,170,255,0.4)] hover:text-[rgba(68,170,255,0.85)] cursor-pointer transition-colors'
+						>
+							<UserCheck size={12} strokeWidth={1.8} />
+							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
+							{spectators.length > 0 && (
+								<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
+									· {spectators.length} 👁
+								</span>
+							)}
+						</button>
+
+						{/* Like button — only for authenticated users */}
+						<button
+							onClick={isLoggedIn ? onToggleLike : undefined}
+							disabled={!isLoggedIn}
+							title={isLoggedIn ? (isLikedByMe ? 'Прибрати лайк' : 'Лайкнути') : 'Увійдіть щоб лайкнути'}
+							className='flex items-center gap-[4px] text-[11px] transition-all disabled:cursor-default'
+							style={{
+								color: isLikedByMe ? '#ff5fa0' : 'rgba(180,200,255,0.28)',
+								cursor: isLoggedIn ? 'pointer' : 'default',
+							}}
+						>
+							<Heart
+								size={13}
+								strokeWidth={1.8}
+								fill={isLikedByMe ? '#ff5fa0' : 'none'}
+								style={{ transition: 'fill 0.15s, color 0.15s' }}
+							/>
+							{likeCount > 0 && (
+								<span style={{ color: isLikedByMe ? '#ff5fa0' : 'rgba(180,200,255,0.35)' }}>
+									{likeCount}
+								</span>
+							)}
+						</button>
+					</div>
 
 					<div className='flex gap-[6px] items-center'>
-						{/* Spectator button (non-creator, non-registered-player, logged-in) */}
+						{/* Spectator button */}
 						{!isCreator && isLoggedIn && !isRegistered && (
 							isSpectator ? (
 								<button

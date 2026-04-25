@@ -26,6 +26,7 @@ export interface IGame extends Document {
 	spectatorCode: string
 	registeredPlayers: IRegisteredPlayer[]
 	spectators: IRegisteredPlayer[]
+	likesCount: number
 	createdAt: Date
 	updatedAt: Date
 }
@@ -60,6 +61,7 @@ const GameSchema = new Schema<IGame>(
 		spectatorCode:      { type: String, unique: true, sparse: true },
 		registeredPlayers:  { type: [RegisteredPlayerSchema], default: [] },
 		spectators:         { type: [RegisteredPlayerSchema], default: [] },
+		likesCount:         { type: Number, default: 0 },
 	},
 	{ timestamps: true, collection: 'our_games' }
 )
