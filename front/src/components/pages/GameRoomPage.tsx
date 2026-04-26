@@ -27,11 +27,13 @@ import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
 import { ImagePanel } from '../gameroom/ImagePanel'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
+import { ModPanel } from '../gameroom/ModPanel'
+import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
 
 type RoomHook = ReturnType<typeof useGameRoom>
 
@@ -58,6 +60,23 @@ class RoomErrorBoundary extends Component<
 		}
 		return this.props.children
 	}
+}
+
+const MOBILE_REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
+
+function MobileBarBtn({ icon, label, active, onClick }: {
+	icon: React.ReactNode; label: string; active: boolean; onClick: () => void
+}) {
+	return (
+		<button
+			onClick={onClick}
+			className='flex flex-col items-center justify-center gap-[4px] cursor-pointer transition-all flex-1 h-full'
+			style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)', background: active ? 'rgba(15,255,200,0.06)' : 'transparent' }}
+		>
+			<div style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)' }}>{icon}</div>
+			<span className='text-[10px] uppercase tracking-[0.06em]'>{label}</span>
+		</button>
+	)
 }
 
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
@@ -125,6 +144,19 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	const [showStopConfirm, setShowStopConfirm] = useState(false)
 	const [showSpectatorVote, setShowSpectatorVote] = useState(false)
 	const [notes, setNotes] = useState('')
+	const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+	const [mobilePanelOpen, setMobilePanelOpen] = useState<'media' | 'emoji' | 'chat' | 'settings' | null>(null)
+
+	// ── Mobile resize detection ──────────────────────────────────────────────────
+	useEffect(() => {
+		const handler = () => {
+			const mobile = window.innerWidth < 768
+			setIsMobile(mobile)
+			if (!mobile) setMobilePanelOpen(null)
+		}
+		window.addEventListener('resize', handler)
+		return () => window.removeEventListener('resize', handler)
+	}, [])
 
 	// ── Wake Lock — prevent screen sleep ────────────────────────────────────────
 	useEffect(() => {
@@ -351,6 +383,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							myId={myId}
 							isGM={isGM}
 							isSpectator={isSpectator}
+							isMobile={isMobile}
 							micOn={micOn}
 							camOn={camOn}
 							onToggleMic={toggleMic}
@@ -370,6 +403,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							myId={myId}
 							isGM={isGM}
 							isSpectator={isSpectator}
+							isMobile={isMobile}
 							micOn={micOn}
 							camOn={camOn}
 							onToggleMic={toggleMic}
@@ -384,22 +418,24 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					)}
 				</div>
 
-				{/* Collapse toggle — always visible */}
-				<button
-					onClick={() => setPanelOpen(v => !v)}
-					title={panelOpen ? 'Згорнути панель' : 'Розгорнути панель'}
-					className='flex-shrink-0 w-[22px] flex items-center justify-center cursor-pointer transition-all hover:brightness-150'
-					style={{
-						background: '#0b0d1a',
-						borderLeft: '1px solid #1c2035',
-						color: 'rgba(68,170,255,0.65)',
-					}}
-				>
-					{panelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-				</button>
+				{/* Collapse toggle — desktop only */}
+				{!isMobile && (
+					<button
+						onClick={() => setPanelOpen(v => !v)}
+						title={panelOpen ? 'Згорнути панель' : 'Розгорнути панель'}
+						className='flex-shrink-0 w-[22px] flex items-center justify-center cursor-pointer transition-all hover:brightness-150'
+						style={{
+							background: '#0b0d1a',
+							borderLeft: '1px solid #1c2035',
+							color: 'rgba(68,170,255,0.65)',
+						}}
+					>
+						{panelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+					</button>
+				)}
 
-				{/* Right panel: Chat + Tools */}
-				{panelOpen && (
+				{/* Right panel: Chat + Tools — desktop only */}
+				{panelOpen && !isMobile && (
 					<div className='flex-shrink-0 w-[239px] lg:w-[366px] flex flex-col overflow-hidden min-h-0'>
 						<ChatPanel
 							state={state}
@@ -429,6 +465,126 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					</div>
 				)}
 			</div>
+
+			{/* Mobile bottom bar */}
+			{isMobile && (
+				<div className='flex-shrink-0 flex items-stretch'
+					style={{ height: '60px', background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+					<MobileBarBtn
+						icon={<Mic size={20} />}
+						label='Медіа'
+						active={mobilePanelOpen === 'media'}
+						onClick={() => setMobilePanelOpen(p => p === 'media' ? null : 'media')}
+					/>
+					<MobileBarBtn
+						icon={<Smile size={20} />}
+						label='Емодзі'
+						active={mobilePanelOpen === 'emoji'}
+						onClick={() => setMobilePanelOpen(p => p === 'emoji' ? null : 'emoji')}
+					/>
+					<MobileBarBtn
+						icon={<MessageSquare size={20} />}
+						label='Чат'
+						active={mobilePanelOpen === 'chat'}
+						onClick={() => setMobilePanelOpen(p => p === 'chat' ? null : 'chat')}
+					/>
+					{isGM && (
+						<MobileBarBtn
+							icon={<Settings size={20} />}
+							label='Панель'
+							active={mobilePanelOpen === 'settings'}
+							onClick={() => setMobilePanelOpen(p => p === 'settings' ? null : 'settings')}
+						/>
+					)}
+				</div>
+			)}
+
+			{/* Mobile panels */}
+			{isMobile && mobilePanelOpen && (
+				<>
+					<style>{'@keyframes slideUpPanel{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}'}</style>
+					<div className='fixed inset-0 z-[54]' style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setMobilePanelOpen(null)} />
+					{mobilePanelOpen === 'media' && (
+						<div className='fixed left-0 right-0 z-[55] flex items-center justify-around px-[16px] py-[12px]'
+							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid rgba(15,255,200,0.12)', animation: 'slideUpPanel 0.18s ease-out' }}>
+							{!isSpectator && (
+								<button onClick={toggleMic}
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									style={micOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
+									{micOn ? <Mic size={22} /> : <MicOff size={22} />}
+									<span className='text-[11px]'>Мікрофон</span>
+								</button>
+							)}
+							{!isSpectator && (
+								<button onClick={toggleCam}
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									style={camOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
+									{camOn ? <Video size={22} /> : <VideoOff size={22} />}
+									<span className='text-[11px]'>Камера</span>
+								</button>
+							)}
+							<button onClick={handleLeave}
+								className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
+								<PhoneOff size={22} />
+								<span className='text-[11px]'>Вийти</span>
+							</button>
+						</div>
+					)}
+					{mobilePanelOpen === 'emoji' && (
+						<div className='fixed left-0 right-0 z-[55] flex flex-wrap items-center justify-center gap-[4px] px-[12px] py-[10px]'
+							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							{MOBILE_REACTIONS.map(emoji => (
+								<button key={emoji} onClick={() => react(emoji)}
+									className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
+									style={{ width: '46px', height: '46px', background: 'transparent', borderRadius: '10px' }}>
+									{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 32 })}
+								</button>
+							))}
+							{!isSpectator && me && (
+								<button onClick={() => raiseHand(!(me.handRaised ?? false))}
+									className='flex flex-col items-center justify-center cursor-pointer transition-all'
+									style={{ width: '46px', height: '46px', background: (me.handRaised ?? false) ? 'rgba(200,168,48,0.08)' : 'transparent', borderRadius: '10px' }}>
+									<NeonRaiseHand size={32} active={me.handRaised ?? false} />
+								</button>
+							)}
+						</div>
+					)}
+					{mobilePanelOpen === 'chat' && (
+						<div className='fixed left-0 right-0 z-[55] flex flex-col'
+							style={{ bottom: '60px', height: '72vh', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							<ChatPanel
+								state={state} myId={myId} isGM={isGM} isSpectator={isSpectator}
+								notes={notes} onNotesChange={setNotes}
+								onSendChat={sendChat} onCastVote={castVote} onCloseVote={closeVote} onClearVote={clearVote}
+								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
+								onAnnounce={() => setShowAnnounce(true)} onVoting={() => setShowVote(true)} onSpectatorVoting={() => setShowSpectatorVote(true)}
+								onMuteAll={muteAll} onEndGame={() => setShowStopConfirm(true)} onTimer={() => setShowTimer(true)}
+								onTimerStart={startTimer} onTimerStop={stopTimer} onTimerClear={clearTimer} onBreakout={() => setShowBreakout(true)}
+								showMod={false}
+							/>
+						</div>
+					)}
+					{mobilePanelOpen === 'settings' && isGM && (
+						<div className='fixed left-0 right-0 z-[55]'
+							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							<ModPanel
+								state={state}
+								onAnnounce={() => { setShowAnnounce(true); setMobilePanelOpen(null) }}
+								onVoting={() => { setShowVote(true); setMobilePanelOpen(null) }}
+								onSpectatorVoting={() => { setShowSpectatorVote(true); setMobilePanelOpen(null) }}
+								onMuteAll={muteAll}
+								onEndGame={() => { setShowStopConfirm(true); setMobilePanelOpen(null) }}
+								onTimer={() => { setShowTimer(true); setMobilePanelOpen(null) }}
+								onTimerStart={startTimer}
+								onTimerStop={stopTimer}
+								onTimerClear={clearTimer}
+								onBreakout={() => { setShowBreakout(true); setMobilePanelOpen(null) }}
+							/>
+						</div>
+					)}
+				</>
+			)}
 
 			{/* Breakout invite */}
 			{breakoutInvite && (

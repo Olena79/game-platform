@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { Game } from '../models/Game'
+import { GameMessage } from '../models/GameMessage'
 import {
 	RoomPlayer, GameRoomState, ChatMessage,
 	ActiveVote, BreakoutRoom,
@@ -27,14 +28,33 @@ function pushState(io: Server, state: GameRoomState) {
 async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 	const game = await Game.findOne({ gameCode })
 	if (!game) return null
+	const gameId = String(game._id)
+
+	// Load last 100 public messages from DB (recipients empty = public)
+	const dbMsgs = await GameMessage.find({ gameId, recipients: { $size: 0 } })
+		.sort({ createdAt: 1 })
+		.limit(100)
+		.lean()
+
+	const messages: ChatMessage[] = dbMsgs.map(m => ({
+		id: String(m._id),
+		userId: m.senderId,
+		name: m.senderName,
+		text: m.text,
+		ts: (m.createdAt as Date).getTime(),
+		recipients: [],
+		recipientNames: [],
+	}))
+
 	const state: GameRoomState = {
 		gameCode,
+		gameId,
 		status: 'lobby',
 		coinsPerPlayer:     game.useCoins    ? game.coinsPerPlayer    : 0,
 		influencePerPlayer: game.useInfluence ? game.influencePerPlayer : 0,
 		players: [],
 		bankCoins: 0,
-		messages: [],
+		messages,
 		reactions: { '👍': 0, '❤️': 0, '😂': 0, '🔥': 0, '🤔': 0, '👏': 0, '😢': 0, '😡': 0 },
 		announcement: null,
 		timer: null,
@@ -106,25 +126,87 @@ export function registerGameRoom(io: Server) {
 				state.players.push(p)
 			}
 			pushState(io, state)
+
+			// Send per-user chat history (public + messages where user is sender or recipient)
+			try {
+				const dbHistory = await GameMessage.find({
+					gameId: state.gameId,
+					$or: [
+						{ recipients: { $size: 0 } },
+						{ senderId: d.userId },
+						{ recipients: d.userId },
+					],
+				}).sort({ createdAt: 1 }).limit(200).lean()
+
+				const history: ChatMessage[] = dbHistory.map(m => ({
+					id: String(m._id),
+					userId: m.senderId,
+					name: m.senderName,
+					text: m.text,
+					ts: (m.createdAt as Date).getTime(),
+					recipients: m.recipients,
+					recipientNames: m.recipientNames,
+				}))
+				socket.emit('gr:chat-history', history)
+			} catch { /* non-critical */ }
 		})
 
 		// ── Chat ────────────────────────────────────────────────────────────
-		socket.on('gr:chat', (d: { gameCode: string; text: string }) => {
+		socket.on('gr:chat', (d: { gameCode: string; text: string; recipients?: string[] }) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player) return
+
 			const rawText = d.text.trim().slice(0, 500)
 			const text = player.isSpectator ? `[Глядач] ${rawText}` : rawText
+
+			// Spectators can only send public messages; filter out spectator recipients too
+			const recipientIds = (player.isSpectator || !d.recipients?.length)
+				? []
+				: d.recipients.filter(id => {
+					if (id === curUser) return false
+					const target = state.players.find(p => p.userId === id)
+					return target && !target.isSpectator
+				})
+
+			const isPrivate = recipientIds.length > 0
+			const recipientNames = isPrivate
+				? recipientIds.map(id => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
+				: []
+
 			const msg: ChatMessage = {
 				id: uid(), userId: curUser,
 				name: player.name,
 				text,
 				ts: Date.now(),
+				recipients: recipientIds,
+				recipientNames,
 			}
-			state.messages.push(msg)
-			if (state.messages.length > 100) state.messages.shift()
-			emit(io, d.gameCode, 'gr:chat', msg)
+
+			if (!isPrivate) {
+				// Public: store in room history and broadcast to all
+				state.messages.push(msg)
+				if (state.messages.length > 100) state.messages.shift()
+				emit(io, d.gameCode, 'gr:chat', msg)
+			} else {
+				// Private: deliver only to sender + recipients (not stored in shared history)
+				socket.emit('gr:chat', msg)
+				recipientIds.forEach(uid => {
+					const target = state.players.find(p => p.userId === uid)
+					if (target?.socketId) io.to(target.socketId).emit('gr:chat', msg)
+				})
+			}
+
+			// Persist to DB (fire-and-forget)
+			GameMessage.create({
+				gameId: state.gameId,
+				senderId: curUser,
+				senderName: player.name,
+				text,
+				recipients: recipientIds,
+				recipientNames,
+			}).catch(() => { /* ignore */ })
 		})
 
 		// ── Reactions ───────────────────────────────────────────────────────
@@ -189,8 +271,11 @@ export function registerGameRoom(io: Server) {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			state.status = 'ended'
+			state.messages = []
 			pushState(io, state)
 			emit(io, d.gameCode, 'gr:end-anim', {})
+			// Delete all messages for this game from DB
+			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
 			const t = setTimeout(() => rooms.delete(d.gameCode), 60_000)
 			endTimers.set(d.gameCode, t)
 		})

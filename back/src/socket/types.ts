@@ -19,6 +19,8 @@ export interface ChatMessage {
 	name: string
 	text: string
 	ts: number
+	recipients: string[]      // empty = public; userIds of intended recipients
+	recipientNames: string[]  // display names, for UI
 }
 
 export interface VoteOption {
@@ -55,6 +57,7 @@ export interface RoomTimer {
 
 export interface GameRoomState {
 	gameCode: string
+	gameId: string
 	status: 'lobby' | 'started' | 'ended'
 	coinsPerPlayer: number
 	influencePerPlayer: number

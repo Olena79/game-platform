@@ -94,6 +94,10 @@ export function useGameRoom(rawCode: string) {
 				: prev)
 		})
 
+		socket.on('gr:chat-history', (msgs: ChatMessage[]) => {
+			setState(prev => prev ? { ...prev, messages: msgs } : prev)
+		})
+
 		socket.on('gr:reactions', (r: Record<string, number>) => {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
 		})
@@ -149,7 +153,7 @@ export function useGameRoom(rawCode: string) {
 		startAnim, setStartAnim,
 		joinBreakout, leaveBreakout,
 		// ── Actions ──
-		sendChat:      (text: string)             => emit('gr:chat',           { text }),
+		sendChat:      (text: string, recipients: string[] = []) => emit('gr:chat', { text, recipients }),
 		react:         (emoji: string)            => emit('gr:react',          { emoji }),
 		raiseHand:     (raised: boolean)          => emit('gr:hand',           { raised }),
 		setRole:       (targetUserId: string, role: string) => emit('gr:role', { targetUserId, role }),

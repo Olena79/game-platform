@@ -7,7 +7,9 @@
       "Bash(npx vite *)",
       "Bash(npm ls *)",
       "Bash(netstat -ano)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(python3 *)",
+      "Bash(node *)"
     ]
   }
 }

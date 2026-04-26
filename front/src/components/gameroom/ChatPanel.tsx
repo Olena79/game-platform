@@ -11,7 +11,7 @@ interface Props {
 	isSpectator: boolean
 	notes: string
 	onNotesChange: (v: string) => void
-	onSendChat: (text: string) => void
+	onSendChat: (text: string, recipients?: string[]) => void
 	onCastVote: (optionIds: string[]) => void
 	onCloseVote: () => void
 	onClearVote: () => void
@@ -29,6 +29,7 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
+	showMod?: boolean
 }
 
 export const ChatPanel = ({
@@ -38,11 +39,22 @@ export const ChatPanel = ({
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
+	showMod = true,
 }: Props) => {
 	const [tab, setTab]   = useState<'chat' | 'scenario' | 'notes'>('chat')
 	const [text, setText] = useState('')
-	const endRef  = useRef<HTMLDivElement>(null)
+	const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
+	const [recipientMenuOpen, setRecipientMenuOpen]   = useState(false)
+	const endRef   = useRef<HTMLDivElement>(null)
 	const notesRef = useRef<HTMLTextAreaElement>(null)
+
+	// Players available as private message recipients (non-spectators, not self)
+	const recipientOptions = state.players.filter(p => p.connected && !p.isSpectator && p.userId !== myId)
+	const selectedNames = selectedRecipients
+		.map(id => state.players.find(p => p.userId === id)?.name?.split(' ')[0] ?? '')
+		.filter(Boolean)
+	const toLabel = selectedRecipients.length === 0 ? 'Всі' : selectedNames.join(', ')
+	const isPrivateMode = !isSpectator && selectedRecipients.length > 0
 
 	useEffect(() => {
 		endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -51,7 +63,7 @@ export const ChatPanel = ({
 	const send = () => {
 		const t = text.trim()
 		if (!t) return
-		onSendChat(t)
+		onSendChat(t, isSpectator ? [] : selectedRecipients)
 		setText('')
 	}
 
@@ -135,17 +147,116 @@ export const ChatPanel = ({
 								onClear={onClearSpectatorVote}
 							/>
 						)}
-						{state.messages.map(msg => (
-							<div key={msg.id}>
-								<div className='text-[11px] font-[700] mb-[1px]' style={{ color: msgColor(msg.userId) }}>
-									{msg.name}
+						{state.messages.map(msg => {
+							const isPrivMsg = (msg.recipients?.length ?? 0) > 0
+							return (
+								<div key={msg.id} className='flex flex-col gap-[2px]'
+									style={isPrivMsg ? {
+										background: 'rgba(15,255,200,0.03)',
+										border: '1px solid rgba(15,255,200,0.1)',
+										borderRadius: '8px',
+										padding: '5px 8px',
+										margin: '0 -2px',
+									} : {}}>
+									{isPrivMsg && (
+										<span className='text-[9px] uppercase tracking-[0.08em]'
+											style={{ color: 'rgba(15,255,200,0.45)' }}>
+											🔒 Приватне повідомлення
+										</span>
+									)}
+									<div className='text-[11px] font-[700]' style={{ color: msgColor(msg.userId) }}>
+										{msg.name}
+										{isPrivMsg && (msg.recipientNames?.length ?? 0) > 0 && (
+											<span className='font-[400] ml-[5px]'
+												style={{ color: 'rgba(15,255,200,0.35)', fontSize: '9px' }}>
+												→ {msg.recipientNames!.join(', ')}
+											</span>
+										)}
+									</div>
+									<div className='text-[12px] leading-[1.45]' style={{ color: '#7a80a0' }}>
+										{msg.text}
+									</div>
 								</div>
-								<div className='text-[12px] leading-[1.45]' style={{ color: '#7a80a0' }}>
-									{msg.text}
-								</div>
-							</div>
-						))}
+							)
+						})}
 						<div ref={endRef} />
+					</div>
+
+					{/* Recipient selector */}
+					<div className='flex-shrink-0 flex items-center gap-[6px] px-[10px] py-[5px] relative'
+						style={{ borderTop: '1px solid #151824', background: '#0b0d1a' }}>
+						<span className='text-[10px] uppercase tracking-[0.06em] flex-shrink-0'
+							style={{ color: '#4a5070' }}>
+							Кому:
+						</span>
+						{isSpectator ? (
+							<span className='text-[11px]' style={{ color: 'rgba(74,80,112,0.55)' }}>Всі</span>
+						) : (
+							<button
+								onClick={() => setRecipientMenuOpen(v => !v)}
+								className='flex items-center gap-[4px] px-[8px] py-[2px] rounded-[6px] text-[11px] cursor-pointer transition-all truncate'
+								style={{
+									maxWidth: '160px',
+									background: isPrivateMode ? 'rgba(15,255,200,0.06)' : '#0f1120',
+									border: isPrivateMode ? '1px solid rgba(15,255,200,0.2)' : '1px solid #1c1f35',
+									color: isPrivateMode ? '#0fffc8' : '#7a80a0',
+								}}>
+								{toLabel} ▾
+							</button>
+						)}
+
+						{/* Dropdown */}
+						{recipientMenuOpen && !isSpectator && (
+							<>
+								<div className='fixed inset-0 z-[8]' onClick={() => setRecipientMenuOpen(false)} />
+								<div className='absolute bottom-[calc(100%+4px)] left-0 z-[9] rounded-[10px] min-w-[190px] max-h-[220px] overflow-y-auto'
+									style={{ background: '#0f1120', border: '1px solid #1c1f35', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+									{/* "Everyone" option */}
+									<button
+										onClick={() => { setSelectedRecipients([]); setRecipientMenuOpen(false) }}
+										className='w-full text-left px-[12px] py-[7px] text-[12px] cursor-pointer transition-all hover:brightness-125 flex items-center gap-[8px]'
+										style={{ color: selectedRecipients.length === 0 ? '#0fffc8' : '#7a80a0', borderBottom: '1px solid #151824', background: 'transparent' }}>
+										<span className='flex-shrink-0 w-[14px] h-[14px] rounded-[3px] flex items-center justify-center text-[9px]'
+											style={{
+												background: selectedRecipients.length === 0 ? 'rgba(15,255,200,0.1)' : '#1a1a2e',
+												border: selectedRecipients.length === 0 ? '1px solid rgba(15,255,200,0.3)' : '1px solid #2a2a3e',
+											}}>
+											{selectedRecipients.length === 0 && '✓'}
+										</span>
+										Всі (публічне)
+									</button>
+									{/* Player list */}
+									{recipientOptions.map(p => {
+										const sel = selectedRecipients.includes(p.userId)
+										return (
+											<button key={p.userId}
+												onClick={() => setSelectedRecipients(prev =>
+													sel ? prev.filter(id => id !== p.userId) : [...prev, p.userId]
+												)}
+												className='w-full text-left px-[12px] py-[7px] text-[12px] cursor-pointer transition-all hover:brightness-125 flex items-center gap-[8px]'
+												style={{ color: sel ? '#0fffc8' : '#7a80a0', background: 'transparent' }}>
+												<span className='flex-shrink-0 w-[14px] h-[14px] rounded-[3px] flex items-center justify-center text-[9px]'
+													style={{
+														background: sel ? 'rgba(15,255,200,0.1)' : '#1a1a2e',
+														border: sel ? '1px solid rgba(15,255,200,0.3)' : '1px solid #2a2a3e',
+													}}>
+													{sel && '✓'}
+												</span>
+												{p.name.split(' ')[0]}
+												{p.isGamemaster && (
+													<span style={{ color: '#4a5070', fontSize: '9px' }}>GM</span>
+												)}
+											</button>
+										)
+									})}
+									{recipientOptions.length === 0 && (
+										<p className='px-[12px] py-[8px] text-[11px]' style={{ color: 'rgba(100,140,220,0.3)' }}>
+											Немає гравців
+										</p>
+									)}
+								</div>
+							</>
+						)}
 					</div>
 
 					{/* Input */}
@@ -154,13 +265,21 @@ export const ChatPanel = ({
 							value={text}
 							onChange={e => setText(e.target.value)}
 							onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-							placeholder='Написати...'
+							placeholder={isPrivateMode ? `Написати приватно...` : 'Написати...'}
 							className='flex-1 rounded-[6px] px-[10px] py-[6px] text-[12px] focus:outline-none'
-							style={{ background: '#0f1120', border: '1px solid #1c1f35', color: '#dde1f0' }}
+							style={{
+								background: isPrivateMode ? 'rgba(15,255,200,0.03)' : '#0f1120',
+								border: isPrivateMode ? '1px solid rgba(15,255,200,0.15)' : '1px solid #1c1f35',
+								color: '#dde1f0',
+							}}
 						/>
 						<button onClick={send}
 							className='w-[30px] h-[30px] rounded-[6px] flex items-center justify-center cursor-pointer transition-all'
-							style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
+							style={{
+								background: isPrivateMode ? 'rgba(15,255,200,0.12)' : 'rgba(15,255,200,0.1)',
+								border: isPrivateMode ? '1px solid rgba(15,255,200,0.4)' : '1px solid rgba(15,255,200,0.25)',
+								color: '#0fffc8',
+							}}>
 							<Send size={13} strokeWidth={2} />
 						</button>
 					</div>
@@ -227,7 +346,7 @@ export const ChatPanel = ({
 			)}
 
 			{/* Mod panel (GM only) */}
-			{isGM && (
+			{isGM && showMod && (
 				<ModPanel
 					state={state}
 					onAnnounce={onAnnounce}

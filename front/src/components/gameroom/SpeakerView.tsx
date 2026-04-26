@@ -38,6 +38,7 @@ interface Props {
 	myId: string
 	isGM: boolean
 	isSpectator: boolean
+	isMobile?: boolean
 	micOn: boolean
 	camOn: boolean
 	onToggleMic: () => void
@@ -275,6 +276,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 
 export const SpeakerView = ({
 	state, myId, isGM, isSpectator,
+	isMobile = false,
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	imageUrl, images = [], onImageClose, onChangeImage,
@@ -397,33 +399,35 @@ export const SpeakerView = ({
 				))}
 			</div>
 
-			{/* Controls + Reactions — one row */}
-			<div className='flex-shrink-0 flex items-center gap-[5px] px-[10px] py-[6px] flex-wrap'
-				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
-				{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
-				<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
-				<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
-				{REACTIONS.map(emoji => (
-					<button key={emoji} onClick={() => handleReact(emoji)}
-						className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
-						style={{ width: '46px', height: '46px', background: 'transparent', borderRadius: '10px' }}
-					>
-						{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
-					</button>
-				))}
-				{!isSpectator && (
-					<button onClick={() => onRaiseHand(!handRaised)}
-						className='flex flex-col items-center justify-center cursor-pointer transition-all'
-						style={{
-							width: '46px', height: '46px',
-							background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
-							borderRadius: '10px',
-						}}>
-						<NeonRaiseHand size={30} active={handRaised} />
-					</button>
-				)}
-			</div>
+			{/* Controls + Reactions — one row (desktop only) */}
+			{!isMobile && (
+				<div className='flex-shrink-0 flex items-center gap-[5px] px-[10px] py-[6px] flex-wrap'
+					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
+					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
+					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
+					<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
+					{REACTIONS.map(emoji => (
+						<button key={emoji} onClick={() => handleReact(emoji)}
+							className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
+							style={{ width: '46px', height: '46px', background: 'transparent', borderRadius: '10px' }}
+						>
+							{React.createElement(NEON_ICONS[emoji] ?? NEON_ICONS['👍'], { size: 30 })}
+						</button>
+					))}
+					{!isSpectator && (
+						<button onClick={() => onRaiseHand(!handRaised)}
+							className='flex flex-col items-center justify-center cursor-pointer transition-all'
+							style={{
+								width: '46px', height: '46px',
+								background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
+								borderRadius: '10px',
+							}}>
+							<NeonRaiseHand size={30} active={handRaised} />
+						</button>
+					)}
+				</div>
+			)}
 		</div>
 	)
 }
