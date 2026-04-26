@@ -1,6 +1,8 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../context/AuthContext'
+import { Modal } from '../minicomponents/Modal'
 
 const TelegramIcon = () => (
 	<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -71,6 +73,17 @@ const IconTeal3D = () => (
 
 export const HomePage = () => {
 	const { t } = useTranslation()
+	const { isLoggedIn } = useAuth()
+	const navigate = useNavigate()
+	const [authModal, setAuthModal] = useState(false)
+
+	const handleCreateGame = () => {
+		if (isLoggedIn) {
+			navigate('/create-game')
+		} else {
+			setAuthModal(true)
+		}
+	}
 
 	return (
 		<div className='min-h-screen'>
@@ -112,12 +125,12 @@ export const HomePage = () => {
 					</p>
 
 					<div className='flex flex-wrap gap-[12px] md:gap-[14px]'>
-						<Link
-							to='/create-game'
-							className="inline-block bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] font-amatic font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.5)] hover:-translate-y-[1px] transition-all cursor-pointer no-underline"
+						<button
+							onClick={handleCreateGame}
+							className="bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] font-amatic font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.5)] hover:-translate-y-[1px] transition-all cursor-pointer"
 						>
 							{t('home.hero.btn_try')}
-						</Link>
+						</button>
 						<a
 							href='https://t.me/+PPQQaaV5SrVkODgy'
 							target='_blank'
@@ -174,6 +187,16 @@ export const HomePage = () => {
 				</div>
 			</section>
 
+			<Modal
+				isOpen={authModal}
+				onClose={() => setAuthModal(false)}
+				title={t('home.auth_required_title')}
+				message={t('home.auth_required_msg')}
+				variant='warn'
+				onConfirm={() => { setAuthModal(false); navigate('/auth') }}
+				confirmLabel={t('home.auth_required_confirm')}
+				cancelLabel={t('home.auth_required_cancel')}
+			/>
 		</div>
 	)
 }

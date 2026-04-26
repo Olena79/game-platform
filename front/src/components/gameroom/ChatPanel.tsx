@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
-import type { GameRoomState, RoomPlayer } from './types'
+import type { GameRoomState, RoomPlayer, ChatMessage } from './types'
 import { VotingPanel } from './VotingPanel'
 import { ModPanel } from './ModPanel'
 
@@ -30,6 +30,9 @@ interface Props {
 	onTimerClear: () => void
 	onBreakout: () => void
 	showMod?: boolean
+	privateChats?: Record<string, ChatMessage[]>
+	unreadDMs?: Record<string, number>
+	onMarkDMRead?: (convKey: string) => void
 }
 
 export const ChatPanel = ({
@@ -40,13 +43,23 @@ export const ChatPanel = ({
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
 	showMod = true,
+	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
-	const [tab, setTab]   = useState<'chat' | 'scenario' | 'notes'>('chat')
+	const [tab, setTab]   = useState<string>('chat')
 	const [text, setText] = useState('')
 	const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
 	const [recipientMenuOpen, setRecipientMenuOpen]   = useState(false)
+	const [openedDMConvs, setOpenedDMConvs]           = useState<string[]>([])
 	const endRef   = useRef<HTMLDivElement>(null)
 	const notesRef = useRef<HTMLTextAreaElement>(null)
+
+	const isDMTab = tab !== 'chat' && tab !== 'scenario' && tab !== 'notes'
+	const allDMKeys = [...new Set([...openedDMConvs, ...Object.keys(privateChats ?? {})])]
+
+	const getDMLabel = (convKey: string) =>
+		convKey.split('|')
+			.map(id => state.players.find(p => p.userId === id)?.name?.split(' ')[0] ?? '…')
+			.join(', ')
 
 	// Players available as private message recipients (non-spectators, not self)
 	const recipientOptions = state.players.filter(p => p.connected && !p.isSpectator && p.userId !== myId)
@@ -56,14 +69,33 @@ export const ChatPanel = ({
 	const toLabel = selectedRecipients.length === 0 ? 'Всі' : selectedNames.join(', ')
 	const isPrivateMode = !isSpectator && selectedRecipients.length > 0
 
+	const activeMsgsLen = isDMTab
+		? ((privateChats ?? {})[tab] ?? []).length
+		: state.messages.length
+
 	useEffect(() => {
 		endRef.current?.scrollIntoView({ behavior: 'smooth' })
-	}, [state.messages])
+	}, [activeMsgsLen])
+
+	// Auto-mark DM as read when viewing it or when new messages arrive
+	useEffect(() => {
+		if (isDMTab && onMarkDMRead) onMarkDMRead(tab)
+	}, [tab, activeMsgsLen]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const send = () => {
 		const t = text.trim()
 		if (!t) return
-		onSendChat(t, isSpectator ? [] : selectedRecipients)
+		if (isDMTab) {
+			onSendChat(t, tab.split('|'))
+		} else {
+			onSendChat(t, isSpectator ? [] : selectedRecipients)
+			if (!isSpectator && selectedRecipients.length > 0) {
+				const convKey = [...selectedRecipients].sort().join('|')
+				setOpenedDMConvs(prev => prev.includes(convKey) ? prev : [...prev, convKey])
+				setTab(convKey)
+				setSelectedRecipients([])
+			}
+		}
 		setText('')
 	}
 
@@ -96,12 +128,13 @@ export const ChatPanel = ({
 		}, 0)
 	}
 
-	const tabLabel = (t: 'chat' | 'scenario' | 'notes') =>
-		t === 'chat' ? 'Чат' : t === 'scenario' ? 'Сценарій' : 'Нотатки'
-
-	const tabs = ['chat', ...(isGM ? ['scenario', 'notes'] : [])] as ('chat' | 'scenario' | 'notes')[]
-
 	const notesPlayers = state.players.filter(p => p.connected)
+
+	const tabBtnStyle = (isActive: boolean) => ({
+		color: isActive ? '#0fffc8' : '#4a5070',
+		borderBottom: isActive ? '2px solid #0fffc8' : '2px solid transparent',
+		background: 'transparent' as const,
+	})
 
 	return (
 		<div
@@ -109,19 +142,91 @@ export const ChatPanel = ({
 			style={{ background: '#0b0d1a', borderLeft: '1px solid #151824' }}
 		>
 			{/* Tab headers */}
-			<div className='flex-shrink-0 flex' style={{ borderBottom: '1px solid #151824' }}>
-				{tabs.map(t => (
-					<button key={t} onClick={() => setTab(t)}
-						className='flex-1 py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all'
-						style={{
-							color: tab === t ? '#0fffc8' : '#4a5070',
-							borderBottom: tab === t ? '2px solid #0fffc8' : '2px solid transparent',
-							background: 'transparent',
-						}}>
-						{tabLabel(t)}
-					</button>
-				))}
+			<div className='flex-shrink-0 flex overflow-x-auto' style={{ borderBottom: '1px solid #151824' }}>
+				<button onClick={() => setTab('chat')}
+					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
+					style={tabBtnStyle(tab === 'chat')}>
+					Чат
+				</button>
+				{allDMKeys.map(convKey => {
+					const unread = (unreadDMs ?? {})[convKey] ?? 0
+					return (
+						<button key={convKey}
+							onClick={() => { setTab(convKey); if (onMarkDMRead) onMarkDMRead(convKey) }}
+							className='flex-shrink-0 px-[12px] py-[9px] text-[11px] font-[600] cursor-pointer transition-all whitespace-nowrap flex items-center gap-[5px]'
+							style={tabBtnStyle(tab === convKey)}>
+							🔒 {getDMLabel(convKey)}
+							{unread > 0 && (
+								<span className='text-[9px] font-[800] px-[5px] py-[1px] rounded-full'
+									style={{ background: '#ff3850', color: '#fff', minWidth: '16px', textAlign: 'center' }}>
+									{unread}
+								</span>
+							)}
+						</button>
+					)
+				})}
+				{isGM && (
+					<>
+						<button onClick={() => setTab('scenario')}
+							className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
+							style={tabBtnStyle(tab === 'scenario')}>
+							Сценарій
+						</button>
+						<button onClick={() => setTab('notes')}
+							className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
+							style={tabBtnStyle(tab === 'notes')}>
+							Нотатки
+						</button>
+					</>
+				)}
 			</div>
+
+			{/* DM conversation tab */}
+			{isDMTab && (
+				<>
+					<div className='flex-1 overflow-y-auto p-[10px] flex flex-col gap-[8px] min-h-0'>
+						{((privateChats ?? {})[tab] ?? []).length === 0 && (
+							<p className='text-[12px] text-center pt-[20px]' style={{ color: 'rgba(100,140,220,0.3)' }}>
+								Почніть розмову...
+							</p>
+						)}
+						{((privateChats ?? {})[tab] ?? []).map((msg: ChatMessage) => (
+							<div key={msg.id} className='flex flex-col gap-[2px]'>
+								<div className='text-[11px] font-[700]' style={{ color: msgColor(msg.userId) }}>
+									{msg.name}
+								</div>
+								<div className='text-[12px] leading-[1.45]' style={{ color: '#7a80a0' }}>
+									{msg.text}
+								</div>
+							</div>
+						))}
+						<div ref={endRef} />
+					</div>
+					<div className='flex-shrink-0 flex gap-[6px] p-[10px]' style={{ borderTop: '1px solid #151824' }}>
+						<input
+							value={text}
+							onChange={e => setText(e.target.value)}
+							onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+							placeholder='Написати приватно...'
+							className='flex-1 rounded-[6px] px-[10px] py-[6px] text-[12px] focus:outline-none'
+							style={{
+								background: 'rgba(15,255,200,0.03)',
+								border: '1px solid rgba(15,255,200,0.15)',
+								color: '#dde1f0',
+							}}
+						/>
+						<button onClick={send}
+							className='w-[30px] h-[30px] rounded-[6px] flex items-center justify-center cursor-pointer transition-all'
+							style={{
+								background: 'rgba(15,255,200,0.12)',
+								border: '1px solid rgba(15,255,200,0.4)',
+								color: '#0fffc8',
+							}}>
+							<Send size={13} strokeWidth={2} />
+						</button>
+					</div>
+				</>
+			)}
 
 			{tab === 'chat' && (
 				<>

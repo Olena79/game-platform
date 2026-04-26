@@ -382,7 +382,14 @@ export const SpeakerView = ({
 						style={{ background: '#ff3850', color: '#fff', letterSpacing: '0.06em' }}>● LIVE</span>
 					<span className='text-[10px]' style={{ color: '#4a5070' }}>{state.title}</span>
 				</div>
-				<span className='text-[11px]' style={{ color: '#4a5070' }}>{mainPlayers.length} онлайн</span>
+				<div className='flex items-center gap-[8px]'>
+					<span className='text-[11px]' style={{ color: '#4a5070' }}>
+						{mainPlayers.filter(p => !p.isSpectator).length} онлайн
+					</span>
+					<span className='text-[11px]' style={{ color: '#4a5070' }}>
+						👁 {state.players.filter(p => p.isSpectator && p.connected).length} глядачів
+					</span>
+				</div>
 			</div>
 
 			{/* Main area: image OR speaker */}

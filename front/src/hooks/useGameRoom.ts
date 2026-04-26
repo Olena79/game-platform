@@ -23,6 +23,9 @@ export function useGameRoom(rawCode: string) {
 	const [error, setError]                   = useState<string | null>(null)
 	const [connStatus, setConnStatus]         = useState<'connecting' | 'connected' | 'failed'>('connecting')
 	const [playerReactions, setPlayerReactions] = useState<Record<string, { emoji: string; key: number }>>({})
+	const [privateChats, setPrivateChats] = useState<Record<string, ChatMessage[]>>({})
+	const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
+	const [shouldMute, setShouldMute] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
 
@@ -89,14 +92,36 @@ export function useGameRoom(rawCode: string) {
 		socket.on('gr:error', (msg: string) => setError(msg))
 
 		socket.on('gr:chat', (msg: ChatMessage) => {
-			setState(prev => prev
-				? { ...prev, messages: [...prev.messages.slice(-99), msg] }
-				: prev)
+			const isPrivate = (msg.recipients?.length ?? 0) > 0
+			if (isPrivate) {
+				const allParticipants = [msg.userId, ...(msg.recipients ?? [])]
+				const convKey = allParticipants.filter(id => id !== (user?.id ?? '')).sort().join('|')
+				setPrivateChats(prev => ({
+					...prev,
+					[convKey]: [...(prev[convKey] ?? []).slice(-99), msg],
+				}))
+				setUnreadDMs(prev => ({ ...prev, [convKey]: (prev[convKey] ?? 0) + 1 }))
+			} else {
+				setState(prev => prev
+					? { ...prev, messages: [...prev.messages.slice(-99), msg] }
+					: prev)
+			}
 		})
 
 		socket.on('gr:chat-history', (msgs: ChatMessage[]) => {
-			setState(prev => prev ? { ...prev, messages: msgs } : prev)
+			const publicMsgs = msgs.filter(m => (m.recipients?.length ?? 0) === 0)
+			const privateMsgs = msgs.filter(m => (m.recipients?.length ?? 0) > 0)
+			setState(prev => prev ? { ...prev, messages: publicMsgs } : prev)
+			const grouped: Record<string, ChatMessage[]> = {}
+			for (const msg of privateMsgs) {
+				const allParticipants = [msg.userId, ...(msg.recipients ?? [])]
+				const convKey = allParticipants.filter(id => id !== (user?.id ?? '')).sort().join('|')
+				grouped[convKey] = [...(grouped[convKey] ?? []), msg]
+			}
+			setPrivateChats(grouped)
 		})
+
+		socket.on('gr:mute-all', () => setShouldMute(true))
 
 		socket.on('gr:reactions', (r: Record<string, number>) => {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
@@ -121,6 +146,12 @@ export function useGameRoom(rawCode: string) {
 			setConnected(false)
 		}
 	}, [resolved?.gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const markDMRead = useCallback((convKey: string) => {
+		setUnreadDMs(prev => { const n = { ...prev }; delete n[convKey]; return n })
+	}, [])
+
+	const clearMuteSignal = useCallback(() => setShouldMute(false), [])
 
 	const gameCode = resolved?.gameCode ?? rawCode
 
@@ -147,6 +178,8 @@ export function useGameRoom(rawCode: string) {
 
 	return {
 		state, connected, me, isGM, myId, inBreakout, isSpectatorJoin, error, connStatus, playerReactions,
+		privateChats, unreadDMs, markDMRead,
+		shouldMute, clearMuteSignal,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,

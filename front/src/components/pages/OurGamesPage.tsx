@@ -32,6 +32,8 @@ export const OurGamesPage = () => {
 		open: false, gameId: null,
 	})
 
+	const [authModal, setAuthModal] = useState(false)
+
 	const [playersModal, setPlayersModal] = useState<{ open: boolean; game: GameData | null }>({
 		open: false, game: null,
 	})
@@ -305,14 +307,12 @@ export const OurGamesPage = () => {
 						</h1>
 					</div>
 
-					{isLoggedIn && (
-						<button
-							onClick={() => navigate('/create-game')}
-							className='self-start md:self-auto flex items-center gap-[8px] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[20px] py-[11px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_24px_rgba(100,80,255,0.4)] hover:-translate-y-[1px] transition-all cursor-pointer whitespace-nowrap'
-						>
-							+ {t('our_games.btn_create')}
-						</button>
-					)}
+					<button
+						onClick={() => isLoggedIn ? navigate('/create-game') : setAuthModal(true)}
+						className='self-start md:self-auto flex items-center gap-[8px] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[20px] py-[11px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_24px_rgba(100,80,255,0.4)] hover:-translate-y-[1px] transition-all cursor-pointer whitespace-nowrap'
+					>
+						+ {t('our_games.btn_create')}
+					</button>
 				</div>
 
 				{/* ── Search / Sort / Filter bar ─────────────────────────────────── */}
@@ -451,6 +451,18 @@ export const OurGamesPage = () => {
 					</div>
 				)}
 			</Modal>
+
+			{/* Auth required modal */}
+			<Modal
+				isOpen={authModal}
+				onClose={() => setAuthModal(false)}
+				title={t('home.auth_required_title')}
+				message={t('home.auth_required_msg')}
+				variant='warn'
+				onConfirm={() => { setAuthModal(false); navigate('/auth') }}
+				confirmLabel={t('home.auth_required_confirm')}
+				cancelLabel={t('home.auth_required_cancel')}
+			/>
 
 			{/* Delete confirmation modal */}
 			<Modal
@@ -605,13 +617,50 @@ const GameCard = ({
 	return (
 		<div className='group relative border border-[rgba(68,170,255,0.13)] rounded-[20px] p-[24px] bg-[rgba(3,6,25,0.52)] backdrop-blur-[10px] hover:border-[rgba(68,170,255,0.28)] hover:bg-[rgba(3,6,25,0.65)] transition-all duration-[200ms] flex flex-col gap-[14px]'>
 
-			{/* Cover image */}
-			<div className='w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] -mx-0 bg-[#060e24]'>
+			{/* Cover image + like overlay */}
+			<div className='relative w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] bg-[#060e24]'>
 				<img
 					src={game.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'}
 					alt={game.title}
 					className='w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity duration-[200ms]'
 				/>
+
+				{/* Heart like button — top-right over image */}
+				<button
+					onClick={isLoggedIn ? onToggleLike : undefined}
+					title={isLoggedIn ? (isLikedByMe ? 'Прибрати лайк' : 'Лайкнути') : 'Увійдіть щоб лайкнути'}
+					className='absolute top-[10px] right-[10px] z-10 flex items-center justify-center transition-transform hover:scale-110'
+					style={{ cursor: isLoggedIn ? 'pointer' : 'default' }}
+				>
+					<div className='relative flex items-center justify-center w-[54px] h-[54px]'>
+						<Heart
+							size={54}
+							strokeWidth={1.4}
+							fill={isLikedByMe ? '#ff5fa0' : 'none'}
+							style={{
+								color: isLikedByMe ? '#ff5fa0' : 'rgba(255,255,255,0.8)',
+								filter: isLikedByMe
+									? 'drop-shadow(0 0 10px rgba(255,95,160,0.65))'
+									: 'drop-shadow(0 1px 6px rgba(0,0,0,0.7))',
+								transition: 'fill 0.15s ease, color 0.15s ease, filter 0.2s ease',
+							}}
+						/>
+						{likeCount > 0 && (
+							<span
+								className='absolute text-[13px] font-[800] leading-none pointer-events-none select-none'
+								style={{
+									color: isLikedByMe ? '#fff' : 'rgba(255,255,255,0.9)',
+									top: '54%',
+									left: '50%',
+									transform: 'translate(-50%, -30%)',
+									textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+								}}
+							>
+								{likeCount}
+							</span>
+						)}
+					</div>
+				</button>
 			</div>
 
 			{/* Edit + Delete buttons */}
@@ -706,7 +755,7 @@ const GameCard = ({
 					</span>
 				)}
 				<div className='flex items-center justify-between pt-[2px]'>
-					{/* Left: players count + like button */}
+					{/* Left: players count */}
 					<div className='flex items-center gap-[10px]'>
 						<button
 							onClick={onShowPlayers}
@@ -717,30 +766,6 @@ const GameCard = ({
 							{spectators.length > 0 && (
 								<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
 									· {spectators.length} 👁
-								</span>
-							)}
-						</button>
-
-						{/* Like button — only for authenticated users */}
-						<button
-							onClick={isLoggedIn ? onToggleLike : undefined}
-							disabled={!isLoggedIn}
-							title={isLoggedIn ? (isLikedByMe ? 'Прибрати лайк' : 'Лайкнути') : 'Увійдіть щоб лайкнути'}
-							className='flex items-center gap-[4px] text-[11px] transition-all disabled:cursor-default'
-							style={{
-								color: isLikedByMe ? '#ff5fa0' : 'rgba(180,200,255,0.28)',
-								cursor: isLoggedIn ? 'pointer' : 'default',
-							}}
-						>
-							<Heart
-								size={13}
-								strokeWidth={1.8}
-								fill={isLikedByMe ? '#ff5fa0' : 'none'}
-								style={{ transition: 'fill 0.15s, color 0.15s' }}
-							/>
-							{likeCount > 0 && (
-								<span style={{ color: isLikedByMe ? '#ff5fa0' : 'rgba(180,200,255,0.35)' }}>
-									{likeCount}
 								</span>
 							)}
 						</button>

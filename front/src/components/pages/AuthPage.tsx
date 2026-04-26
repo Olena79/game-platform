@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { User, Mail, Lock, Phone, X } from 'lucide-react'
+import { User, Mail, Lock, X } from 'lucide-react'
 import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
 import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
@@ -46,7 +46,6 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 interface FieldErrors {
 	name?: string
 	email?: string
-	phone?: string
 	password?: string
 }
 
@@ -68,7 +67,6 @@ export const AuthPage = () => {
 	const [name, setName]           = useState('')
 	const [surname, setSurname]     = useState('')
 	const [email, setEmail]         = useState('')
-	const [phone, setPhone]         = useState('')
 	const [password, setPassword]   = useState('')
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 	const [loading, setLoading]     = useState(false)
@@ -101,11 +99,6 @@ export const AuthPage = () => {
 		if (!email || !isValidEmail(email))
 			errs.email = t('auth.err_email_invalid')
 
-		if (!isLogin) {
-			if (!phone || phone.length < 10 || phone.length > 12)
-				errs.phone = t('auth.err_phone_invalid')
-		}
-
 		if (!password || !isStrongPassword(password))
 			errs.password = t('auth.err_password_weak')
 
@@ -116,7 +109,6 @@ export const AuthPage = () => {
 	const resolveServerError = (msg: string): string => {
 		switch (msg) {
 			case 'EMAIL_EXISTS':        return t('auth.err_email_exists')
-			case 'PHONE_EXISTS':        return t('auth.err_phone_exists')
 			case 'INVALID_CREDENTIALS': return t('auth.err_credentials')
 			default: return msg
 		}
@@ -130,7 +122,7 @@ export const AuthPage = () => {
 		try {
 			const res = isLogin
 				? await loginRequest(email, password)
-				: await registerRequest(name, surname, email, phone, password)
+				: await registerRequest(name, surname, email, password)
 			login(res.token, res.user)
 
 			setModal({
@@ -235,20 +227,6 @@ export const AuthPage = () => {
 							error={fieldErrors.email}
 							autoComplete='email'
 						/>
-
-						{!isLogin && (
-							<InputField
-								icon={<Phone size={15} strokeWidth={1.8} />}
-								type='text'
-								placeholder={t('auth.phone_placeholder')}
-								value={phone}
-								onChange={v => { setPhone(v); setFieldErrors(e => ({ ...e, phone: undefined })) }}
-								error={fieldErrors.phone}
-								maxLength={12}
-								onlyDigits
-								autoComplete='tel'
-							/>
-						)}
 
 						<InputField
 							icon={<Lock size={15} strokeWidth={1.8} />}

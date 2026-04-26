@@ -19,6 +19,10 @@
 			"btn_try": "Create your own game",
 			"btn_learn": "Join player community"
 		},
+		"auth_required_title": "Sign in required",
+		"auth_required_msg": "To create a game, please register or sign in first.",
+		"auth_required_confirm": "Register / Sign in",
+		"auth_required_cancel": "Cancel",
 		"features": {
 			"eyebrow": "Features",
 			"title": "What are these games",

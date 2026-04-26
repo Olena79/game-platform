@@ -92,6 +92,11 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		startAnim,
 		setStartAnim,
 		playerReactions,
+		privateChats,
+		unreadDMs,
+		markDMRead,
+		shouldMute,
+		clearMuteSignal,
 		breakoutInvite,
 		setBreakoutInvite,
 		joinBreakout,
@@ -217,6 +222,14 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		if (voteId && voteId !== prevVoteIdRef.current) sfx.vote()
 		prevVoteIdRef.current = voteId
 	}, [state])
+
+	// Mute All: GM can force-disable all participants' mics
+	useEffect(() => {
+		if (!shouldMute || isSpectator || !localParticipant) return
+		localParticipant.setMicrophoneEnabled(false)
+		setMicOn(false)
+		clearMuteSignal()
+	}, [shouldMute]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleMic = useCallback(async () => {
 		if (!localParticipant) return
@@ -461,6 +474,9 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onTimerStop={stopTimer}
 							onTimerClear={clearTimer}
 							onBreakout={() => setShowBreakout(true)}
+							privateChats={privateChats}
+							unreadDMs={unreadDMs}
+							onMarkDMRead={markDMRead}
 						/>
 					</div>
 				)}
@@ -562,6 +578,9 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 								onMuteAll={muteAll} onEndGame={() => setShowStopConfirm(true)} onTimer={() => setShowTimer(true)}
 								onTimerStart={startTimer} onTimerStop={stopTimer} onTimerClear={clearTimer} onBreakout={() => setShowBreakout(true)}
 								showMod={false}
+								privateChats={privateChats}
+								unreadDMs={unreadDMs}
+								onMarkDMRead={markDMRead}
 							/>
 						</div>
 					)}

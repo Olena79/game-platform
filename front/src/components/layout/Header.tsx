@@ -21,7 +21,7 @@ const LogoSvg = () => (
 			style={{ filter: 'drop-shadow(0 0 3px #cc44ff)' }} />
 	</svg>
 )
-import { Globe, Menu, X } from 'lucide-react'
+import { Globe } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Modal } from '../minicomponents/Modal'
 
@@ -83,7 +83,6 @@ const UserIconLoggedIn = () => (
 export const Header = () => {
 	const { t, i18n } = useTranslation()
 	const { isLoggedIn, logout } = useAuth()
-	const [menuOpen, setMenuOpen]       = useState(false)
 	const [dropdownOpen, setDropdownOpen] = useState(false)
 	const [logoutModal, setLogoutModal] = useState(false)
 	const dropdownRef = useRef<HTMLDivElement>(null)
@@ -95,7 +94,6 @@ export const Header = () => {
 	const handleLogoutConfirm = () => {
 		logout()
 		setLogoutModal(false)
-		setMenuOpen(false)
 	}
 
 	// Close dropdown on outside click
@@ -180,81 +178,15 @@ export const Header = () => {
 					</Link>
 				</div>
 
-				{/* Mobile burger */}
+				{/* Mobile: language switcher only */}
 				<button
-					className='md:hidden flex items-center justify-center w-[36px] h-[36px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer'
-					onClick={() => setMenuOpen(p => !p)}
-					aria-label='Меню'
+					className='md:hidden flex items-center gap-[6px] text-[rgba(180,200,255,0.6)] hover:text-[#44aaff] transition-colors cursor-pointer'
+					onClick={toggleLang}
+					aria-label='Мова'
 				>
-					{menuOpen ? (
-						<X size={22} strokeWidth={1.8} />
-					) : (
-						<Menu size={22} strokeWidth={1.8} />
-					)}
+					<Globe size={16} strokeWidth={1.8} />
+					<span className='text-[12px] font-[500]'>{currentLang}</span>
 				</button>
-			</div>
-
-			{/* ── Mobile dropdown ── */}
-			<div
-				className={`absolute top-full left-0 right-0 bg-[rgba(3,4,15,0.97)] backdrop-blur-[20px] border-b border-[rgba(100,160,255,0.12)] flex flex-col md:hidden overflow-hidden transition-all duration-[250ms] ${
-					menuOpen
-						? 'opacity-100 max-h-[420px]'
-						: 'opacity-0 max-h-0 pointer-events-none'
-				}`}
-			>
-				<div className='px-[24px] py-[8px] flex flex-col'>
-					<NavLink
-						to='/games'
-						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
-						onClick={() => setMenuOpen(false)}
-					>
-						{t('nav.games')}
-					</NavLink>
-					<a
-						className='text-[16px] text-[rgba(180,200,255,0.7)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)]'
-						onClick={() => setMenuOpen(false)}
-					>
-						{t('nav.about')}
-					</a>
-
-					{isLoggedIn ? (
-						<button
-							onClick={() => { setMenuOpen(false); setLogoutModal(true) }}
-							className='text-[16px] text-[rgba(255,90,160,0.8)] hover:text-[#ff5fa0] transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px] text-left'
-						>
-							{t('auth.btn_logout')}
-						</button>
-					) : (
-						<Link
-							to='/auth'
-							className='text-[16px] text-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.4)] hover:text-white transition-colors cursor-pointer py-[14px] border-b border-[rgba(255,255,255,0.06)] flex items-center gap-[10px]'
-							onClick={() => setMenuOpen(false)}
-						>
-							{t('auth.tab_login')}
-						</Link>
-					)}
-
-					<div className='flex items-center justify-between py-[14px] border-b border-[rgba(255,255,255,0.06)]'>
-						<span className='text-[13px] text-[rgba(180,200,255,0.35)] font-[300]'>
-							{t('nav.lang_label')}
-						</span>
-						<button
-							onClick={toggleLang}
-							className='flex items-center gap-[6px] text-[rgba(180,200,255,0.6)] hover:text-[#44aaff] transition-colors cursor-pointer'
-						>
-							<Globe size={14} strokeWidth={1.8} />
-							<span className='text-[12px] font-[500]'>{currentLang}</span>
-						</button>
-					</div>
-
-					<div className='py-[16px]'>
-						<Link to='/game' onClick={() => setMenuOpen(false)}>
-							<button className='w-full bg-transparent text-white border border-[rgba(68,170,255,0.5)] py-[12px] rounded-[10px] text-[14px] font-[500] transition-all hover:border-[rgba(192,127,255,0.7)] hover:shadow-[0_0_20px_rgba(192,127,255,0.2)] cursor-pointer'>
-								{t('nav.enter')}
-							</button>
-						</Link>
-					</div>
-				</div>
 			</div>
 
 			<Modal

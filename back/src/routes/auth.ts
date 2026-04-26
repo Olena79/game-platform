@@ -41,16 +41,10 @@ const signToken = (id: string) =>
 // POST /api/auth/register
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { name, surname, email, phone, password } = req.body
+		const { name, surname, email, password } = req.body
 
-		if (!name || !email || !phone || !password) {
+		if (!name || !email || !password) {
 			res.status(400).json({ message: 'All fields are required' })
-			return
-		}
-
-		const cleanPhone = String(phone).replace(/\D/g, '')
-		if (cleanPhone.length < 10 || cleanPhone.length > 12) {
-			res.status(400).json({ message: 'Phone must be 10 digits' })
 			return
 		}
 
@@ -60,14 +54,8 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 			return
 		}
 
-		const phoneExists = await User.findOne({ phone: cleanPhone })
-		if (phoneExists) {
-			res.status(400).json({ message: 'PHONE_EXISTS' })
-			return
-		}
-
 		const hashed = await bcrypt.hash(password, 10)
-		const user = await User.create({ name, surname: surname || '', email, phone: cleanPhone, password: hashed })
+		const user = await User.create({ name, surname: surname || '', email, password: hashed })
 		const token = signToken(String(user._id))
 
 		sendWelcomeEmail(email, name).catch(err =>
@@ -76,7 +64,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 
 		res.status(201).json({
 			token,
-			user: { id: user._id, name: user.name, surname: user.surname, email: user.email, phone: user.phone },
+			user: { id: user._id, name: user.name, surname: user.surname, email: user.email },
 		})
 	} catch {
 		res.status(500).json({ message: 'Server error' })
@@ -107,7 +95,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 		const token = signToken(String(user._id))
 		res.json({
 			token,
-			user: { id: user._id, name: user.name, surname: user.surname, email: user.email, phone: user.phone },
+			user: { id: user._id, name: user.name, surname: user.surname, email: user.email },
 		})
 	} catch {
 		res.status(500).json({ message: 'Server error' })
@@ -127,7 +115,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 		if (!user) {
 			user = await User.create({
 				googleId: info.sub,
-				name: info.given_name || info.name.split(' ')[0] || 'User',
+				name: info.given_name || info.name?.split(' ')[0] || 'User',
 				surname: info.family_name || '',
 				email: info.email,
 				password: '',
@@ -139,7 +127,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 		}
 
 		const token = signToken(String(user._id))
-		res.json({ token, user: { id: user._id, name: user.name, surname: user.surname, email: user.email, phone: user.phone } })
+		res.json({ token, user: { id: user._id, name: user.name, surname: user.surname, email: user.email } })
 	} catch (err) {
 		console.error('[google auth]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -154,7 +142,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
 			res.status(404).json({ message: 'User not found' })
 			return
 		}
-		res.json({ id: user._id, name: user.name, surname: user.surname, email: user.email, phone: user.phone })
+		res.json({ id: user._id, name: user.name, surname: user.surname, email: user.email })
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}

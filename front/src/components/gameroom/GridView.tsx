@@ -379,15 +379,16 @@ export const GridView = ({
 			})}
 		</div>
 
-			{/* Spectator counter — only for "глядач" role, no tile shown */}
-			{spectatorCount > 0 && (
-				<div className='flex-shrink-0 flex items-center gap-[6px] px-[12px] py-[4px]'
-					style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
-					<span className='text-[11px]' style={{ color: '#4a5070' }}>
-						👁 Глядачі: {spectatorCount}
-					</span>
-				</div>
-			)}
+			{/* Online + spectator counters — always visible */}
+			<div className='flex-shrink-0 flex items-center gap-[12px] px-[12px] py-[4px]'
+				style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
+				<span className='text-[11px]' style={{ color: '#4a5070' }}>
+					{mainPlayers.length} онлайн
+				</span>
+				<span className='text-[11px]' style={{ color: '#4a5070' }}>
+					👁 {spectatorCount} глядачів
+				</span>
+			</div>
 
 			{/* Grid — tiles fill full container (Google Meet style) */}
 			<div

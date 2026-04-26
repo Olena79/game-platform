@@ -108,6 +108,18 @@ export function registerGameRoom(io: Server) {
 			if (existing) {
 				existing.socketId = socket.id
 				existing.connected = true
+				// Fix: update role if user rejoined with a different code (spectator → player or vice versa)
+				if (existing.isSpectator !== isSpectator || existing.isGamemaster !== isGamemaster) {
+					existing.isSpectator = isSpectator
+					existing.isGamemaster = isGamemaster
+					if (!isSpectator && !isGamemaster) {
+						if (existing.coins === 0) existing.coins = state.coinsPerPlayer
+						if (existing.influence === 0) existing.influence = state.influencePerPlayer
+					} else {
+						existing.coins = 0
+						existing.influence = 0
+					}
+				}
 			} else {
 				const p: RoomPlayer = {
 					socketId: socket.id,

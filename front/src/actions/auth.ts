@@ -5,7 +5,6 @@ export interface AuthUser {
 	name: string
 	surname?: string
 	email: string
-	phone?: string
 }
 
 export interface AuthResponse {
@@ -30,13 +29,12 @@ export const registerRequest = (
 	name: string,
 	surname: string,
 	email: string,
-	phone: string,
 	password: string,
 ): Promise<AuthResponse> =>
 	fetch(`${API}/api/auth/register`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ name, surname, email, phone, password }),
+		body: JSON.stringify({ name, surname, email, password }),
 	}).then(handleResponse<AuthResponse>)
 
 export const getMeRequest = (token: string): Promise<AuthUser> =>

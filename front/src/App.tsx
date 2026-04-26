@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
+import { MobileBottomNav } from './components/layout/MobileBottomNav'
 import { HomePage } from './components/pages/HomePage'
 import { AuthPage } from './components/pages/AuthPage'
 import { GamePage } from './components/pages/GamePage'
@@ -53,7 +54,7 @@ const SiteLayout = () => (
 		<Stars />
 		<div className='rainbow-line relative z-10' />
 		<Header />
-		<main className='flex-grow relative z-10'>
+		<main className='flex-grow relative z-10 pb-[60px] md:pb-0'>
 			<Routes>
 				<Route path='/' element={<HomePage />} />
 				<Route path='/auth' element={<AuthPage />} />
@@ -64,6 +65,7 @@ const SiteLayout = () => (
 			</Routes>
 		</main>
 		<Footer />
+		<MobileBottomNav />
 	</div>
 )
 

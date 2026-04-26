@@ -4,7 +4,6 @@ export interface IUser extends Document {
 	name: string
 	surname: string
 	email: string
-	phone: string
 	password: string
 	googleId?: string
 	createdAt: Date
@@ -16,15 +15,12 @@ const UserSchema = new Schema<IUser>(
 		name:     { type: String, required: true, trim: true },
 		surname:  { type: String, default: '', trim: true },
 		email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
-		phone:    { type: String, default: undefined, trim: true },
 		password: { type: String, default: '' },
 		googleId: { type: String, default: undefined, trim: true },
 	},
 	{ timestamps: true }
 )
 
-// Sparse indexes allow multiple docs with undefined values
-UserSchema.index({ phone: 1 }, { unique: true, sparse: true })
 UserSchema.index({ googleId: 1 }, { unique: true, sparse: true })
 
 export const User = mongoose.model<IUser>('User', UserSchema)
