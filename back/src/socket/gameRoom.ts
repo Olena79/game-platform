@@ -44,6 +44,7 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		ts: (m.createdAt as Date).getTime(),
 		recipients: [],
 		recipientNames: [],
+		spectatorChat: m.spectatorChat ?? false,
 	}))
 
 	const state: GameRoomState = {
@@ -158,6 +159,7 @@ export function registerGameRoom(io: Server) {
 					ts: (m.createdAt as Date).getTime(),
 					recipients: m.recipients,
 					recipientNames: m.recipientNames,
+					spectatorChat: m.spectatorChat ?? false,
 				}))
 				socket.emit('gr:chat-history', history)
 			} catch { /* non-critical */ }
@@ -170,8 +172,8 @@ export function registerGameRoom(io: Server) {
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player) return
 
-			const rawText = d.text.trim().slice(0, 500)
-			const text = player.isSpectator ? `[Глядач] ${rawText}` : rawText
+			const text = d.text.trim().slice(0, 500)
+			if (!text) return
 
 			// Spectators can only send public messages; filter out spectator recipients too
 			const recipientIds = (player.isSpectator || !d.recipients?.length)
@@ -183,6 +185,7 @@ export function registerGameRoom(io: Server) {
 				})
 
 			const isPrivate = recipientIds.length > 0
+			const spectatorChat = player.isSpectator && !isPrivate
 			const recipientNames = isPrivate
 				? recipientIds.map(id => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
 				: []
@@ -194,6 +197,7 @@ export function registerGameRoom(io: Server) {
 				ts: Date.now(),
 				recipients: recipientIds,
 				recipientNames,
+				spectatorChat,
 			}
 
 			if (!isPrivate) {
@@ -218,6 +222,7 @@ export function registerGameRoom(io: Server) {
 				text,
 				recipients: recipientIds,
 				recipientNames,
+				spectatorChat,
 			}).catch(() => { /* ignore */ })
 		})
 
@@ -328,6 +333,14 @@ export function registerGameRoom(io: Server) {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			emit(io, d.gameCode, 'gr:mute-all', {})
+		})
+
+		// ── Mute player (GM only — mutes a single player's mic via LiveKit) ─
+		socket.on('gr:mute-player', (d: { gameCode: string; targetUserId: string }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			const target = state.players.find(p => p.userId === d.targetUserId)
+			if (target?.socketId) io.to(target.socketId).emit('gr:mute-player', {})
 		})
 
 		// ── Announcement ────────────────────────────────────────────────────
@@ -477,8 +490,8 @@ export function registerGameRoom(io: Server) {
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
-			d.playerIds.forEach(uid => {
-				const target = state!.players.find(p => p.userId === uid)
+			d.playerIds.forEach(playerId => {
+				const target = state!.players.find(p => p.userId === playerId)
 				if (target?.socketId) {
 					io.to(target.socketId).emit('gr:breakout-invited', {
 						roomId: d.roomId, roomName: br.name, imageUrl: br.imageUrl,
@@ -505,8 +518,8 @@ export function registerGameRoom(io: Server) {
 					if (!s) return
 					const r = s.breakoutRooms.find(r => r.id === d.roomId)
 					if (!r) return
-					r.playerIds.forEach(uid => {
-						const pl = s.players.find(p => p.userId === uid)
+					r.playerIds.forEach(playerId => {
+						const pl = s.players.find(p => p.userId === playerId)
 						if (pl) {
 							pl.breakoutRoomId = null
 							if (pl.socketId) io.to(pl.socketId).emit('gr:breakout-return', {})
@@ -534,8 +547,8 @@ export function registerGameRoom(io: Server) {
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
-			br.playerIds.forEach(uid => {
-				const pl = state!.players.find(p => p.userId === uid)
+			br.playerIds.forEach(playerId => {
+				const pl = state!.players.find(p => p.userId === playerId)
 				if (pl) {
 					pl.breakoutRoomId = null
 					if (pl.socketId) io.to(pl.socketId).emit('gr:breakout-return', {})

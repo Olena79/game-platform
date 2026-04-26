@@ -66,8 +66,13 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 			token,
 			user: { id: user._id, name: user.name, surname: user.surname, email: user.email },
 		})
-	} catch {
-		res.status(500).json({ message: 'Server error' })
+	} catch (err: any) {
+		console.error('[register]', err)
+		if (err?.code === 11000) {
+			res.status(400).json({ message: 'EMAIL_EXISTS' })
+		} else {
+			res.status(500).json({ message: 'Server error' })
+		}
 	}
 })
 
@@ -97,7 +102,8 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 			token,
 			user: { id: user._id, name: user.name, surname: user.surname, email: user.email },
 		})
-	} catch {
+	} catch (err) {
+		console.error('[login]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })
@@ -143,7 +149,8 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
 			return
 		}
 		res.json({ id: user._id, name: user.name, surname: user.surname, email: user.email })
-	} catch {
+	} catch (err) {
+		console.error('[me]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })

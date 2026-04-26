@@ -7,6 +7,7 @@ export interface IGameMessage extends Document {
 	text: string
 	recipients: string[]
 	recipientNames: string[]
+	spectatorChat: boolean
 	createdAt: Date
 }
 
@@ -18,6 +19,7 @@ const GameMessageSchema = new Schema<IGameMessage>(
 		text:           { type: String, required: true },
 		recipients:     { type: [String], default: [] },
 		recipientNames: { type: [String], default: [] },
+		spectatorChat:  { type: Boolean, default: false },
 	},
 	{ timestamps: { createdAt: true, updatedAt: false } },
 )

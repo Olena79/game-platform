@@ -24,23 +24,24 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 const logoHtml = () => `
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
   <tr valign="middle">
-    <td valign="middle" style="padding-right:14px;">
+    <td valign="middle" style="padding-right:16px;">
       <table cellpadding="0" cellspacing="0" border="0"
-        style="width:52px;height:52px;border-radius:26px;border:2px solid #00ffe1;background:#0a0d20;text-align:center;">
+        style="width:58px;height:58px;border-radius:29px;border:1.5px solid #00ffe1;background:#0a0d20;text-align:center;
+               box-shadow:0 0 8px rgba(0,255,225,0.3),0 0 0 3px rgba(204,68,255,0.18);">
         <tr>
-          <td align="center" valign="middle" height="52"
-            style="text-align:center;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;color:#00ffe1;">
+          <td align="center" valign="middle" height="58"
+            style="text-align:center;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:900;color:#00ffe1;">
             G
           </td>
         </tr>
       </table>
     </td>
     <td valign="middle" style="vertical-align:middle;">
-      <p style="margin:0 0 1px;font-family:Arial,Helvetica,sans-serif;font-size:8px;color:#00ffe1;letter-spacing:4px;text-transform:uppercase;">CLUB</p>
-      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;line-height:1.2;">GAMES OF</p>
-      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#cc44ff;letter-spacing:0.5px;line-height:1.2;">SENSES</p>
-      <table cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;">
-        <tr><td style="width:170px;height:1px;background:#cc44ff;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <p style="margin:0 0 2px;font-family:Arial,Helvetica,sans-serif;font-size:8px;color:#00ffe1;letter-spacing:4px;text-transform:uppercase;">КЛУБ</p>
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;line-height:1.2;">ІГРИ</p>
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;color:#cc44ff;letter-spacing:0.5px;line-height:1.2;">СЕНСІВ</p>
+      <table cellpadding="0" cellspacing="0" border="0" style="margin-top:5px;">
+        <tr><td style="width:155px;height:1px;background:#cc44ff;font-size:0;line-height:0;">&nbsp;</td></tr>
       </table>
     </td>
   </tr>

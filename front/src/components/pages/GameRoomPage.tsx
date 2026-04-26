@@ -27,7 +27,7 @@ import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
 import { ImagePanel } from '../gameroom/ImagePanel'
-import { ChevronLeft, ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings } from 'lucide-react'
+import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
@@ -64,8 +64,8 @@ class RoomErrorBoundary extends Component<
 
 const MOBILE_REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
 
-function MobileBarBtn({ icon, label, active, onClick }: {
-	icon: React.ReactNode; label: string; active: boolean; onClick: () => void
+function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
+	icon: React.ReactNode; label: string; active: boolean; onClick: () => void; badge?: number
 }) {
 	return (
 		<button
@@ -73,7 +73,20 @@ function MobileBarBtn({ icon, label, active, onClick }: {
 			className='flex flex-col items-center justify-center gap-[4px] cursor-pointer transition-all flex-1 h-full'
 			style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)', background: active ? 'rgba(15,255,200,0.06)' : 'transparent' }}
 		>
-			<div style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)' }}>{icon}</div>
+			<div className='relative' style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)' }}>
+				{icon}
+				{badge > 0 && (
+					<span className='absolute flex items-center justify-center rounded-full font-[800]'
+						style={{
+							top: '-6px', right: '-8px',
+							minWidth: '16px', height: '16px',
+							padding: '0 3px',
+							background: '#ff3850', color: '#fff', fontSize: '9px',
+						}}>
+						{badge > 9 ? '9+' : badge}
+					</span>
+				)}
+			</div>
 			<span className='text-[10px] uppercase tracking-[0.06em]'>{label}</span>
 		</button>
 	)
@@ -97,6 +110,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		markDMRead,
 		shouldMute,
 		clearMuteSignal,
+		newPublicMsgSignal,
 		breakoutInvite,
 		setBreakoutInvite,
 		joinBreakout,
@@ -111,6 +125,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		payBank,
 		setInfluence,
 		muteAll,
+		mutePlayer,
 		announce,
 		setTimer,
 		startTimer,
@@ -154,14 +169,32 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 
 	// ── Mobile resize detection ──────────────────────────────────────────────────
 	useEffect(() => {
+		let timer: ReturnType<typeof setTimeout>
 		const handler = () => {
-			const mobile = window.innerWidth < 768
-			setIsMobile(mobile)
-			if (!mobile) setMobilePanelOpen(null)
+			clearTimeout(timer)
+			timer = setTimeout(() => {
+				const mobile = window.innerWidth < 768
+				setIsMobile(mobile)
+				if (!mobile) setMobilePanelOpen(null)
+			}, 150)
 		}
 		window.addEventListener('resize', handler)
-		return () => window.removeEventListener('resize', handler)
+		return () => { window.removeEventListener('resize', handler); clearTimeout(timer) }
 	}, [])
+
+	// ── Unread chat counter ───────────────────────────────────────────────────────
+	const [unreadChat, setUnreadChat] = useState(0)
+	const chatVisible = (!isMobile && panelOpen) || (isMobile && mobilePanelOpen === 'chat')
+
+	useEffect(() => {
+		// Skip initial mount (signal === 0 means no message yet)
+		if (newPublicMsgSignal === 0) return
+		if (!chatVisible) setUnreadChat(prev => prev + 1)
+	}, [newPublicMsgSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect(() => {
+		if (chatVisible) setUnreadChat(0)
+	}, [chatVisible])
 
 	// ── Wake Lock — prevent screen sleep ────────────────────────────────────────
 	useEffect(() => {
@@ -377,6 +410,20 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 						{!isGM && me && (
 							<button
 								onClick={() => setShowCoin(true)}
+								className='flex items-center gap-[4px] px-[10px] py-[4px] rounded-[6px] text-[10px] cursor-pointer transition-all'
+								style={{
+									background: 'rgba(200,168,48,0.06)',
+									border: '1px solid rgba(200,168,48,0.2)',
+									color: 'rgba(200,168,48,0.8)',
+								}}
+							>
+								<CircleDollarSign size={11} /> {me.coins}
+							</button>
+						)}
+						{/* Bank button (GM only) */}
+						{isGM && state.coinsPerPlayer > 0 && (
+							<button
+								onClick={() => setShowCoin(true)}
 								className='px-[10px] py-[4px] rounded-[6px] text-[10px] cursor-pointer transition-all'
 								style={{
 									background: 'rgba(200,168,48,0.06)',
@@ -384,7 +431,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 									color: 'rgba(200,168,48,0.8)',
 								}}
 							>
-								🪙 {me.coins}
+								🏦 {state.bankCoins}
 							</button>
 						)}
 					</div>
@@ -409,6 +456,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onImageClose={() => showImage(null)}
 							onChangeImage={url => showImage(url)}
 							playerReactions={playerReactions}
+							onMutePlayer={mutePlayer}
 						/>
 					) : (
 						<GridView
@@ -426,6 +474,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onLeave={handleLeave}
 							onSetRole={setRole}
 							onSetInfluence={setInfluence}
+							onMutePlayer={mutePlayer}
 							playerReactions={playerReactions}
 						/>
 					)}
@@ -435,15 +484,24 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 				{!isMobile && (
 					<button
 						onClick={() => setPanelOpen(v => !v)}
-						title={panelOpen ? 'Згорнути панель' : 'Розгорнути панель'}
-						className='flex-shrink-0 w-[22px] flex items-center justify-center cursor-pointer transition-all hover:brightness-150'
+						title={panelOpen ? 'Згорнути чат' : 'Відкрити чат'}
+						className='flex-shrink-0 w-[28px] flex flex-col items-center justify-center gap-[5px] cursor-pointer transition-all hover:brightness-125'
 						style={{
-							background: '#0b0d1a',
+							background: unreadChat > 0 && !panelOpen ? 'rgba(255,56,80,0.06)' : '#0b0d1a',
 							borderLeft: '1px solid #1c2035',
-							color: 'rgba(68,170,255,0.65)',
+							color: unreadChat > 0 && !panelOpen ? '#ff5870' : 'rgba(100,170,255,0.9)',
 						}}
 					>
-						{panelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+						{panelOpen ? <ChevronRight size={16} /> : <MessageSquare size={16} />}
+						{unreadChat > 0 && !panelOpen && (
+							<span className='flex items-center justify-center rounded-full font-[800]'
+								style={{
+									minWidth: '18px', height: '18px', padding: '0 3px',
+									background: '#ff3850', color: '#fff', fontSize: '10px',
+								}}>
+								{unreadChat > 9 ? '9+' : unreadChat}
+							</span>
+						)}
 					</button>
 				)}
 
@@ -503,6 +561,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 						label='Чат'
 						active={mobilePanelOpen === 'chat'}
 						onClick={() => setMobilePanelOpen(p => p === 'chat' ? null : 'chat')}
+						badge={mobilePanelOpen !== 'chat' ? unreadChat : 0}
 					/>
 					{isGM && (
 						<MobileBarBtn
@@ -634,7 +693,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							style={{
 								background: 'rgba(15,17,32,0.5)',
 								border: '1px solid rgba(68,170,255,0.12)',
-								color: 'rgba(,140,220,0.5)',
+								color: 'rgba(100,140,220,0.5)',
 							}}
 						>
 							Відмова

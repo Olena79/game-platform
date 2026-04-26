@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /games
+Disallow: /room/
+Disallow: /create-game
+Disallow: /auth
+
+Sitemap: https://game-platform-red.vercel.app/sitemap.xml

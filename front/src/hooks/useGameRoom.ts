@@ -26,6 +26,7 @@ export function useGameRoom(rawCode: string) {
 	const [privateChats, setPrivateChats] = useState<Record<string, ChatMessage[]>>({})
 	const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
 	const [shouldMute, setShouldMute] = useState(false)
+	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
 
@@ -105,6 +106,7 @@ export function useGameRoom(rawCode: string) {
 				setState(prev => prev
 					? { ...prev, messages: [...prev.messages.slice(-99), msg] }
 					: prev)
+				setNewPublicMsgSignal(n => n + 1)
 			}
 		})
 
@@ -122,6 +124,7 @@ export function useGameRoom(rawCode: string) {
 		})
 
 		socket.on('gr:mute-all', () => setShouldMute(true))
+		socket.on('gr:mute-player', () => setShouldMute(true))
 
 		socket.on('gr:reactions', (r: Record<string, number>) => {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
@@ -144,6 +147,8 @@ export function useGameRoom(rawCode: string) {
 			socket.disconnect()
 			socketRef.current = null
 			setConnected(false)
+			Object.values(reactionTimersRef.current).forEach(clearTimeout)
+			reactionTimersRef.current = {}
 		}
 	}, [resolved?.gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,6 +185,7 @@ export function useGameRoom(rawCode: string) {
 		state, connected, me, isGM, myId, inBreakout, isSpectatorJoin, error, connStatus, playerReactions,
 		privateChats, unreadDMs, markDMRead,
 		shouldMute, clearMuteSignal,
+		newPublicMsgSignal,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,
@@ -196,6 +202,7 @@ export function useGameRoom(rawCode: string) {
 		payBank:       (amount: number)           => emit('gr:coins-bank',     { amount }),
 		setInfluence:  (targetUserId: string, delta: number) => emit('gr:influence', { targetUserId, delta }),
 		muteAll:       ()                         => emit('gr:mute-all'),
+		mutePlayer:    (targetUserId: string)     => emit('gr:mute-player', { targetUserId }),
 		announce:      (text: string | null)      => emit('gr:announce',       { text }),
 		setTimer:      (label: string, seconds: number) => emit('gr:timer',   { action: 'set', label, seconds }),
 		startTimer:    ()                         => emit('gr:timer',          { action: 'start' }),

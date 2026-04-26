@@ -3,21 +3,21 @@ import { Link, NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 const LogoSvg = () => (
-	<svg width="210" height="50" viewBox="0 0 210 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-		<circle cx="25" cy="25" r="21" stroke="#cc44ff" strokeWidth="0.9" fill="none" strokeDasharray="3 2"
+	<svg width="210" height="58" viewBox="0 0 260 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+		<circle cx="33" cy="36" r="31" stroke="#cc44ff" strokeWidth="1" fill="none" strokeDasharray="3.5 2.5"
 			style={{ filter: 'drop-shadow(0 0 3px rgba(204,68,255,0.4))' }} />
-		<circle cx="25" cy="25" r="17" stroke="#00ffe1" strokeWidth="1.4" fill="none"
+		<circle cx="33" cy="36" r="25" stroke="#00ffe1" strokeWidth="1.6" fill="none"
 			style={{ filter: 'drop-shadow(0 0 5px rgba(0,255,225,0.5))' }} />
-		<circle cx="25" cy="25" r="13" fill="#0a0d20" />
-		<text x="25" y="30" textAnchor="middle" fontFamily="Orbitron,sans-serif" fontSize="12" fontWeight="900" fill="#00ffe1"
-			style={{ filter: 'drop-shadow(0 0 6px #00ffe1)' }}>G</text>
-		<text x="55" y="14" fontFamily="Syncopate,sans-serif" fontSize="7" fontWeight="400" fill="#00ffe1" letterSpacing="3"
-			style={{ filter: 'drop-shadow(0 0 4px rgba(0,255,225,0.5))' }}>CLUB</text>
-		<text x="55" y="27" fontFamily="Orbitron,sans-serif" fontSize="11.5" fontWeight="700" fill="#ffffff"
-			style={{ filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.25))' }}>GAMES OF</text>
-		<text x="55" y="40" fontFamily="Orbitron,sans-serif" fontSize="11.5" fontWeight="700" fill="#cc44ff"
-			style={{ filter: 'drop-shadow(0 0 7px rgba(204,68,255,0.6))' }}>SENSES</text>
-		<line x1="55" y1="45" x2="202" y2="45" stroke="#cc44ff" strokeWidth="0.8"
+		<circle cx="33" cy="36" r="19" fill="#0a0d20" />
+		<text x="33" y="41" textAnchor="middle" fontFamily="Orbitron,sans-serif" fontSize="17" fontWeight="900" fill="#00ffe1"
+			style={{ filter: 'drop-shadow(0 0 8px #00ffe1)' }}>G</text>
+		<text x="74" y="20" fontFamily="Syncopate,sans-serif" fontSize="9" fontWeight="400" fill="#00ffe1" letterSpacing="4"
+			style={{ filter: 'drop-shadow(0 0 5px rgba(0,255,225,0.5))' }}>КЛУБ</text>
+		<text x="74" y="42" fontFamily="Orbitron,sans-serif" fontSize="18" fontWeight="700" fill="#ffffff"
+			style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.2))' }}>ІГРИ</text>
+		<text x="74" y="62" fontFamily="Orbitron,sans-serif" fontSize="18" fontWeight="700" fill="#cc44ff"
+			style={{ filter: 'drop-shadow(0 0 8px rgba(204,68,255,0.6))' }}>СЕНСІВ</text>
+		<line x1="74" y1="67" x2="232" y2="67" stroke="#cc44ff" strokeWidth="0.9"
 			style={{ filter: 'drop-shadow(0 0 3px #cc44ff)' }} />
 	</svg>
 )

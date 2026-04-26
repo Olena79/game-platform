@@ -21,6 +21,7 @@ export interface ChatMessage {
 	ts: number
 	recipients: string[]      // empty = public; userIds of intended recipients
 	recipientNames: string[]  // display names, for UI
+	spectatorChat?: boolean   // true = sent from spectator tab
 }
 
 export interface VoteOption {

@@ -22,7 +22,7 @@ import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap } from 'lucide-react'
 import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
 import type { RoomPlayer, GameRoomState } from './types'
 
@@ -43,6 +43,7 @@ interface Props {
 	onLeave: () => void
 	onSetRole: (targetUserId: string, role: string) => void
 	onSetInfluence: (targetUserId: string, delta: number) => void
+	onMutePlayer?: (targetUserId: string) => void
 	playerReactions?: Record<string, { emoji: string; key: number }>
 }
 
@@ -71,10 +72,11 @@ function computeGrid(n: number, w: number, h: number) {
 	return { cols: bestCols, rows: Math.ceil(n / bestCols) }
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reaction, gameStarted }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
+	onMutePlayer?: (uid: string) => void
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
 }) {
@@ -175,7 +177,18 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 			<div className='flex-shrink-0 px-[7px] py-[5px] flex items-center justify-between gap-[4px]'
 				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				<div className='flex-1 min-w-0'>
-					{editRole ? (
+					{player.isGamemaster ? (
+						<>
+							<span className='text-[10px] font-[700] px-[5px] py-[1px] rounded-[4px] self-start'
+								style={{ background: 'rgba(15,255,200,0.08)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.2)' }}>
+								Ігромайстер
+							</span>
+							<div className='text-[10px] truncate'
+								style={{ color: speaking ? 'rgba(15,255,200,0.75)' : 'rgba(180,200,255,0.55)' }}>
+								{player.name}
+							</div>
+						</>
+					) : editRole ? (
 						<input
 							autoFocus
 							value={roleInput}
@@ -209,15 +222,23 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, reactio
 						</>
 					)}
 				</div>
-				<div className='flex gap-[5px] flex-shrink-0 text-[10px]' style={{ color: '#4a5070' }}>
-					{player.coins > 0 && <span>🪙{player.coins}</span>}
-					{player.influence > 0 && <span>⚡{player.influence}</span>}
+				<div className='flex gap-[5px] flex-shrink-0 text-[10px] items-center' style={{ color: '#4a5070' }}>
+					{player.coins > 0 && <span className='flex items-center gap-[1px]'><CircleDollarSign size={9} />{player.coins}</span>}
+					{player.influence > 0 && <span className='flex items-center gap-[1px]'><Zap size={9} />{player.influence}</span>}
 				</div>
 			</div>
 
 			{/* GM actions overlay */}
 			{isGM && !player.isGamemaster && (
 				<div className='absolute top-[4px] right-[4px] flex gap-[2px]'>
+					{onMutePlayer && !player.isSpectator && (
+						<button onClick={() => onMutePlayer(player.userId)}
+							className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
+							style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#ff3850' }}
+							title='Вимкнути мік'>
+							<VolumeX size={9} strokeWidth={2} />
+						</button>
+					)}
 					<button onClick={() => onSetInfluence(player.userId, 1)}
 						className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
 						style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#4a5070' }}
@@ -249,6 +270,7 @@ export const GridView = ({
 	micOn, camOn, onToggleMic, onToggleCam,
 	onReact, onRaiseHand, onLeave,
 	onSetRole, onSetInfluence,
+	onMutePlayer,
 	playerReactions = {},
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
@@ -260,18 +282,12 @@ export const GridView = ({
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
 
-	// Debounced active speaker — stays pinned for 3s after going silent
+	// Track active speaker — last known speaker stays first (Google Meet style)
 	const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
-	const speakerClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const currentSpeaker = participants.filter(p => p.isSpeaking)[0] ?? null
 	useEffect(() => {
-		if (currentSpeaker) {
-			if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current)
-			setActiveSpeakerId(currentSpeaker.identity)
-		} else {
-			speakerClearTimer.current = setTimeout(() => setActiveSpeakerId(null), 3000)
-		}
-		return () => { if (speakerClearTimer.current) clearTimeout(speakerClearTimer.current) }
+		if (currentSpeaker) setActiveSpeakerId(currentSpeaker.identity)
+		// Silent: keep last speaker at position 0 — never reset
 	}, [currentSpeaker?.identity]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Active speaker moves to position 0, rest of order stays stable
@@ -410,6 +426,7 @@ export const GridView = ({
 						myId={myId}
 						onSetRole={onSetRole}
 						onSetInfluence={onSetInfluence}
+						onMutePlayer={onMutePlayer}
 						reaction={playerReactions[p.userId]}
 						gameStarted={state.status === 'started'}
 					/>

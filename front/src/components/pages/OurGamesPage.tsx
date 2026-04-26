@@ -271,11 +271,11 @@ export const OurGamesPage = () => {
 		)
 	}
 
-	const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-		{ key: 'date',        label: 'Найближча дата' },
+	const SORT_OPTIONS: { key: SortKey; label: string; purple?: boolean }[] = [
+		{ key: 'date',         label: '↗ Найближча дата' },
 		{ key: 'players_asc',  label: '↑ Гравці' },
 		{ key: 'players_desc', label: '↓ Гравці' },
-		{ key: 'likes',        label: '♥ Популярні' },
+		{ key: 'likes',        label: '♥ Популярні', purple: true },
 	]
 
 	const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
@@ -316,77 +316,90 @@ export const OurGamesPage = () => {
 				</div>
 
 				{/* ── Search / Sort / Filter bar ─────────────────────────────────── */}
-				<div className='flex flex-col gap-[10px] mb-[28px]'>
+				<div className='flex flex-col gap-[12px] mb-[28px]'>
 					{/* Search */}
 					<div className='relative'>
 						<Search
 							size={14}
 							className='absolute left-[12px] top-1/2 -translate-y-1/2 pointer-events-none'
-							style={{ color: 'rgba(68,170,255,0.45)' }}
+							style={{ color: '#3a4060' }}
 						/>
 						<input
 							value={searchQuery}
 							onChange={e => setSearchQuery(e.target.value)}
 							placeholder='Пошук за назвою або ігромайстером...'
-							className='w-full pl-[36px] pr-[14px] py-[10px] rounded-[10px] text-[13px] focus:outline-none transition-all'
+							className='w-full pl-[38px] pr-[14px] py-[10px] rounded-[8px] text-[13px] focus:outline-none transition-all'
 							style={{
-								background: 'rgba(8,12,30,0.7)',
-								border: '1px solid rgba(68,170,255,0.18)',
-								color: 'rgba(180,200,255,0.85)',
+								background: 'transparent',
+								border: '1px solid #1e2235',
+								color: '#7a80a0',
+							}}
+							onFocus={e => {
+								e.currentTarget.style.borderColor = '#2e3250'
+								e.currentTarget.style.color = '#dde1f0'
+							}}
+							onBlur={e => {
+								e.currentTarget.style.borderColor = '#1e2235'
+								e.currentTarget.style.color = searchQuery ? '#dde1f0' : '#7a80a0'
 							}}
 						/>
 					</div>
 
-					{/* Sort + Filter in one row */}
-					<div className='flex flex-wrap items-center gap-[6px]'>
-						{/* Sort label */}
-						<span className='text-[11px] mr-[2px]' style={{ color: 'rgba(100,130,200,0.5)' }}>Сорт:</span>
-						{SORT_OPTIONS.map(({ key, label }) => (
-							<button
-								key={key}
-								onClick={() => setSortKey(key)}
-								className='px-[10px] py-[5px] rounded-[8px] text-[11px] font-[500] transition-all cursor-pointer'
-								style={sortKey === key
-									? { background: 'rgba(68,170,255,0.15)', border: '1px solid rgba(68,170,255,0.38)', color: 'rgba(100,180,255,0.95)' }
-									: { background: 'rgba(8,12,30,0.6)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }
-								}
-							>
-								{label}
-							</button>
-						))}
+					{/* Sort row */}
+					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px]'>
+						<span className='text-[12px] flex-shrink-0 md:min-w-[52px]' style={{ color: '#3a4060' }}>Сорт:</span>
+						<div className='flex flex-wrap gap-[6px]'>
+							{SORT_OPTIONS.map(({ key, label, purple }) => {
+								const isActive = sortKey === key
+								return (
+									<button
+										key={key}
+										onClick={() => setSortKey(key)}
+										className='px-[14px] py-[5px] rounded-[20px] text-[12px] font-[500] transition-all cursor-pointer whitespace-nowrap'
+										style={isActive
+											? purple
+												? { background: 'rgba(204,68,255,0.05)', border: '1px solid rgba(204,68,255,0.22)', color: '#cc44ff' }
+												: { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
+											: { background: 'transparent', border: '1px solid #1e2235', color: '#4a5070' }
+										}
+									>
+										{label}
+									</button>
+								)
+							})}
+						</div>
+					</div>
 
-						{/* Divider */}
-						<span className='w-[1px] h-[16px] mx-[4px] flex-shrink-0' style={{ background: 'rgba(68,170,255,0.12)' }} />
-
-						{/* Filter label */}
-						<span className='text-[11px] mr-[2px]' style={{ color: 'rgba(100,130,200,0.5)' }}>Фільтр:</span>
-						{FILTER_OPTIONS.map(({ key, label }) => {
-							const on = activeFilters.has(key)
-							return (
+					{/* Filter row */}
+					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px] md:pt-0 pt-[10px] md:border-t-0 border-t border-[#111320]'>
+						<span className='text-[12px] flex-shrink-0 md:min-w-[52px]' style={{ color: '#3a4060' }}>Фільтр:</span>
+						<div className='flex flex-wrap gap-[6px]'>
+							{FILTER_OPTIONS.map(({ key, label }) => {
+								const on = activeFilters.has(key)
+								return (
+									<button
+										key={key}
+										onClick={() => toggleFilter(key)}
+										className='px-[14px] py-[5px] rounded-[20px] text-[12px] font-[500] transition-all cursor-pointer whitespace-nowrap'
+										style={on
+											? { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
+											: { background: 'transparent', border: '1px solid #1e2235', color: '#4a5070' }
+										}
+									>
+										{label}
+									</button>
+								)
+							})}
+							{activeFilters.size > 0 && (
 								<button
-									key={key}
-									onClick={() => toggleFilter(key)}
-									className='px-[10px] py-[5px] rounded-[8px] text-[11px] font-[500] transition-all cursor-pointer'
-									style={on
-										? { background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.32)', color: '#0fffc8' }
-										: { background: 'rgba(8,12,30,0.6)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }
-									}
+									onClick={() => setActiveFilters(new Set())}
+									className='px-[12px] py-[5px] rounded-[20px] text-[12px] transition-all cursor-pointer'
+									style={{ color: 'rgba(255,95,160,0.6)', border: '1px solid rgba(255,95,160,0.18)', background: 'transparent' }}
 								>
-									{label}
+									✕ Скинути
 								</button>
-							)
-						})}
-
-						{/* Clear filters */}
-						{activeFilters.size > 0 && (
-							<button
-								onClick={() => setActiveFilters(new Set())}
-								className='px-[8px] py-[5px] rounded-[8px] text-[11px] transition-all cursor-pointer ml-[2px]'
-								style={{ color: 'rgba(255,95,160,0.6)', border: '1px solid rgba(255,95,160,0.18)', background: 'rgba(255,95,160,0.05)' }}
-							>
-								✕ Скинути
-							</button>
-						)}
+							)}
+						</div>
 					</div>
 				</div>
 
@@ -663,9 +676,9 @@ const GameCard = ({
 				</button>
 			</div>
 
-			{/* Edit + Delete buttons */}
+			{/* Edit + Delete buttons — top-left so they don't overlap the heart (top-right) */}
 			{isLoggedIn && (
-				<div className='absolute top-[14px] right-[14px] flex gap-[6px]'>
+				<div className='absolute top-[14px] left-[14px] flex gap-[6px]'>
 					<button
 						onClick={onEdit}
 						disabled={editLoading}
@@ -694,7 +707,7 @@ const GameCard = ({
 			)}
 
 			{/* Title + creator */}
-			<div className='pr-[70px]'>
+			<div>
 				<h3 className='text-[17px] font-[700] text-white leading-[1.3] mb-[4px]'>
 					<span className='text-[rgba(180,200,255,0.65)] text-[13px] font-[400]'>
 						{t('our_games.title_prefix')} —{' '}

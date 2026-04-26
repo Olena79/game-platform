@@ -13,6 +13,33 @@
 		background: #03040f;
 		@apply text-[#e0e8ff] antialiased;
 		font-family: 'Inter', sans-serif;
+		overflow-x: hidden;
+	}
+
+	/* ── Custom scrollbars ─────────────────────────────────── */
+	/* Webkit (Chrome, Edge, Safari) */
+	::-webkit-scrollbar {
+		width: 4px;
+		height: 4px;
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background: rgba(68, 170, 255, 0.18);
+		border-radius: 3px;
+		transition: background 0.2s;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(68, 170, 255, 0.42);
+	}
+	::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+	/* Firefox */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(68, 170, 255, 0.18) transparent;
 	}
 }
 
