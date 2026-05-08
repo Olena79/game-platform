@@ -17,7 +17,9 @@
       "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
       "Read(//c/Program Files/Microsoft/Edge/Application/**)",
       "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --no-sandbox --disable-gpu --window-size=1200,630 --screenshot=C:/Users/foksy/Desktop/work/game-platform/front/public/og-image.png --hide-scrollbars file:///C:/Users/foksy/Desktop/work/game-platform/front/public/_og_convert.html)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(xargs grep *)",
+      "Bash(curl *)"
     ]
   }
 }

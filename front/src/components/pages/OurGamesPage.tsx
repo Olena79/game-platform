@@ -677,7 +677,7 @@ const GameCard = ({
 			</div>
 
 			{/* Edit + Delete buttons — top-left so they don't overlap the heart (top-right) */}
-			{isLoggedIn && (
+			{isCreator && (
 				<div className='absolute top-[14px] left-[14px] flex gap-[6px]'>
 					<button
 						onClick={onEdit}

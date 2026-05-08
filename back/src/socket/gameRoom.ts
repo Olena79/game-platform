@@ -8,6 +8,7 @@ import {
 
 const rooms = new Map<string, GameRoomState>()
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const observerSockets = new Map<string, string>() // gameCode → socketId
 
 function initials(name: string): string {
 	return name.split(' ').map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '??'
@@ -68,6 +69,7 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		title: game.title,
 		gamemasterId: String(game.creatorId),
 		shownImageUrl: game.coverImage || null,
+		hasObserver: false,
 	}
 	rooms.set(gameCode, state)
 	return state
@@ -208,8 +210,8 @@ export function registerGameRoom(io: Server) {
 			} else {
 				// Private: deliver only to sender + recipients (not stored in shared history)
 				socket.emit('gr:chat', msg)
-				recipientIds.forEach(uid => {
-					const target = state.players.find(p => p.userId === uid)
+				recipientIds.forEach(recipientId => {
+					const target = state.players.find(p => p.userId === recipientId)
 					if (target?.socketId) io.to(target.socketId).emit('gr:chat', msg)
 				})
 			}
@@ -347,7 +349,7 @@ export function registerGameRoom(io: Server) {
 		socket.on('gr:announce', (d: { gameCode: string; text: string | null }) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
-			state.announcement = d.text ? d.text.slice(0, 300) : null
+			state.announcement = d.text ? d.text.slice(0, 500) : null
 			pushState(io, state)
 		})
 
@@ -566,9 +568,77 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		})
 
+		// ── Observer connect ─────────────────────────────────────────────────────
+		// The observer is the GM's automated recording tool — not a person.
+		// Only the gamemaster is allowed to open an observer session.
+		socket.on('gr:observer-connect', async (d: { gameCode: string; userId?: string }) => {
+			const state = rooms.get(d.gameCode) ?? await loadRoom(d.gameCode)
+			if (!state) { socket.emit('gr:error', 'Room not found'); return }
+			if (!d.userId || d.userId !== state.gamemasterId) {
+				socket.emit('gr:error', 'Observer access denied')
+				return
+			}
+
+			curCode = d.gameCode
+			socket.join(`gr-${d.gameCode}`)
+
+			observerSockets.set(d.gameCode, socket.id)
+			state.hasObserver = true
+			pushState(io, state)
+			socket.emit('gr:state', state)
+
+			try {
+				const dbHistory = await GameMessage.find({
+					gameId: state.gameId,
+					recipients: { $size: 0 },
+				}).sort({ createdAt: 1 }).limit(100).lean()
+				const history = dbHistory.map(m => ({
+					id: String(m._id),
+					userId: m.senderId,
+					name: m.senderName,
+					text: m.text,
+					ts: (m.createdAt as Date).getTime(),
+					recipients: [],
+					recipientNames: [],
+					spectatorChat: m.spectatorChat ?? false,
+				}))
+				socket.emit('gr:chat-history', history)
+			} catch { /* non-critical */ }
+		})
+
+		// ── Recording control (GM → observer) ───────────────────────────────────
+		socket.on('gr:record-control', (d: { gameCode: string; action: 'start' | 'stop' }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			const obsSocketId = observerSockets.get(d.gameCode)
+			if (obsSocketId) io.to(obsSocketId).emit('gr:record-signal', { action: d.action })
+		})
+
+		// ── Recording status (observer → GM + room broadcast) ────────────────────
+		socket.on('gr:record-status', (d: { gameCode: string; status: string }) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || observerSockets.get(d.gameCode) !== socket.id) return
+			const gm = state.players.find(p => p.isGamemaster && p.connected)
+			if (gm?.socketId) io.to(gm.socketId).emit('gr:record-status', { status: d.status })
+			// Notify all room members when recording starts or ends
+			if (d.status === 'recording') emit(io, d.gameCode, 'gr:recording-notify', { active: true })
+			if (d.status === 'done' || d.status === 'error' || d.status === 'idle') {
+				emit(io, d.gameCode, 'gr:recording-notify', { active: false })
+			}
+		})
+
 		// ── Disconnect ──────────────────────────────────────────────────────
 		socket.on('disconnect', () => {
-			if (!curCode || !curUser) return
+			if (!curCode) return
+
+			if (observerSockets.get(curCode) === socket.id) {
+				observerSockets.delete(curCode)
+				const state = rooms.get(curCode)
+				if (state) { state.hasObserver = false; pushState(io, state) }
+				return
+			}
+
+			if (!curUser) return
 			const state = rooms.get(curCode)
 			if (!state) return
 			const p = state.players.find(p => p.userId === curUser)

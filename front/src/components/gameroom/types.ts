@@ -10,6 +10,7 @@ export interface RoomPlayer {
 	breakoutRoomId: string | null
 	isGamemaster: boolean
 	isSpectator: boolean
+	isObserver?: boolean
 	connected: boolean
 }
 
@@ -58,6 +59,7 @@ export interface RoomTimer {
 
 export interface GameRoomState {
 	gameCode: string
+	gameId: string
 	status: 'lobby' | 'started' | 'ended'
 	coinsPerPlayer: number
 	influencePerPlayer: number
@@ -76,4 +78,5 @@ export interface GameRoomState {
 	title: string
 	gamemasterId: string
 	shownImageUrl: string | null
+	hasObserver?: boolean
 }

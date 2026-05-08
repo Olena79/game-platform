@@ -40,29 +40,50 @@ export const GameStartOverlay = ({ onDone }: Props) => {
 				})}
 			</svg>
 
-			<div className='absolute w-[380px] h-[380px] rounded-full pointer-events-none'
-				style={{ background: 'radial-gradient(circle, rgba(130,80,255,0.14) 0%, transparent 70%)', animation: 'pulse 2s ease-in-out infinite' }} />
+			<div
+				className='absolute rounded-full pointer-events-none'
+				style={{
+					width: 'min(340px, 80vw)',
+					height: 'min(340px, 80vw)',
+					background: 'radial-gradient(circle, rgba(130,80,255,0.14) 0%, transparent 70%)',
+					animation: 'pulse 2s ease-in-out infinite',
+				}}
+			/>
 
-			<div className='relative flex flex-col items-center gap-[18px]'
+			<div className='relative flex flex-col items-center gap-[12px] sm:gap-[18px] px-[20px]'
 				style={{
 					opacity: phase === 'show' ? 1 : 0,
 					transform: phase === 'show' ? 'translateY(0) scale(1)' : 'translateY(22px) scale(0.94)',
 					transition: 'opacity 600ms ease, transform 600ms ease',
 				}}>
-				<span className='text-[11px] uppercase tracking-[4px] font-[600]' style={{ color: 'rgba(180,130,255,0.55)' }}>Games of Senses</span>
+				<span
+					className='text-[10px] uppercase font-[600] text-center'
+					style={{ color: 'rgba(180,130,255,0.55)', letterSpacing: 'clamp(2px, 1vw, 4px)' }}
+				>
+					Games of Senses
+				</span>
 				<div className='flex flex-col items-center gap-[6px]'>
-					<h1 className='font-amatic text-[68px] font-[700] leading-[1]'
-						style={{ color: '#c07fff', textShadow: '0 0 40px rgba(180,100,255,0.55)' }}>
+					<h1
+						className='font-amatic font-[700] leading-[1] text-center'
+						style={{
+							color: '#c07fff',
+							textShadow: '0 0 40px rgba(180,100,255,0.55)',
+							fontSize: 'clamp(36px, 10vw, 68px)',
+						}}
+					>
 						Гра починається!
 					</h1>
-					<p className='text-[18px] font-[300] tracking-[1px]' style={{ color: 'rgba(180,200,255,0.6)' }}>
+					<p
+						className='font-[300] tracking-[1px] text-center'
+						style={{ color: 'rgba(180,200,255,0.6)', fontSize: 'clamp(13px, 4vw, 18px)' }}
+					>
 						Вдалої гри усім учасникам
 					</p>
 				</div>
-				<div className='mt-[8px] flex items-center gap-[8px] text-[13px]' style={{ color: 'rgba(180,130,255,0.38)' }}>
-					<span className='w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
+				<div className='mt-[4px] sm:mt-[8px] flex items-center gap-[8px] text-[13px]' style={{ color: 'rgba(180,130,255,0.38)' }}>
+					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
 					<span>Хай щастить!</span>
-					<span className='w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
+					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
 				</div>
 			</div>
 		</div>

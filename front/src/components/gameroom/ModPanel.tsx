@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Megaphone, Vote, VolumeX, Settings, Square, ScrollText, Timer, DoorOpen, Pencil, Plus, Minus, Users } from 'lucide-react'
+import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Video, Square } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
 
 function useTimer(timer: RoomTimer | null) {
@@ -36,14 +36,25 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
+	onOpenObserver: () => void
+	onRecordStart: () => void
+	onRecordStop: () => void
+	recordStatus: string
 }
 
 export const ModPanel = ({
 	state, onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
+	onOpenObserver, onRecordStart, onRecordStop, recordStatus,
 }: Props) => {
 	const remaining = useTimer(state.timer)
 	const t = state.timer
+
+	const hasObserver = state.hasObserver ?? false
+	const isRecording = recordStatus === 'recording'
+	const isPrepared = recordStatus === 'prepared'
+	const isUploading = recordStatus === 'uploading'
+	const isDone = recordStatus === 'done'
 
 	const toolBtn = (
 		icon: React.ReactNode, label: string,
@@ -104,6 +115,49 @@ export const ModPanel = ({
 				{toolBtn(<VolumeX size={14} />, 'Мют всіх', onMuteAll, 'warn')}
 				{toolBtn(<DoorOpen size={14} />, `Кімнати (${state.breakoutRooms.length})`, onBreakout)}
 				{toolBtn(<Square size={14} />, 'Зупинити гру', onEndGame, 'danger')}
+			</div>
+
+			{/* Observer / Recording section */}
+			<div className='mt-[2px] flex flex-col gap-[5px]' style={{ borderTop: '1px solid #1c1f35', paddingTop: '8px' }}>
+				<span className='text-[10px] uppercase tracking-[0.1em]' style={{ color: '#4a5070' }}>Запис</span>
+
+				{!hasObserver ? (
+					<button onClick={onOpenObserver}
+						className='flex items-center justify-center gap-[6px] rounded-[8px] p-[8px] cursor-pointer transition-all hover:brightness-125'
+						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: 'rgba(74,80,112,1)' }}>
+						<Video size={13} />
+						<span className='text-[11px]'>Відкрити спостерігача</span>
+					</button>
+				) : (
+					<div className='flex flex-col gap-[5px]'>
+						<div className='flex items-center gap-[6px] px-[8px] py-[5px] rounded-[8px]'
+							style={{
+								background: isRecording ? 'rgba(255,56,80,0.08)' : 'rgba(15,255,200,0.06)',
+								border: isRecording ? '1px solid rgba(255,56,80,0.25)' : '1px solid rgba(15,255,200,0.2)',
+							}}>
+							<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
+							<span className='text-[11px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
+								{isRecording ? '● Запис активний' : isUploading ? `Завантаження...` : isDone ? '✓ Збережено' : isPrepared ? 'Готовий' : 'Спостерігач підключений'}
+							</span>
+						</div>
+						<div className='grid grid-cols-2 gap-[5px]'>
+							<button
+								onClick={onRecordStart}
+								disabled={!isPrepared}
+								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
+								style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
+								<span className='text-[10px]'>▶ Старт</span>
+							</button>
+							<button
+								onClick={onRecordStop}
+								disabled={!isRecording}
+								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
+								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
+								<span className='text-[10px]'>■ Стоп</span>
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	)

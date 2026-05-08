@@ -126,9 +126,6 @@ export const Header = () => {
 					>
 						{t('nav.games')}
 					</NavLink>
-					<a className='hover:text-white transition-colors cursor-pointer'>
-						{t('nav.about')}
-					</a>
 					<button
 						onClick={toggleLang}
 						className='flex items-center gap-[5px] hover:text-white transition-colors cursor-pointer'

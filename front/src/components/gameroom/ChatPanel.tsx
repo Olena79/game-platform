@@ -29,6 +29,10 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
+	onOpenObserver?: () => void
+	onRecordStart?: () => void
+	onRecordStop?: () => void
+	recordStatus?: string
 	showMod?: boolean
 	privateChats?: Record<string, ChatMessage[]>
 	unreadDMs?: Record<string, number>
@@ -42,6 +46,7 @@ export const ChatPanel = ({
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
+	onOpenObserver, onRecordStart, onRecordStop, recordStatus = '',
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
@@ -468,6 +473,10 @@ export const ChatPanel = ({
 					onTimerStop={onTimerStop}
 					onTimerClear={onTimerClear}
 					onBreakout={onBreakout}
+					onOpenObserver={onOpenObserver ?? (() => {})}
+					onRecordStart={onRecordStart ?? (() => {})}
+					onRecordStop={onRecordStop ?? (() => {})}
+					recordStatus={recordStatus}
 				/>
 			)}
 		</div>

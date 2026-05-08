@@ -10,6 +10,7 @@ export interface RoomPlayer {
 	breakoutRoomId: string | null
 	isGamemaster: boolean
 	isSpectator: boolean
+	isObserver?: boolean
 	connected: boolean
 }
 
@@ -77,4 +78,5 @@ export interface GameRoomState {
 	title: string
 	gamemasterId: string
 	shownImageUrl: string | null
+	hasObserver: boolean
 }

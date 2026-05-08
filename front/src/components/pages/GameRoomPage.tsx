@@ -144,9 +144,16 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		endBreakout,
 		showImage,
 		isSpectatorJoin,
+		recordStatus,
+		recordControl,
+		recordingActive,
 	} = room
 
 	const isSpectator = (me?.isSpectator ?? false) || isSpectatorJoin
+
+	const handleOpenObserver = () => {
+		window.open(`/room/${gameCode}/observe`, 'observer', 'width=1280,height=720,menubar=no,toolbar=no')
+	}
 
 	const { token: authToken } = useAuth()
 	const { localParticipant } = useLocalParticipant()
@@ -320,6 +327,17 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 				isGM={isGM}
 				onClose={() => announce(null)}
 			/>
+
+			{/* Recording active banner */}
+			{recordingActive && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px]'
+					style={{ background: 'rgba(255,56,80,0.12)', borderBottom: '1px solid rgba(255,56,80,0.25)' }}>
+					<span style={{ color: '#ff3850', fontSize: '11px' }}>●</span>
+					<span style={{ color: 'rgba(255,56,80,0.9)', fontSize: '12px', fontWeight: 600 }}>
+						Ведеться відеозапис цієї кімнати
+					</span>
+				</div>
+			)}
 
 			{/* Lobby / restart button */}
 			{(state.status === 'lobby' || state.status === 'ended') && isGM && (
@@ -532,6 +550,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onTimerStop={stopTimer}
 							onTimerClear={clearTimer}
 							onBreakout={() => setShowBreakout(true)}
+							onOpenObserver={handleOpenObserver}
+							onRecordStart={() => recordControl('start')}
+							onRecordStop={() => recordControl('stop')}
+							recordStatus={recordStatus}
 							privateChats={privateChats}
 							unreadDMs={unreadDMs}
 							onMarkDMRead={markDMRead}
@@ -658,6 +680,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 								onTimerStop={stopTimer}
 								onTimerClear={clearTimer}
 								onBreakout={() => { setShowBreakout(true); setMobilePanelOpen(null) }}
+								onOpenObserver={handleOpenObserver}
+								onRecordStart={() => recordControl('start')}
+								onRecordStop={() => recordControl('stop')}
+								recordStatus={recordStatus}
 							/>
 						</div>
 					)}

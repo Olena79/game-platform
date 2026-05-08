@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
-import { Gamepad2, Info, LogIn, LogOut, Play } from 'lucide-react'
+import { Gamepad2, LogIn, LogOut, Play } from 'lucide-react'
 import { Modal } from '../minicomponents/Modal'
 
 type NavBtnProps = {
@@ -56,11 +56,6 @@ export const MobileBottomNav = () => {
 					<span className='text-[10px] uppercase tracking-[0.06em]'>{t('nav.games')}</span>
 				</NavLink>
 
-				{/* про нас */}
-				<NavBtn
-					icon={<Info size={20} strokeWidth={1.6} />}
-					label={t('nav.about')}
-				/>
 
 				{/* вхід / вихід */}
 				{isLoggedIn ? (

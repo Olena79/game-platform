@@ -27,6 +27,8 @@ export function useGameRoom(rawCode: string) {
 	const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
 	const [shouldMute, setShouldMute] = useState(false)
 	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
+	const [recordStatus, setRecordStatus] = useState<string>('')
+	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
 
@@ -141,6 +143,8 @@ export function useGameRoom(rawCode: string) {
 		socket.on('gr:breakout-invited', (d: BreakoutInvite) => setBreakoutInvite(d))
 		socket.on('gr:breakout-return', () => setLkBreakout(null))
 		socket.on('gr:end-anim', () => setEndAnim(true))
+		socket.on('gr:record-status', (d: { status: string }) => setRecordStatus(d.status))
+		socket.on('gr:recording-notify', (d: { active: boolean }) => setRecordingActive(d.active))
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
 
 		return () => {
@@ -186,6 +190,8 @@ export function useGameRoom(rawCode: string) {
 		privateChats, unreadDMs, markDMRead,
 		shouldMute, clearMuteSignal,
 		newPublicMsgSignal,
+		recordStatus,
+		recordingActive,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,
@@ -223,6 +229,7 @@ export function useGameRoom(rawCode: string) {
 		inviteBreakout:(roomId: string, playerIds: string[]) =>
 			emit('gr:breakout-invite', { roomId, playerIds }),
 		endBreakout:   (roomId: string)           => emit('gr:breakout-end',   { roomId }),
-		showImage:     (imageUrl: string | null)  => emit('gr:image-show',     { imageUrl }),
+		showImage:       (imageUrl: string | null)  => emit('gr:image-show',     { imageUrl }),
+		recordControl:   (action: 'start' | 'stop') => emit('gr:record-control', { action }),
 	}
 }

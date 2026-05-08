@@ -11,7 +11,9 @@ import { AuthPage } from './components/pages/AuthPage'
 import { GamePage } from './components/pages/GamePage'
 import { CreateGamePage } from './components/pages/CreateGamePage'
 import { OurGamesPage } from './components/pages/OurGamesPage'
+// import { AboutPage } from './components/pages/AboutPage'
 import { GameRoomPage } from './components/pages/GameRoomPage'
+import { ObserverPage } from './components/pages/ObserverPage'
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
@@ -27,7 +29,10 @@ const Stars = () => {
 
 		const colors = ['#fff', '#4af', '#c07fff', '#0fffc8', '#ff5fa0']
 		for (let i = 0; i < 180; i++) {
-			const ci = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+			const ci = document.createElementNS(
+				'http://www.w3.org/2000/svg',
+				'circle',
+			)
 			const x = Math.random() * 100
 			const y = Math.random() * 100
 			const r = Math.random() * 1.2 + 0.2
@@ -43,10 +48,17 @@ const Stars = () => {
 			svg.appendChild(ci)
 		}
 		container.appendChild(svg)
-		return () => { container.innerHTML = '' }
+		return () => {
+			container.innerHTML = ''
+		}
 	}, [])
 
-	return <div ref={ref} className='fixed inset-0 z-0 pointer-events-none overflow-hidden' />
+	return (
+		<div
+			ref={ref}
+			className='fixed inset-0 z-0 pointer-events-none overflow-hidden'
+		/>
+	)
 }
 
 const SiteLayout = () => (
@@ -62,6 +74,7 @@ const SiteLayout = () => (
 				<Route path='/games' element={<OurGamesPage />} />
 				<Route path='/create-game' element={<CreateGamePage />} />
 				<Route path='/create-game/:id' element={<CreateGamePage />} />
+				{/* <Route path='/about' element={<AboutPage />} /> */}
 			</Routes>
 		</main>
 		<Footer />
@@ -75,6 +88,8 @@ const App = () => {
 	const content = (
 		<Router>
 			<Routes>
+				{/* Full-screen observer window — must be before /room/:code */}
+				<Route path='/room/:code/observe' element={<ObserverPage />} />
 				{/* Full-screen game room — no header/footer */}
 				<Route path='/room/:code' element={<GameRoomPage />} />
 				{/* All other pages */}
@@ -83,7 +98,11 @@ const App = () => {
 		</Router>
 	)
 	if (!GOOGLE_CLIENT_ID) return content
-	return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{content}</GoogleOAuthProvider>
+	return (
+		<GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+			{content}
+		</GoogleOAuthProvider>
+	)
 }
 
 export default App
