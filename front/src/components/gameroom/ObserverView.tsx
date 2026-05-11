@@ -51,7 +51,7 @@ export const ObserverView = ({
 	const isError     = recordingStatus === 'error'
 
 	return (
-		<div className='flex flex-col h-screen w-screen overflow-hidden' style={{ background: '#07080f', color: '#dde1f0' }}>
+		<div className='flex flex-col w-screen h-screen overflow-hidden' style={{ background: '#07080f', color: '#dde1f0' }}>
 
 			{/* ── Recording bar ── */}
 			<div className='flex-shrink-0 flex items-center gap-[10px] px-[14px] py-[6px]'

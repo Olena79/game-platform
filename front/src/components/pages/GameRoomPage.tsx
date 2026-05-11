@@ -64,16 +64,19 @@ class RoomErrorBoundary extends Component<
 
 const MOBILE_REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
 
+const ROOM_INACTIVE = 'rgba(175,190,240,0.75)'
+const ROOM_ACTIVE = '#0fffc8'
+
 function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 	icon: React.ReactNode; label: string; active: boolean; onClick: () => void; badge?: number
 }) {
 	return (
 		<button
 			onClick={onClick}
-			className='flex flex-col items-center justify-center gap-[4px] cursor-pointer transition-all flex-1 h-full'
-			style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)', background: active ? 'rgba(15,255,200,0.06)' : 'transparent' }}
+			className='flex flex-col items-center justify-center gap-[5px] cursor-pointer transition-all flex-1 h-full'
+			style={{ color: active ? ROOM_ACTIVE : ROOM_INACTIVE, background: active ? 'rgba(15,255,200,0.1)' : 'transparent' }}
 		>
-			<div className='relative' style={{ color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)' }}>
+			<div className='relative' style={{ color: active ? ROOM_ACTIVE : ROOM_INACTIVE }}>
 				{icon}
 				{badge > 0 && (
 					<span className='absolute flex items-center justify-center rounded-full font-[800]'
@@ -81,13 +84,13 @@ function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 							top: '-6px', right: '-8px',
 							minWidth: '16px', height: '16px',
 							padding: '0 3px',
-							background: '#ff3850', color: '#fff', fontSize: '9px',
+							background: '#ff3850', color: '#fff', fontSize: '10px',
 						}}>
 						{badge > 9 ? '9+' : badge}
 					</span>
 				)}
 			</div>
-			<span className='text-[10px] uppercase tracking-[0.06em]'>{label}</span>
+			<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
 		</button>
 	)
 }
@@ -316,7 +319,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 				background: '#07080f',
 				color: '#dde1f0',
 				fontFamily: "'Segoe UI', sans-serif",
-				fontSize: '13px',
+				fontSize: '14px',
 			}}
 		>
 			<RoomAudioRenderer />
@@ -565,21 +568,27 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 			{/* Mobile bottom bar */}
 			{isMobile && (
 				<div className='flex-shrink-0 flex items-stretch'
-					style={{ height: '60px', background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+					style={{
+						height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+						paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+						background: '#0d1228',
+						borderTop: '1px solid rgba(15,255,200,0.28)',
+						boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+					}}>
 					<MobileBarBtn
-						icon={<Mic size={20} />}
+						icon={<Mic size={22} />}
 						label='Медіа'
 						active={mobilePanelOpen === 'media'}
 						onClick={() => setMobilePanelOpen(p => p === 'media' ? null : 'media')}
 					/>
 					<MobileBarBtn
-						icon={<Smile size={20} />}
+						icon={<Smile size={22} />}
 						label='Емодзі'
 						active={mobilePanelOpen === 'emoji'}
 						onClick={() => setMobilePanelOpen(p => p === 'emoji' ? null : 'emoji')}
 					/>
 					<MobileBarBtn
-						icon={<MessageSquare size={20} />}
+						icon={<MessageSquare size={22} />}
 						label='Чат'
 						active={mobilePanelOpen === 'chat'}
 						onClick={() => setMobilePanelOpen(p => p === 'chat' ? null : 'chat')}
@@ -587,7 +596,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					/>
 					{isGM && (
 						<MobileBarBtn
-							icon={<Settings size={20} />}
+							icon={<Settings size={22} />}
 							label='Панель'
 							active={mobilePanelOpen === 'settings'}
 							onClick={() => setMobilePanelOpen(p => p === 'settings' ? null : 'settings')}
@@ -603,7 +612,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					<div className='fixed inset-0 z-[54]' style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setMobilePanelOpen(null)} />
 					{mobilePanelOpen === 'media' && (
 						<div className='fixed left-0 right-0 z-[55] flex items-center justify-around px-[16px] py-[12px]'
-							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid rgba(15,255,200,0.12)', animation: 'slideUpPanel 0.18s ease-out' }}>
+							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							{!isSpectator && (
 								<button onClick={toggleMic}
 									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
@@ -630,7 +639,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					)}
 					{mobilePanelOpen === 'emoji' && (
 						<div className='fixed left-0 right-0 z-[55] flex flex-wrap items-center justify-center gap-[4px] px-[12px] py-[10px]'
-							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							{MOBILE_REACTIONS.map(emoji => (
 								<button key={emoji} onClick={() => react(emoji)}
 									className='flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-110'
@@ -649,7 +658,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					)}
 					{mobilePanelOpen === 'chat' && (
 						<div className='fixed left-0 right-0 z-[55] flex flex-col'
-							style={{ bottom: '60px', height: '72vh', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', height: '72vh', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ChatPanel
 								state={state} myId={myId} isGM={isGM} isSpectator={isSpectator}
 								notes={notes} onNotesChange={setNotes}
@@ -667,7 +676,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					)}
 					{mobilePanelOpen === 'settings' && isGM && (
 						<div className='fixed left-0 right-0 z-[55]'
-							style={{ bottom: '60px', background: '#0b0d1a', borderTop: '1px solid #151824', animation: 'slideUpPanel 0.18s ease-out' }}>
+							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ModPanel
 								state={state}
 								onAnnounce={() => { setShowAnnounce(true); setMobilePanelOpen(null) }}

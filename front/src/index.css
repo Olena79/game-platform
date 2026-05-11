@@ -136,3 +136,10 @@
 		animation: slide-down 0.3s ease-out forwards;
 	}
 }
+
+/* Safe-area bottom padding for main content — mobile only, outside @layer so it wins over utilities */
+@media (max-width: 767px) {
+	.mobile-pb-nav {
+		padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+	}
+}

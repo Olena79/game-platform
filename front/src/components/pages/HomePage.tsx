@@ -88,7 +88,7 @@ export const HomePage = () => {
 	return (
 		<div>
 			{/* HERO */}
-			<section className='relative min-h-[calc(100dvh-148px)] md:min-h-[88vh] flex items-center px-[20px] md:px-[32px] lg:px-[48px] py-[20px] md:py-[60px] overflow-hidden'>
+			<section className='relative min-h-[82vh] md:min-h-[88vh] flex items-center px-[20px] md:px-[32px] lg:px-[48px] py-[20px] md:py-[60px] overflow-hidden'>
 				{/* Orb */}
 				<div className='absolute right-[-100px] md:right-[-120px] lg:right-[-80px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[500px] md:h-[500px] lg:w-[640px] lg:h-[640px] opacity-[0.65] md:opacity-[0.6] lg:opacity-[0.85] z-0 pointer-events-none'>
 					<svg viewBox='0 0 640 640' xmlns='http://www.w3.org/2000/svg'>

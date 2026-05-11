@@ -109,7 +109,10 @@ export const Header = () => {
 	}, [dropdownOpen])
 
 	return (
-		<header className='border-b border-[rgba(100,160,255,0.12)] bg-[rgba(3,4,15,0.85)] backdrop-blur-[12px] sticky top-0 z-[100]'>
+		<header
+			className='border-b border-[rgba(100,160,255,0.12)] bg-[rgba(3,4,15,0.85)] backdrop-blur-[12px] sticky top-0 z-[100]'
+			style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+		>
 			{/* ── Main bar ── */}
 			<div className='flex items-center justify-between px-[20px] md:px-[32px] lg:px-[48px] py-[14px] md:py-[18px]'>
 				<Link to='/' className='no-underline flex items-center'>

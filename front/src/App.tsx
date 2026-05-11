@@ -66,7 +66,7 @@ const SiteLayout = () => (
 		<Stars />
 		<div className='rainbow-line relative z-10' />
 		<Header />
-		<main className='flex-grow relative z-10 pb-[60px] md:pb-0'>
+		<main className='flex-grow relative z-10 mobile-pb-nav md:pb-0'>
 			<Routes>
 				<Route path='/' element={<HomePage />} />
 				<Route path='/auth' element={<AuthPage />} />

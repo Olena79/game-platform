@@ -12,17 +12,20 @@ type NavBtnProps = {
 	onClick?: () => void
 }
 
+const INACTIVE = 'rgba(175,190,240,0.75)'
+const ACTIVE   = '#0fffc8'
+
 const NavBtn = ({ icon, label, active, onClick }: NavBtnProps) => (
 	<button
 		onClick={onClick}
-		className='flex flex-col items-center justify-center flex-1 h-full gap-[3px] cursor-pointer transition-all'
+		className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] cursor-pointer transition-all'
 		style={{
-			color: active ? '#0fffc8' : 'rgba(74,80,112,0.8)',
-			background: active ? 'rgba(15,255,200,0.06)' : 'transparent',
+			color: active ? ACTIVE : INACTIVE,
+			background: active ? 'rgba(15,255,200,0.1)' : 'transparent',
 		}}
 	>
 		{icon}
-		<span className='text-[10px] uppercase tracking-[0.06em]'>{label}</span>
+		<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
 	</button>
 )
 
@@ -34,61 +37,62 @@ export const MobileBottomNav = () => {
 	return (
 		<>
 			<nav
-				className='md:hidden fixed bottom-0 left-0 right-0 z-[100] flex h-[60px]'
+				className='md:hidden fixed bottom-0 left-0 right-0 z-[100] flex'
 				style={{
-					background: 'rgba(3,4,15,0.97)',
-					borderTop: '1px solid rgba(15,255,200,0.12)',
-					backdropFilter: 'blur(12px)',
-					WebkitBackdropFilter: 'blur(12px)',
+					background: '#0d1228',
+					borderTop: '1px solid rgba(15,255,200,0.28)',
+					backdropFilter: 'blur(16px)',
+					WebkitBackdropFilter: 'blur(16px)',
+					height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
 					paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+					boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
 				}}
 			>
 				{/* ігри */}
 				<NavLink
 					to='/games'
-					className='flex flex-col items-center justify-center flex-1 h-full gap-[3px] transition-all'
+					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 					style={({ isActive }) => ({
-						color: isActive ? '#0fffc8' : 'rgba(74,80,112,0.8)',
-						background: isActive ? 'rgba(15,255,200,0.06)' : 'transparent',
+						color: isActive ? ACTIVE : INACTIVE,
+						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 					})}
 				>
-					<Gamepad2 size={20} strokeWidth={1.6} />
-					<span className='text-[10px] uppercase tracking-[0.06em]'>{t('nav.games')}</span>
+					<Gamepad2 size={22} strokeWidth={1.6} />
+					<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('nav.games')}</span>
 				</NavLink>
-
 
 				{/* вхід / вихід */}
 				{isLoggedIn ? (
 					<NavBtn
-						icon={<LogOut size={20} strokeWidth={1.6} />}
+						icon={<LogOut size={22} strokeWidth={1.6} />}
 						label={t('auth.btn_logout')}
 						onClick={() => setLogoutModal(true)}
 					/>
 				) : (
 					<NavLink
 						to='/auth'
-						className='flex flex-col items-center justify-center flex-1 h-full gap-[3px] transition-all'
+						className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 						style={({ isActive }) => ({
-							color: isActive ? '#0fffc8' : 'rgba(74,80,112,0.8)',
-							background: isActive ? 'rgba(15,255,200,0.06)' : 'transparent',
+							color: isActive ? ACTIVE : INACTIVE,
+							background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 						})}
 					>
-						<LogIn size={20} strokeWidth={1.6} />
-						<span className='text-[10px] uppercase tracking-[0.06em]'>{t('auth.tab_login')}</span>
+						<LogIn size={22} strokeWidth={1.6} />
+						<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('auth.tab_login')}</span>
 					</NavLink>
 				)}
 
 				{/* увійти в гру */}
 				<NavLink
 					to='/game'
-					className='flex flex-col items-center justify-center flex-1 h-full gap-[3px] transition-all'
+					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 					style={({ isActive }) => ({
-						color: isActive ? '#0fffc8' : 'rgba(74,80,112,0.8)',
-						background: isActive ? 'rgba(15,255,200,0.06)' : 'transparent',
+						color: isActive ? ACTIVE : INACTIVE,
+						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 					})}
 				>
-					<Play size={20} strokeWidth={1.6} />
-					<span className='text-[10px] uppercase tracking-[0.06em]'>{t('nav.enter')}</span>
+					<Play size={22} strokeWidth={1.6} />
+					<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('nav.enter')}</span>
 				</NavLink>
 			</nav>
 
