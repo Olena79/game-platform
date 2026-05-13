@@ -3,7 +3,7 @@ import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, VolumeX, CircleDollarSign, Zap } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { RoomPlayer, GameRoomState } from './types'
 import { ImagePanel } from './ImagePanel'
 import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
@@ -41,8 +41,10 @@ interface Props {
 	isMobile?: boolean
 	micOn: boolean
 	camOn: boolean
+	screenOn?: boolean
 	onToggleMic: () => void
 	onToggleCam: () => void
+	onToggleScreen?: () => void
 	onReact: (emoji: string) => void
 	onRaiseHand: (v: boolean) => void
 	onLeave: () => void
@@ -52,6 +54,9 @@ interface Props {
 	onChangeImage?: (url: string) => void
 	playerReactions?: Record<string, { emoji: string; key: number }>
 	onMutePlayer?: (uid: string) => void
+	mockPlayers?: RoomPlayer[]
+	mockSpeakingId?: string | null
+	inBreakout?: string | null
 }
 
 function MicDot({ active }: { active: boolean }) {
@@ -177,25 +182,27 @@ function CoverImageBlock({ state }: { state: GameRoomState }) {
 					</p>
 				</div>
 			)}
-			<p className='absolute bottom-[8px] left-0 right-0 text-center text-[13px]'
-				style={{ color: 'rgba(100,140,220,0.45)', zIndex: 3, pointerEvents: 'none' }}>
+			<p className='absolute bottom-[8px] left-0 right-0 text-center text-[14px]'
+				style={{ color: 'rgba(160,185,255,0.75)', zIndex: 3, pointerEvents: 'none' }}>
 				{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
 			</p>
 		</div>
 	)
 }
 
-function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
+function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking }: {
 	state: GameRoomState
 	speakerPlayer: RoomPlayer | null
 	playerReactions: Record<string, { emoji: string; key: number }>
+	isMockSpeaking?: boolean
 }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = speakerPlayer
 		? (participants.find(p => p.identity === speakerPlayer.userId) ?? (localParticipant?.identity === speakerPlayer.userId ? localParticipant : undefined))
 		: undefined
-	const speaking = useIsSpeaking(participant)
+	const lkSpeaking = useIsSpeaking(participant)
+	const speaking = lkSpeaking || (isMockSpeaking ?? false)
 	const camPub = participant?.getTrackPublication(Track.Source.Camera)
 	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
 
@@ -232,7 +239,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 						<span className='text-[14px] font-[700] px-[12px] py-[3px] rounded-[20px]'
 							style={speakerPlayer.role
 								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
-								: { color: 'rgba(100,120,200,0.4)', background: 'transparent', border: '1px solid rgba(100,120,200,0.15)' }}>
+								: { color: 'rgba(155,175,230,0.72)', background: 'transparent', border: '1px solid rgba(130,155,220,0.25)' }}>
 							{speakerPlayer.role || 'Введіть вашу роль'}
 						</span>
 						<MicDot active={speaking} />
@@ -264,7 +271,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 						<span className='text-[14px] font-[700] px-[12px] py-[3px] rounded-[20px]'
 							style={speakerPlayer.role
 								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
-								: { color: 'rgba(100,120,200,0.4)', background: 'transparent', border: '1px solid rgba(100,120,200,0.15)' }}>
+								: { color: 'rgba(155,175,230,0.72)', background: 'transparent', border: '1px solid rgba(130,155,220,0.25)' }}>
 							{speakerPlayer.role || 'Введіть вашу роль'}
 						</span>
 						<MicDot active={speaking} />
@@ -278,19 +285,37 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions }: {
 export const SpeakerView = ({
 	state, myId, isGM, isSpectator,
 	isMobile = false,
-	micOn, camOn, onToggleMic, onToggleCam,
+	micOn, camOn, screenOn = false,
+	onToggleMic, onToggleCam, onToggleScreen,
 	onReact, onRaiseHand, onLeave,
 	imageUrl, images = [], onImageClose, onChangeImage,
 	playerReactions = {},
 	onMutePlayer,
+	mockPlayers = [],
+	mockSpeakingId = null,
+	inBreakout = null,
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
-	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected)
+	const realMainPlayers = inBreakout
+		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected)
+		: state.players.filter(p => !p.breakoutRoomId && p.connected)
+	const filteredMocks = inBreakout
+		? mockPlayers.filter(p => p.breakoutRoomId === inBreakout)
+		: mockPlayers.filter(p => !p.breakoutRoomId)
+	const mainPlayers = [...realMainPlayers, ...filteredMocks]
 
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
+
+	// Screen share detection — any participant sharing gets priority in main area
+	const allParticipants = [localParticipant, ...participants].filter(Boolean) as typeof participants
+	const screenShareParticipant = allParticipants.find(p => {
+		const pub = p.getTrackPublication(Track.Source.ScreenShare)
+		return pub && !pub.isMuted && pub.track
+	})
+	const screenSharePub = screenShareParticipant?.getTrackPublication(Track.Source.ScreenShare)
 
 	// Track active speaker — last known speaker stays first (Google Meet style)
 	const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
@@ -300,10 +325,13 @@ export const SpeakerView = ({
 		// Silent: keep last speaker pinned — never reset to avoid order jumps
 	}, [currentSpeaker?.identity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Show active speaker; fall back to first non-spectator if nobody speaks
+	// Real LiveKit speaker > mock speaker > first non-spectator player
 	const speakerPlayer = (activeSpeakerId
 		? mainPlayers.find(p => p.userId === activeSpeakerId && !p.isSpectator)
-		: null) ?? mainPlayers.find(p => !p.isSpectator) ?? null
+		: null)
+		?? (mockSpeakingId ? mainPlayers.find(p => p.userId === mockSpeakingId) : null)
+		?? mainPlayers.find(p => !p.isSpectator)
+		?? null
 	const handRaisedRef = useRef(handRaised)
 	handRaisedRef.current = handRaised
 	useEffect(() => {
@@ -374,33 +402,52 @@ export const SpeakerView = ({
 			{/* Top badges */}
 			<div className='flex items-center justify-between px-[12px] pt-[10px] pb-0 flex-shrink-0'>
 				<div className='flex items-center gap-[6px]'>
-					<span className='text-[10px] font-[700] px-[8px] py-[3px] rounded-[4px]'
+					<span className='text-[11px] font-[700] px-[8px] py-[3px] rounded-[4px]'
 						style={{ background: '#ff3850', color: '#fff', letterSpacing: '0.06em' }}>● LIVE</span>
-					<span className='text-[10px]' style={{ color: '#4a5070' }}>{state.title}</span>
+					<span className='text-[11px]' style={{ color: '#7a88b0' }}>{state.title}</span>
 				</div>
 				<div className='flex items-center gap-[8px]'>
-					<span className='text-[11px]' style={{ color: '#4a5070' }}>
+					<span className='text-[12px]' style={{ color: '#7a88b0' }}>
 						{mainPlayers.filter(p => !p.isSpectator).length} онлайн
 					</span>
-					<span className='text-[11px]' style={{ color: '#4a5070' }}>
+					<span className='text-[12px]' style={{ color: '#7a88b0' }}>
 						👁 {state.players.filter(p => p.isSpectator && p.connected).length} глядачів
 					</span>
 				</div>
 			</div>
 
-			{/* Main area: image OR speaker */}
-			{imageUrl
+			{/* Main area: screen share > image > speaker */}
+			{screenShareParticipant && screenSharePub ? (
+				<div className='flex-1 relative min-h-0 flex items-center justify-center' style={{ background: '#000' }}>
+					<VideoTrack
+						trackRef={{ participant: screenShareParticipant, publication: screenSharePub, source: Track.Source.ScreenShare }}
+						className='max-w-full max-h-full object-contain'
+					/>
+					<div className='absolute top-[10px] left-[10px] flex items-center gap-[5px] px-[8px] py-[3px] rounded-[5px]'
+						style={{ background: 'rgba(15,17,32,0.85)', border: '1px solid rgba(68,170,255,0.3)' }}>
+						<ScreenShare size={10} style={{ color: 'rgba(68,170,255,0.9)' }} />
+						<span className='text-[11px] font-[600]' style={{ color: 'rgba(68,170,255,0.9)' }}>Демонстрація екрану</span>
+					</div>
+				</div>
+			) : imageUrl
 				? <ImagePanel imageUrl={imageUrl} isGM={isGM} images={images} onChangeImage={onChangeImage} onClose={onImageClose} fill />
-				: <SpeakerDisplay state={state} speakerPlayer={speakerPlayer} playerReactions={playerReactions} />
+				: <SpeakerDisplay
+					state={state}
+					speakerPlayer={speakerPlayer}
+					playerReactions={playerReactions}
+					isMockSpeaking={speakerPlayer ? mockSpeakingId === speakerPlayer.userId : false}
+				/>
 			}
 
-			{/* Players strip (spectators excluded) */}
-			<div className='flex-shrink-0 overflow-x-auto px-[10px] py-[6px] flex gap-[7px]'
-				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-				{mainPlayers.filter(p => !p.isSpectator).map(p => (
-					<StripTileWrapper key={p.userId} player={p} reaction={playerReactions[p.userId]} gameStarted={state.status === 'started'} isGM={isGM} onMutePlayer={onMutePlayer} />
-				))}
-			</div>
+			{/* Players strip with navigation */}
+			<PlayerStrip
+				players={mainPlayers.filter(p => !p.isSpectator)}
+				playerReactions={playerReactions}
+				gameStarted={state.status === 'started'}
+				isGM={isGM}
+				onMutePlayer={onMutePlayer}
+				mockSpeakingId={mockSpeakingId}
+			/>
 
 			{/* Controls + Reactions — one row (desktop only) */}
 			{!isMobile && (
@@ -408,6 +455,9 @@ export const SpeakerView = ({
 					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
 					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
+					{!isSpectator && onToggleScreen && (
+						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={13}/> : <ScreenShare size={13}/>} label='Екран' />
+					)}
 					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
 					<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
 					{REACTIONS.map(emoji => (
@@ -435,14 +485,117 @@ export const SpeakerView = ({
 	)
 }
 
-function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer }: {
+// ── Navigable player strip ────────────────────────────────────────────────────
+const SCROLL_STEP = 280 // px per arrow click
+
+function PlayerStrip({ players, playerReactions, gameStarted, isGM, onMutePlayer, mockSpeakingId }: {
+	players: RoomPlayer[]
+	playerReactions: Record<string, { emoji: string; key: number }>
+	gameStarted: boolean
+	isGM?: boolean
+	onMutePlayer?: (uid: string) => void
+	mockSpeakingId?: string | null
+}) {
+	const stripRef = useRef<HTMLDivElement>(null)
+	const [canLeft, setCanLeft] = useState(false)
+	const [canRight, setCanRight] = useState(false)
+
+	const checkScroll = useCallback(() => {
+		const el = stripRef.current
+		if (!el) return
+		setCanLeft(el.scrollLeft > 2)
+		setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+	}, [])
+
+	useEffect(() => {
+		const el = stripRef.current
+		if (!el) return
+		checkScroll()
+		el.addEventListener('scroll', checkScroll, { passive: true })
+		const obs = new ResizeObserver(checkScroll)
+		obs.observe(el)
+		return () => { el.removeEventListener('scroll', checkScroll); obs.disconnect() }
+	}, [checkScroll, players.length])
+
+	const scroll = (dir: 1 | -1) => {
+		stripRef.current?.scrollBy({ left: dir * SCROLL_STEP, behavior: 'smooth' })
+	}
+
+	// Touch swipe: handled natively by overflow-x: auto on mobile
+	// Arrow buttons: desktop convenience
+
+	const showNav = canLeft || canRight
+
+	return (
+		<div className='flex-shrink-0 relative flex items-stretch'
+			style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+
+			{/* Left arrow */}
+			<button
+				onClick={() => scroll(-1)}
+				className='flex-shrink-0 flex items-center justify-center transition-all cursor-pointer'
+				style={{
+					width: showNav ? '28px' : '0px',
+					opacity: canLeft ? 1 : 0,
+					pointerEvents: canLeft ? 'auto' : 'none',
+					background: 'rgba(11,13,26,0.92)',
+					borderRight: canLeft ? '1px solid #1c2035' : 'none',
+					color: 'rgba(100,170,255,0.85)',
+					overflow: 'hidden',
+					transition: 'width 0.2s, opacity 0.2s',
+				}}>
+				<ChevronLeft size={14} strokeWidth={2} />
+			</button>
+
+			{/* Scrollable strip */}
+			<div
+				ref={stripRef}
+				className='flex gap-[7px] px-[10px] py-[6px] flex-1 min-w-0'
+				style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+				{players.map(p => (
+					<StripTileWrapper
+						key={p.userId}
+						player={p}
+						reaction={playerReactions[p.userId]}
+						gameStarted={gameStarted}
+						isGM={isGM}
+						onMutePlayer={onMutePlayer}
+						isMockSpeaking={mockSpeakingId === p.userId}
+					/>
+				))}
+			</div>
+
+			{/* Right arrow */}
+			<button
+				onClick={() => scroll(1)}
+				className='flex-shrink-0 flex items-center justify-center transition-all cursor-pointer'
+				style={{
+					width: showNav ? '28px' : '0px',
+					opacity: canRight ? 1 : 0,
+					pointerEvents: canRight ? 'auto' : 'none',
+					background: 'rgba(11,13,26,0.92)',
+					borderLeft: canRight ? '1px solid #1c2035' : 'none',
+					color: 'rgba(100,170,255,0.85)',
+					overflow: 'hidden',
+					transition: 'width 0.2s, opacity 0.2s',
+				}}>
+				<ChevronRight size={14} strokeWidth={2} />
+			</button>
+		</div>
+	)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, isMockSpeaking }: {
 	player: RoomPlayer; reaction?: { emoji: string; key: number }; gameStarted: boolean
-	isGM?: boolean; onMutePlayer?: (uid: string) => void
+	isGM?: boolean; onMutePlayer?: (uid: string) => void; isMockSpeaking?: boolean
 }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
-	const speaking = useIsSpeaking(participant)
+	const lkSpeaking = useIsSpeaking(participant)
+	const speaking = lkSpeaking || (isMockSpeaking ?? false)
 	const isPlayer = !player.isGamemaster && !player.isSpectator
 
 	const [speechCount, setSpeechCount] = useState(0)
@@ -466,9 +619,13 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer }:
 	const canMute = isGM && !player.isGamemaster && !player.isSpectator && onMutePlayer
 
 	return (
-		<div className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default transition-all relative group'
-			style={{ background: (!isPlayer && speaking) ? 'rgba(15,255,200,0.05)' : '#0f1120', border: `1px solid ${borderColor}` }}>
-			<StripTile player={player} reaction={reaction} />
+		<div className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default relative group'
+			style={{
+				background: (!isPlayer && speaking) ? 'rgba(15,255,200,0.05)' : '#0f1120',
+				border: `1px solid ${borderColor}`,
+				transition: 'border-color 0.5s ease, background 0.5s ease',
+			}}>
+			<StripTile player={player} reaction={reaction} isMockSpeaking={isMockSpeaking} />
 			{canMute && (
 				<button
 					onClick={() => onMutePlayer!(player.userId)}
@@ -482,11 +639,12 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer }:
 	)
 }
 
-function StripTile({ player, reaction }: { player: RoomPlayer; reaction?: { emoji: string; key: number } }) {
+function StripTile({ player, reaction, isMockSpeaking }: { player: RoomPlayer; reaction?: { emoji: string; key: number }; isMockSpeaking?: boolean }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
-	const speaking = useIsSpeaking(participant)
+	const lkSpeaking = useIsSpeaking(participant)
+	const speaking = lkSpeaking || (isMockSpeaking ?? false)
 
 	return (
 		<>
@@ -513,18 +671,18 @@ function StripTile({ player, reaction }: { player: RoomPlayer; reaction?: { emoj
 					</div>
 				)}
 			</div>
-			<span className='text-[10px] w-full text-center truncate' style={{ color: speaking ? '#0fffc8' : '#4a5070' }}>
+			<span className='text-[11px] w-full text-center truncate' style={{ color: speaking ? '#0fffc8' : '#8892b8' }}>
 				{player.name.split(' ')[0]}
 			</span>
 			<div className='flex gap-[4px] items-center justify-center'>
 				{player.isGamemaster
 					? <span className='text-[8px] font-[700] px-[4px] py-[1px] rounded-[3px] whitespace-nowrap'
-						style={{ background: 'rgba(15,255,200,0.08)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.15)' }}>
+						style={{ background: 'rgba(15,255,200,0.1)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.2)' }}>
 						Ігромайстер
 					</span>
 					: <>
-						{player.coins > 0 && <span className='text-[9px] flex items-center gap-[1px]' style={{ color: '#4a5070' }}><CircleDollarSign size={8} />{player.coins}</span>}
-						{player.influence > 0 && <span className='text-[9px] flex items-center gap-[1px]' style={{ color: '#4a5070' }}><Zap size={8} />{player.influence}</span>}
+						{player.coins > 0 && <span className='text-[10px] flex items-center gap-[1px]' style={{ color: '#7a88b0' }}><CircleDollarSign size={9} />{player.coins}</span>}
+						{player.influence > 0 && <span className='text-[10px] flex items-center gap-[1px]' style={{ color: '#7a88b0' }}><Zap size={9} />{player.influence}</span>}
 					</>
 				}
 			</div>
@@ -539,11 +697,11 @@ function CtrlBtn({ active, onClick, icon, label, variant = 'default' }: {
 		? { background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }
 		: active
 			? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
-			: { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }
+			: { background: '#0f1120', border: '1px solid #1c1f35', color: '#9aabb0' }
 
 	return (
 		<button onClick={onClick}
-			className='flex items-center gap-[5px] rounded-[8px] px-[12px] py-[7px] cursor-pointer transition-all hover:brightness-120 text-[12px] whitespace-nowrap'
+			className='flex items-center gap-[5px] rounded-[8px] px-[12px] py-[8px] cursor-pointer transition-all hover:brightness-120 text-[13px] whitespace-nowrap'
 			style={style}>
 			{icon} {label}
 		</button>

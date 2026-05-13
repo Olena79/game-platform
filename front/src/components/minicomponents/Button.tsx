@@ -18,13 +18,13 @@ export const Button: React.FC<ButtonProps> = ({
 	const variants = {
 		primary:
 			'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20',
-		outline: 'border border-gray-700 hover:bg-gray-800 text-gray-200',
-		ghost: 'hover:bg-gray-800 text-gray-400 hover:text-white',
+		outline: 'border border-gray-600 hover:bg-gray-800 text-white',
+		ghost: 'hover:bg-gray-800 text-gray-300 hover:text-white',
 	}
 
 	const sizes = {
-		sm: 'px-4 py-1.5 text-xs',
-		md: 'px-6 py-2 text-sm',
+		sm: 'px-4 py-2 text-sm',
+		md: 'px-6 py-2.5 text-[15px]',
 		lg: 'px-8 py-3 text-base',
 	}
 

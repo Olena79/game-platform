@@ -64,10 +64,10 @@ export const ModPanel = ({
 	) => {
 		const colors = {
 			default: active
-				? { border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8', bg: 'rgba(15,255,200,0.08)' }
-				: { border: '1px solid #1c1f35', color: 'rgba(74,80,112,1)', bg: '#0f1120' },
-			warn:    { border: '1px solid rgba(200,168,48,0.25)', color: '#c8a830', bg: 'rgba(200,168,48,0.05)' },
-			danger:  { border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850', bg: 'rgba(255,56,80,0.05)' },
+				? { border: '1px solid rgba(15,255,200,0.35)', color: '#0fffc8', bg: 'rgba(15,255,200,0.1)' }
+				: { border: '1px solid #1c1f35', color: 'rgba(115,128,175,1)', bg: '#0f1120' },
+			warn:    { border: '1px solid rgba(200,168,48,0.3)', color: '#c8a830', bg: 'rgba(200,168,48,0.07)' },
+			danger:  { border: '1px solid rgba(255,56,80,0.3)', color: '#ff3850', bg: 'rgba(255,56,80,0.07)' },
 		}[variant]
 
 		return (
@@ -77,14 +77,14 @@ export const ModPanel = ({
 				style={{ background: colors.bg, border: colors.border }}
 			>
 				<span style={{ color: colors.color }}>{icon}</span>
-				<span className='text-[10px] text-center leading-[1.2]' style={{ color: colors.color }}>{label}</span>
+				<span className='text-[11px] text-center leading-[1.3]' style={{ color: colors.color }}>{label}</span>
 			</button>
 		)
 	}
 
 	return (
 		<div className='flex flex-col gap-[8px] p-[10px]' style={{ borderTop: '1px solid #151824' }}>
-			<span className='text-[10px] uppercase tracking-[0.1em]' style={{ color: '#4a5070' }}>
+			<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>
 				Панель ведучого
 			</span>
 
@@ -93,17 +93,17 @@ export const ModPanel = ({
 				<div className='flex items-center gap-[6px] rounded-[8px] px-[10px] py-[7px]'
 					style={{ background: 'rgba(200,168,48,0.08)', border: '1px solid rgba(200,168,48,0.22)' }}>
 					<div className='flex-1'>
-						<div className='text-[10px] mb-[1px]' style={{ color: 'rgba(200,168,48,0.6)' }}>{t.label}</div>
+						<div className='text-[11px] mb-[1px]' style={{ color: 'rgba(200,168,48,0.85)' }}>{t.label}</div>
 						<div className='text-[18px] font-[700] font-mono' style={{ color: '#c8a830' }}>{fmt(remaining)}</div>
 					</div>
 					{!t.running
-						? <button onClick={onTimerStart} className='text-[10px] px-[8px] py-[4px] rounded-[6px] cursor-pointer transition-all'
+						? <button onClick={onTimerStart} className='text-[11px] px-[8px] py-[5px] rounded-[6px] cursor-pointer transition-all'
 								style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>▶</button>
-						: <button onClick={onTimerStop} className='text-[10px] px-[8px] py-[4px] rounded-[6px] cursor-pointer transition-all'
+						: <button onClick={onTimerStop} className='text-[11px] px-[8px] py-[5px] rounded-[6px] cursor-pointer transition-all'
 								style={{ background: 'rgba(200,168,48,0.1)', border: '1px solid rgba(200,168,48,0.3)', color: '#c8a830' }}>⏸</button>
 					}
-					<button onClick={onTimerClear} className='text-[10px] px-[6px] py-[4px] rounded-[6px] cursor-pointer transition-all'
-						style={{ background: 'rgba(255,56,80,0.06)', border: '1px solid rgba(255,56,80,0.2)', color: 'rgba(255,56,80,0.65)' }}>✕</button>
+					<button onClick={onTimerClear} className='text-[11px] px-[6px] py-[5px] rounded-[6px] cursor-pointer transition-all'
+						style={{ background: 'rgba(255,56,80,0.07)', border: '1px solid rgba(255,56,80,0.25)', color: 'rgba(255,56,80,0.88)' }}>✕</button>
 				</div>
 			)}
 
@@ -119,14 +119,14 @@ export const ModPanel = ({
 
 			{/* Observer / Recording section */}
 			<div className='mt-[2px] flex flex-col gap-[5px]' style={{ borderTop: '1px solid #1c1f35', paddingTop: '8px' }}>
-				<span className='text-[10px] uppercase tracking-[0.1em]' style={{ color: '#4a5070' }}>Запис</span>
+				<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>Запис</span>
 
 				{!hasObserver ? (
 					<button onClick={onOpenObserver}
 						className='flex items-center justify-center gap-[6px] rounded-[8px] p-[8px] cursor-pointer transition-all hover:brightness-125'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: 'rgba(74,80,112,1)' }}>
+						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: 'rgba(115,128,175,1)' }}>
 						<Video size={13} />
-						<span className='text-[11px]'>Відкрити спостерігача</span>
+						<span className='text-[12px]'>Відкрити спостерігача</span>
 					</button>
 				) : (
 					<div className='flex flex-col gap-[5px]'>
@@ -136,7 +136,7 @@ export const ModPanel = ({
 								border: isRecording ? '1px solid rgba(255,56,80,0.25)' : '1px solid rgba(15,255,200,0.2)',
 							}}>
 							<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
-							<span className='text-[11px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
+							<span className='text-[12px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
 								{isRecording ? '● Запис активний' : isUploading ? `Завантаження...` : isDone ? '✓ Збережено' : isPrepared ? 'Готовий' : 'Спостерігач підключений'}
 							</span>
 						</div>
@@ -146,14 +146,14 @@ export const ModPanel = ({
 								disabled={!isPrepared}
 								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
 								style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
-								<span className='text-[10px]'>▶ Старт</span>
+								<span className='text-[11px]'>▶ Старт</span>
 							</button>
 							<button
 								onClick={onRecordStop}
 								disabled={!isRecording}
 								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
 								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
-								<span className='text-[10px]'>■ Стоп</span>
+								<span className='text-[11px]'>■ Стоп</span>
 							</button>
 						</div>
 					</div>

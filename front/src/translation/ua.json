@@ -1,6 +1,7 @@
 {
 	"nav": {
 		"games": "Ігри",
+		"community": "Спільноти",
 		"about": "Про нас",
 		"enter": "Увійти в гру",
 		"lang_label": "Мова інтерфейсу"
@@ -124,7 +125,7 @@
 		"coins_per_player": "монет на вхід",
 		"influence_per_player": "балів впливу",
 		"edit": "Редагувати",
-		"delete": "Видалити гру",
+		"delete": "Видалити",
 		"delete_confirm_title": "Видалити гру?",
 		"delete_confirm_msg": "Чи дійсно ви бажаєте видалити гру? Цю дію неможливо скасувати.",
 		"delete_confirm_yes": "Так, видалити",

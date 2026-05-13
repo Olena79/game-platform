@@ -79,7 +79,7 @@ export const Modal: React.FC<ModalProps> = ({
 				</h3>
 
 				{message && (
-					<p className='text-[13px] text-[rgba(180,200,255,0.65)] leading-[1.6] mb-[10px]'>
+					<p className='text-[14px] text-[rgba(210,225,255,0.9)] leading-[1.65] mb-[10px]'>
 						{message}
 					</p>
 				)}
@@ -92,7 +92,7 @@ export const Modal: React.FC<ModalProps> = ({
 					<div className='flex gap-[10px]'>
 						<button
 							onClick={onConfirm}
-							className='flex-1 py-[11px] rounded-[10px] text-[13px] font-[600] transition-all cursor-pointer hover:brightness-110'
+							className='flex-1 py-[12px] rounded-[10px] text-[14px] font-[600] transition-all cursor-pointer hover:brightness-110'
 							style={{
 								background: `${accent}22`,
 								border: `1px solid ${accent}55`,
@@ -103,7 +103,7 @@ export const Modal: React.FC<ModalProps> = ({
 						</button>
 						<button
 							onClick={onClose}
-							className='flex-1 py-[11px] rounded-[10px] text-[13px] font-[600] text-[rgba(180,200,255,0.45)] border border-[rgba(180,200,255,0.12)] hover:border-[rgba(180,200,255,0.3)] hover:text-[rgba(180,200,255,0.75)] transition-all cursor-pointer'
+							className='flex-1 py-[12px] rounded-[10px] text-[14px] font-[600] text-[rgba(195,212,255,0.78)] border border-[rgba(180,200,255,0.18)] hover:border-[rgba(180,200,255,0.38)] hover:text-[rgba(220,232,255,0.95)] transition-all cursor-pointer'
 						>
 							{cancelLabel}
 						</button>
@@ -111,7 +111,7 @@ export const Modal: React.FC<ModalProps> = ({
 				) : (
 					<button
 						onClick={onClose}
-						className='w-full py-[11px] rounded-[10px] text-[13px] font-[600] transition-all cursor-pointer hover:brightness-110'
+						className='w-full py-[12px] rounded-[10px] text-[14px] font-[600] transition-all cursor-pointer hover:brightness-110'
 						style={{
 							background: `${accent}22`,
 							border: `1px solid ${accent}55`,

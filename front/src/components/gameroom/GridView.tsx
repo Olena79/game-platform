@@ -22,7 +22,7 @@ import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
 import type { RoomPlayer, GameRoomState } from './types'
 
@@ -36,8 +36,10 @@ interface Props {
 	isMobile?: boolean
 	micOn: boolean
 	camOn: boolean
+	screenOn?: boolean
 	onToggleMic: () => void
 	onToggleCam: () => void
+	onToggleScreen?: () => void
 	onReact: (emoji: string) => void
 	onRaiseHand: (v: boolean) => void
 	onLeave: () => void
@@ -45,6 +47,9 @@ interface Props {
 	onSetInfluence: (targetUserId: string, delta: number) => void
 	onMutePlayer?: (targetUserId: string) => void
 	playerReactions?: Record<string, { emoji: string; key: number }>
+	mockPlayers?: RoomPlayer[]
+	mockSpeakingId?: string | null
+	inBreakout?: string | null
 }
 
 function getSpeechBorderColor(count: number): string {
@@ -56,35 +61,41 @@ function getSpeechBorderColor(count: number): string {
 	return '#cc1133'
 }
 
-// Returns optimal cols/rows so tiles fill the container like Google Meet
+// Returns optimal cols/rows — Google Meet style, tiles prefer 16:9 aspect ratio
 function computeGrid(n: number, w: number, h: number) {
 	if (n <= 0) return { cols: 1, rows: 1 }
 	const GAP = 7, PAD = 7
+	const TARGET = 16 / 9
 	let bestCols = 1
-	let bestArea = 0
+	let bestScore = -1
 	for (let cols = 1; cols <= n; cols++) {
 		const rows = Math.ceil(n / cols)
 		const tileW = (w - PAD * 2 - GAP * (cols - 1)) / cols
 		const tileH = (h - PAD * 2 - GAP * (rows - 1)) / rows
-		const area = tileW * tileH
-		if (area > bestArea) { bestArea = area; bestCols = cols }
+		if (tileW <= 0 || tileH <= 0) continue
+		const diff = Math.abs(tileW / tileH - TARGET) / TARGET
+		// Maximise area, but heavily penalise tiles far from 16:9
+		const score = tileW * tileH * Math.max(0.15, 1 - diff * 0.7)
+		if (score > bestScore) { bestScore = score; bestCols = cols }
 	}
 	return { cols: bestCols, rows: Math.ceil(n / bestCols) }
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
 	onMutePlayer?: (uid: string) => void
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
+	isMockSpeaking?: boolean
 }) {
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId)
 		?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
-	const speaking = useIsSpeaking(participant)
+	const lkSpeaking = useIsSpeaking(participant)
+	const speaking = lkSpeaking || (isMockSpeaking ?? false)
 	const camPub = participant?.getTrackPublication(Track.Source.Camera)
 	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
 	const micPub = participant?.getTrackPublication(Track.Source.Microphone)
@@ -120,7 +131,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				background: '#0f1120',
 				border: `1px solid ${borderColor}`,
 				boxShadow: (!isPlayer && speaking) ? '0 0 10px rgba(15,255,200,0.08)' : 'none',
-				transition: 'border-color 0.5s ease',
+				transition: 'border-color 0.5s ease, box-shadow 0.5s ease',
 				height: '100%',
 			}}
 		>
@@ -179,12 +190,12 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				<div className='flex-1 min-w-0'>
 					{player.isGamemaster ? (
 						<>
-							<span className='text-[10px] font-[700] px-[5px] py-[1px] rounded-[4px] self-start'
-								style={{ background: 'rgba(15,255,200,0.08)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.2)' }}>
+							<span className='text-[11px] font-[700] px-[5px] py-[1px] rounded-[4px] self-start'
+								style={{ background: 'rgba(15,255,200,0.1)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.3)' }}>
 								Ігромайстер
 							</span>
-							<div className='text-[10px] truncate'
-								style={{ color: speaking ? 'rgba(15,255,200,0.75)' : 'rgba(180,200,255,0.55)' }}>
+							<div className='text-[11px] truncate'
+								style={{ color: speaking ? 'rgba(15,255,200,0.9)' : 'rgba(200,218,255,0.85)' }}>
 								{player.name}
 							</div>
 						</>
@@ -207,22 +218,22 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 								style={{ cursor: canEditRole ? 'text' : 'default' }}
 							>
 								<span className='text-[12px] font-[700] truncate'
-									style={{ color: player.role ? (speaking ? '#0fffc8' : '#c07fff') : 'rgba(100,120,200,0.35)' }}>
+									style={{ color: player.role ? (speaking ? '#0fffc8' : '#c07fff') : 'rgba(140,160,220,0.6)' }}>
 									{player.role || '—'}
 								</span>
 								{canEditRole && (
 									<Pencil size={8} strokeWidth={2} className='flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all'
-										style={{ color: 'rgba(68,170,255,0.4)' }} />
+										style={{ color: 'rgba(68,170,255,0.55)' }} />
 								)}
 							</div>
-							<div className='text-[10px] truncate'
-								style={{ color: speaking ? 'rgba(15,255,200,0.75)' : 'rgba(180,200,255,0.55)' }}>
+							<div className='text-[11px] truncate'
+								style={{ color: speaking ? 'rgba(15,255,200,0.9)' : 'rgba(200,218,255,0.85)' }}>
 								{player.name}
 							</div>
 						</>
 					)}
 				</div>
-				<div className='flex gap-[5px] flex-shrink-0 text-[10px] items-center' style={{ color: '#4a5070' }}>
+				<div className='flex gap-[5px] flex-shrink-0 text-[11px] items-center' style={{ color: '#7a88b0' }}>
 					{player.coins > 0 && <span className='flex items-center gap-[1px]'><CircleDollarSign size={9} />{player.coins}</span>}
 					{player.influence > 0 && <span className='flex items-center gap-[1px]'><Zap size={9} />{player.influence}</span>}
 				</div>
@@ -258,47 +269,50 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 }
 
 const getPageSize = () => {
-	if (typeof window === 'undefined') return 32
-	if (window.innerWidth >= 1024) return 32
-	if (window.innerWidth >= 768) return 16
-	return 8
+	if (typeof window === 'undefined') return 16
+	if (window.innerWidth >= 1024) return 16
+	if (window.innerWidth >= 768) return 9
+	return 6
 }
 
 export const GridView = ({
 	state, myId, isGM, isSpectator,
 	isMobile = false,
-	micOn, camOn, onToggleMic, onToggleCam,
+	micOn, camOn, screenOn = false,
+	onToggleMic, onToggleCam, onToggleScreen,
 	onReact, onRaiseHand, onLeave,
 	onSetRole, onSetInfluence,
 	onMutePlayer,
 	playerReactions = {},
+	mockPlayers = [],
+	mockSpeakingId = null,
+	inBreakout = null,
 }: Props) => {
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
-	const mainPlayers = state.players.filter(p => !p.breakoutRoomId && p.connected && !p.isSpectator)
+	// Show players from the current room only — real AND mock filtered by room
+	const realMainPlayers = inBreakout
+		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected && !p.isSpectator)
+		: state.players.filter(p => !p.breakoutRoomId && p.connected && !p.isSpectator)
+	const filteredMocks = inBreakout
+		? mockPlayers.filter(p => p.breakoutRoomId === inBreakout)
+		: mockPlayers.filter(p => !p.breakoutRoomId)
+	const mainPlayers = [...realMainPlayers, ...filteredMocks]
 	const spectatorCount = state.players.filter(p => p.isSpectator && p.connected).length
 
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const localSpeaking = useIsSpeaking(localParticipant)
 
-	// Track active speaker — last known speaker stays first (Google Meet style)
-	const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
-	const currentSpeaker = participants.filter(p => p.isSpeaking)[0] ?? null
-	useEffect(() => {
-		if (currentSpeaker) setActiveSpeakerId(currentSpeaker.identity)
-		// Silent: keep last speaker at position 0 — never reset
-	}, [currentSpeaker?.identity]) // eslint-disable-line react-hooks/exhaustive-deps
+	// Screen share detection — show notification banner if anyone is sharing
+	const allParticipants = [localParticipant, ...participants].filter(Boolean) as typeof participants
+	const isAnyoneSharing = allParticipants.some(p => {
+		const pub = p.getTrackPublication(Track.Source.ScreenShare)
+		return pub && !pub.isMuted && pub.track
+	})
 
-	// Active speaker moves to position 0, rest of order stays stable
-	const sortedPlayers = useMemo(() => {
-		const arr = [...mainPlayers]
-		if (activeSpeakerId) {
-			const idx = arr.findIndex(p => p.userId === activeSpeakerId)
-			if (idx > 0) { const [s] = arr.splice(idx, 1); arr.unshift(s) }
-		}
-		return arr
-	}, [mainPlayers, activeSpeakerId])
+	// Grid view: stable join order — NO speaker-based reordering (prevents jumping tiles)
+	const sortedPlayers = useMemo(() => [...mainPlayers], [mainPlayers])
 
 	const [currentPage, setCurrentPage] = useState(0)
 	const [pageSize, setPageSize] = useState(getPageSize)
@@ -396,15 +410,26 @@ export const GridView = ({
 		</div>
 
 			{/* Online + spectator counters — always visible */}
-			<div className='flex-shrink-0 flex items-center gap-[12px] px-[12px] py-[4px]'
+			<div className='flex-shrink-0 flex items-center gap-[12px] px-[12px] py-[5px]'
 				style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
-				<span className='text-[11px]' style={{ color: '#4a5070' }}>
+				<span className='text-[12px]' style={{ color: '#7a88b0' }}>
 					{mainPlayers.length} онлайн
 				</span>
-				<span className='text-[11px]' style={{ color: '#4a5070' }}>
+				<span className='text-[12px]' style={{ color: '#7a88b0' }}>
 					👁 {spectatorCount} глядачів
 				</span>
 			</div>
+
+			{/* Screen share notification */}
+			{isAnyoneSharing && (
+				<div className='flex-shrink-0 flex items-center gap-[6px] px-[12px] py-[4px]'
+					style={{ background: 'rgba(68,170,255,0.06)', borderBottom: '1px solid rgba(68,170,255,0.18)' }}>
+					<ScreenShare size={11} style={{ color: 'rgba(68,170,255,0.85)' }} />
+					<span className='text-[12px]' style={{ color: 'rgba(68,170,255,0.85)' }}>
+						Демонстрація екрану — перейдіть у режим «Спікер» для перегляду
+					</span>
+				</div>
+			)}
 
 			{/* Grid — tiles fill full container (Google Meet style) */}
 			<div
@@ -429,6 +454,7 @@ export const GridView = ({
 						onMutePlayer={onMutePlayer}
 						reaction={playerReactions[p.userId]}
 						gameStarted={state.status === 'started'}
+						isMockSpeaking={mockSpeakingId === p.userId}
 					/>
 				))}
 			</div>
@@ -478,6 +504,9 @@ export const GridView = ({
 					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />}
 					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />}
+					{!isSpectator && onToggleScreen && (
+						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={14}/> : <ScreenShare size={14}/>} label='Екран' />
+					)}
 					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={14}/>} label='Вийти' variant='red' />
 				</div>
 			)}
@@ -492,11 +521,11 @@ function CtrlBtn({ active, onClick, icon, label, variant = 'default' }: {
 		? { background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }
 		: active
 			? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
-			: { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }
+			: { background: '#0f1120', border: '1px solid #1c1f35', color: '#9aabb0' }
 
 	return (
 		<button onClick={onClick}
-			className='flex items-center gap-[5px] rounded-[8px] px-[12px] py-[7px] cursor-pointer transition-all hover:brightness-120 text-[12px] whitespace-nowrap'
+			className='flex items-center gap-[5px] rounded-[8px] px-[12px] py-[8px] cursor-pointer transition-all hover:brightness-120 text-[13px] whitespace-nowrap'
 			style={style}>
 			{icon} {label}
 		</button>

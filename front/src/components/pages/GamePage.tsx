@@ -75,7 +75,7 @@ export const GamePage = () => {
 							<h2 className='font-amatic text-[22px] md:text-[26px] font-[700] text-white mb-[10px]'>
 								{t('game.not_auth_title')}
 							</h2>
-							<p className='text-[14px] text-[rgba(180,200,255,0.45)] leading-[1.65] mb-[28px] font-[300]'>
+							<p className='text-[14px] text-[rgba(200,218,255,0.78)] leading-[1.65] mb-[28px] font-[300]'>
 								{t('game.not_auth_desc')}
 							</p>
 							<Link to='/auth'>
@@ -100,7 +100,7 @@ export const GamePage = () => {
 									<select
 										value={role}
 										onChange={e => setRole(e.target.value as Role)}
-										className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.75)] rounded-[12px] py-[12px] pl-[40px] pr-[36px] text-[14px] appearance-none focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all cursor-pointer'
+										className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(215,228,255,0.95)] rounded-[12px] py-[12px] pl-[40px] pr-[36px] text-[14px] appearance-none focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all cursor-pointer'
 									>
 										<option value='player'     className='bg-[#060e24]'>{t('game.role_player')}</option>
 										<option value='spectator'  className='bg-[#060e24]'>{t('game.role_spectator')}</option>
@@ -115,7 +115,7 @@ export const GamePage = () => {
 
 								{role === 'gamemaster' && prefilledCode ? (
 									<div className='flex flex-col gap-[10px]'>
-										<p className='text-[12px] text-[rgba(100,140,220,0.5)] uppercase tracking-[0.5px]'>
+										<p className='text-[13px] text-[rgba(140,170,255,0.8)] uppercase tracking-[0.5px]'>
 											{t('game.your_code_label')}
 										</p>
 										<div
@@ -175,7 +175,7 @@ const GameInputField = ({
 			placeholder={placeholder}
 			value={value}
 			onChange={onChange}
-			className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.35)] rounded-[12px] py-[12px] pl-[40px] pr-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all'
+			className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(218,228,255,0.97)] placeholder-[rgba(140,165,255,0.52)] rounded-[12px] py-[12px] pl-[40px] pr-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.12)] transition-all'
 		/>
 	</div>
 )

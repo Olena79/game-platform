@@ -20,6 +20,12 @@ export interface GameData {
 	coinsPerPlayer: number
 	useInfluence: boolean
 	influencePerPlayer: number
+	participationCost?: number
+	// gmCardNumber is NOT in the list response — use fetchGameCard() separately
+	hasGmCard?: boolean
+	gmCardLast4?: string
+	// present only in edit/detail responses:
+	gmCardNumber?: string
 	scheduledAt?: string
 	coverImage: string
 	images: string[]
@@ -115,6 +121,14 @@ export const likeGame = (
 		method: 'POST',
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<{ likesCount: number; isLiked: boolean }>)
+
+export const fetchGameCard = (
+	token: string,
+	id: string,
+): Promise<{ gmCardNumber: string; participationCost: number }> =>
+	fetch(`${API}/api/games/${id}/card`, {
+		headers: { Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ gmCardNumber: string; participationCost: number }>)
 
 export const unlikeGame = (
 	token: string,

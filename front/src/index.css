@@ -8,11 +8,20 @@
 		--neon-purple: #c07fff;
 		--neon-pink: #ff5fa0;
 		--neon-teal: #0fffc8;
+
+		/* Accessible text tokens */
+		--text-primary:   #e8eeff;
+		--text-secondary: #b0c0e8;
+		--text-muted:     #7a88b0;
+		--text-faint:     #5a6480;
+		--text-placeholder: rgba(140,165,255,0.55);
 	}
 	body {
 		background: #03040f;
-		@apply text-[#e0e8ff] antialiased;
+		@apply text-[#e8eeff] antialiased;
 		font-family: 'Inter', sans-serif;
+		font-size: 16px;
+		line-height: 1.6;
 		overflow-x: hidden;
 	}
 
@@ -135,6 +144,49 @@
 	.animate-slide-down {
 		animation: slide-down 0.3s ease-out forwards;
 	}
+
+	/* ── Community orb button ──────────────────────────── */
+	@keyframes orbit-spin {
+		from { transform: rotate(0deg); }
+		to   { transform: rotate(360deg); }
+	}
+
+	.orb-orbit {
+		animation: orbit-spin 6s linear infinite;
+	}
+
+	.orb-orbit-slow {
+		animation: orbit-spin 10s linear infinite reverse;
+	}
+
+	@keyframes orb-glow {
+		0%, 100% {
+			box-shadow:
+				0 0 28px rgba(40,100,255,0.32),
+				0 0 60px rgba(100,0,220,0.2),
+				inset 0 0 22px rgba(0,0,0,0.45);
+		}
+		50% {
+			box-shadow:
+				0 0 52px rgba(40,120,255,0.58),
+				0 0 100px rgba(100,0,220,0.35),
+				0 0 22px rgba(0,220,200,0.22),
+				inset 0 0 22px rgba(0,0,0,0.45);
+		}
+	}
+
+	.orb-glow-anim {
+		animation: orb-glow 3s ease-in-out infinite;
+	}
+
+	@keyframes orb-sparkle {
+		0%, 100% { opacity: 0.25; transform: scale(0.75); }
+		50%       { opacity: 1;    transform: scale(1.35); }
+	}
+
+	.orb-sp-1 { animation: orb-sparkle 2.1s ease-in-out infinite; }
+	.orb-sp-2 { animation: orb-sparkle 2.8s ease-in-out infinite 0.6s; }
+	.orb-sp-3 { animation: orb-sparkle 3.4s ease-in-out infinite 1.2s; }
 }
 
 /* Safe-area bottom padding for main content — mobile only, outside @layer so it wins over utilities */

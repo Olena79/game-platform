@@ -11,6 +11,7 @@ import { AuthPage } from './components/pages/AuthPage'
 import { GamePage } from './components/pages/GamePage'
 import { CreateGamePage } from './components/pages/CreateGamePage'
 import { OurGamesPage } from './components/pages/OurGamesPage'
+import { CommunityPage } from './components/pages/CommunityPage'
 // import { AboutPage } from './components/pages/AboutPage'
 import { GameRoomPage } from './components/pages/GameRoomPage'
 import { ObserverPage } from './components/pages/ObserverPage'
@@ -74,6 +75,7 @@ const SiteLayout = () => (
 				<Route path='/games' element={<OurGamesPage />} />
 				<Route path='/create-game' element={<CreateGamePage />} />
 				<Route path='/create-game/:id' element={<CreateGamePage />} />
+				<Route path='/community' element={<CommunityPage />} />
 				{/* <Route path='/about' element={<AboutPage />} /> */}
 			</Routes>
 		</main>

@@ -10,6 +10,8 @@ import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
 import recordingRoutes from './routes/recordings'
 import { registerGameRoom } from './socket/gameRoom'
+import { registerCommunity } from './socket/community'
+import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
 import { deleteFile } from './services/googleDrive'
 
@@ -38,8 +40,10 @@ app.use('/api/auth', authRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/livekit', livekitRoutes)
 app.use('/api/recordings', recordingRoutes)
+app.use('/api/community', makeCommunityRouter(io))
 
 registerGameRoom(io)
+registerCommunity(io)
 
 // Delete expired recordings from Google Drive every 6 hours
 cron.schedule('0 */6 * * *', async () => {

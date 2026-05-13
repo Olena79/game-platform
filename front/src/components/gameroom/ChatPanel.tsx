@@ -144,7 +144,7 @@ export const ChatPanel = ({
 	const notesPlayers = state.players.filter(p => p.connected)
 
 	const tabBtnStyle = (isActive: boolean) => ({
-		color: isActive ? '#0fffc8' : '#4a5070',
+		color: isActive ? '#0fffc8' : '#7a88b0',
 		borderBottom: isActive ? '2px solid #0fffc8' : '2px solid transparent',
 		background: 'transparent' as const,
 	})
@@ -210,16 +210,16 @@ export const ChatPanel = ({
 				<>
 					<div className='flex-1 overflow-y-auto overflow-x-hidden p-[10px] flex flex-col gap-[8px] min-h-0'>
 						{((privateChats ?? {})[tab] ?? []).length === 0 && (
-							<p className='text-[12px] text-center pt-[20px]' style={{ color: 'rgba(100,140,220,0.3)' }}>
+							<p className='text-[12px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
 								Почніть розмову...
 							</p>
 						)}
 						{((privateChats ?? {})[tab] ?? []).map((msg: ChatMessage) => (
 							<div key={msg.id} className='flex flex-col gap-[2px]'>
-								<div className='text-[11px] font-[700]' style={{ color: msgColor(msg.userId) }}>
+								<div className='text-[12px] font-[700]' style={{ color: msgColor(msg.userId) }}>
 									{msg.name}
 								</div>
-								<div className='text-[12px] leading-[1.45] break-words' style={{ color: '#7a80a0', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+								<div className='text-[13px] leading-[1.5] break-words' style={{ color: '#9eaac8', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
 									{msg.text}
 								</div>
 							</div>
@@ -232,11 +232,11 @@ export const ChatPanel = ({
 							onChange={e => setText(e.target.value)}
 							onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
 							placeholder='Написати приватно...'
-							className='flex-1 rounded-[6px] px-[10px] py-[6px] text-[12px] focus:outline-none'
+							className='flex-1 rounded-[6px] px-[10px] py-[7px] text-[13px] focus:outline-none'
 							style={{
 								background: 'rgba(15,255,200,0.03)',
 								border: '1px solid rgba(15,255,200,0.15)',
-								color: '#dde1f0',
+								color: '#e0e8ff',
 							}}
 						/>
 						<button onClick={send}
@@ -280,10 +280,10 @@ export const ChatPanel = ({
 						)}
 						{activeChatMsgs.map(msg => (
 							<div key={msg.id} className='flex flex-col gap-[2px]'>
-								<div className='text-[11px] font-[700]' style={{ color: msgColor(msg.userId) }}>
+								<div className='text-[12px] font-[700]' style={{ color: msgColor(msg.userId) }}>
 									{msg.name}
 								</div>
-								<div className='text-[12px] leading-[1.45] break-words' style={{ color: '#7a80a0', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+								<div className='text-[13px] leading-[1.5] break-words' style={{ color: '#9eaac8', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
 									{msg.text}
 								</div>
 							</div>
@@ -295,8 +295,8 @@ export const ChatPanel = ({
 					{tab === 'chat' && !isSpectator && (
 						<div className='flex-shrink-0 flex items-center gap-[6px] px-[10px] py-[5px] relative'
 							style={{ borderTop: '1px solid #151824', background: '#0b0d1a' }}>
-							<span className='text-[10px] uppercase tracking-[0.06em] flex-shrink-0'
-								style={{ color: '#4a5070' }}>
+							<span className='text-[11px] uppercase tracking-[0.06em] flex-shrink-0'
+								style={{ color: '#7a88b0' }}>
 								Кому:
 							</span>
 							<button
@@ -306,7 +306,7 @@ export const ChatPanel = ({
 									maxWidth: '160px',
 									background: isPrivateMode ? 'rgba(15,255,200,0.06)' : '#0f1120',
 									border: isPrivateMode ? '1px solid rgba(15,255,200,0.2)' : '1px solid #1c1f35',
-									color: isPrivateMode ? '#0fffc8' : '#7a80a0',
+									color: isPrivateMode ? '#0fffc8' : '#9aabb0',
 								}}>
 								{toLabel} ▾
 							</button>
@@ -320,7 +320,7 @@ export const ChatPanel = ({
 										<button
 											onClick={() => { setSelectedRecipients([]); setRecipientMenuOpen(false) }}
 											className='w-full text-left px-[12px] py-[7px] text-[12px] cursor-pointer transition-all hover:brightness-125 flex items-center gap-[8px]'
-											style={{ color: selectedRecipients.length === 0 ? '#0fffc8' : '#7a80a0', borderBottom: '1px solid #151824', background: 'transparent' }}>
+											style={{ color: selectedRecipients.length === 0 ? '#0fffc8' : '#9aabb0', borderBottom: '1px solid #151824', background: 'transparent' }}>
 											<span className='flex-shrink-0 w-[14px] h-[14px] rounded-[3px] flex items-center justify-center text-[9px]'
 												style={{
 													background: selectedRecipients.length === 0 ? 'rgba(15,255,200,0.1)' : '#1a1a2e',
@@ -338,7 +338,7 @@ export const ChatPanel = ({
 														sel ? prev.filter(id => id !== p.userId) : [...prev, p.userId]
 													)}
 													className='w-full text-left px-[12px] py-[7px] text-[12px] cursor-pointer transition-all hover:brightness-125 flex items-center gap-[8px]'
-													style={{ color: sel ? '#0fffc8' : '#7a80a0', background: 'transparent' }}>
+													style={{ color: sel ? '#0fffc8' : '#9aabb0', background: 'transparent' }}>
 													<span className='flex-shrink-0 w-[14px] h-[14px] rounded-[3px] flex items-center justify-center text-[9px]'
 														style={{
 															background: sel ? 'rgba(15,255,200,0.1)' : '#1a1a2e',
@@ -348,13 +348,13 @@ export const ChatPanel = ({
 													</span>
 													{p.name.split(' ')[0]}
 													{p.isGamemaster && (
-														<span style={{ color: '#4a5070', fontSize: '9px' }}>GM</span>
+														<span style={{ color: '#7a88b0', fontSize: '10px' }}>GM</span>
 													)}
 												</button>
 											)
 										})}
 										{recipientOptions.length === 0 && (
-											<p className='px-[12px] py-[8px] text-[11px]' style={{ color: 'rgba(100,140,220,0.3)' }}>
+											<p className='px-[12px] py-[8px] text-[12px]' style={{ color: 'rgba(140,170,255,0.55)' }}>
 												Немає гравців
 											</p>
 										)}
@@ -372,7 +372,7 @@ export const ChatPanel = ({
 								onChange={e => setText(e.target.value)}
 								onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
 								placeholder={isPrivateMode ? 'Написати приватно...' : 'Написати...'}
-								className='flex-1 rounded-[6px] px-[10px] py-[6px] text-[12px] focus:outline-none'
+								className='flex-1 rounded-[6px] px-[10px] py-[7px] text-[13px] focus:outline-none'
 								style={{
 									background: isPrivateMode ? 'rgba(15,255,200,0.03)' : '#0f1120',
 									border: isPrivateMode ? '1px solid rgba(15,255,200,0.15)' : '1px solid #1c1f35',
@@ -392,7 +392,7 @@ export const ChatPanel = ({
 					) : (
 						<div className='flex-shrink-0 px-[10px] py-[8px] flex items-center gap-[6px]'
 							style={{ borderTop: '1px solid #151824' }}>
-							<span className='text-[11px]' style={{ color: 'rgba(74,80,112,0.45)' }}>
+							<span className='text-[12px]' style={{ color: 'rgba(130,145,195,0.75)' }}>
 								👁 Тільки перегляд
 							</span>
 						</div>
@@ -403,10 +403,10 @@ export const ChatPanel = ({
 			{tab === 'scenario' && (
 				<div className='flex-1 overflow-y-auto p-[12px]'>
 					{state.scenario
-						? <p className='text-[12px] leading-[1.7]' style={{ color: '#7a80a0', whiteSpace: 'pre-wrap' }}>
+						? <p className='text-[13px] leading-[1.75]' style={{ color: '#9eaac8', whiteSpace: 'pre-wrap' }}>
 								{state.scenario}
 							</p>
-						: <p className='text-[12px] text-center pt-[20px]' style={{ color: 'rgba(100,140,220,0.3)' }}>
+						: <p className='text-[13px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
 								Сценарій не вказано
 							</p>
 					}
@@ -418,25 +418,25 @@ export const ChatPanel = ({
 					{/* Player dropdown */}
 					<div className='flex-shrink-0 px-[10px] pt-[10px] pb-[8px]'
 						style={{ borderBottom: '1px solid #151824' }}>
-						<p className='text-[10px] uppercase tracking-[0.08em] mb-[6px]' style={{ color: '#4a5070' }}>
+						<p className='text-[11px] uppercase tracking-[0.08em] mb-[6px]' style={{ color: '#7a88b0' }}>
 							Вставити гравця
 						</p>
 						<div className='flex flex-col gap-[4px] max-h-[120px] overflow-y-auto pr-[2px]'>
 							{notesPlayers.length === 0 && (
-								<p className='text-[11px]' style={{ color: 'rgba(100,140,220,0.3)' }}>Немає гравців</p>
+								<p className='text-[12px]' style={{ color: 'rgba(140,170,255,0.52)' }}>Немає гравців</p>
 							)}
 							{notesPlayers.map(p => (
 								<button
 									key={p.userId}
 									onClick={() => insertPlayer(p)}
-									className='text-left rounded-[6px] px-[8px] py-[5px] text-[11px] cursor-pointer transition-all hover:brightness-125 truncate'
+									className='text-left rounded-[6px] px-[8px] py-[5px] text-[12px] cursor-pointer transition-all hover:brightness-125 truncate'
 									style={{
 										background: '#0f1120',
 										border: '1px solid #1c1f35',
-										color: p.isGamemaster ? 'rgba(15,255,200,0.5)' : '#7a80a0',
+										color: p.isGamemaster ? 'rgba(15,255,200,0.82)' : '#9eaac8',
 									}}>
-									{p.name}{p.role ? <span style={{ color: '#4a5070' }}> ({p.role})</span> : null}
-									{p.isGamemaster && <span style={{ color: 'rgba(15,255,200,0.4)', fontSize: '10px' }}> · GM</span>}
+									{p.name}{p.role ? <span style={{ color: '#7a88b0' }}> ({p.role})</span> : null}
+									{p.isGamemaster && <span style={{ color: 'rgba(15,255,200,0.75)', fontSize: '11px' }}> · GM</span>}
 								</button>
 							))}
 						</div>
@@ -448,7 +448,7 @@ export const ChatPanel = ({
 						value={notes}
 						onChange={e => onNotesChange(e.target.value)}
 						placeholder='Ваші нотатки під час гри...'
-						className='flex-1 resize-none focus:outline-none p-[12px] text-[12px] leading-[1.7] min-h-0'
+						className='flex-1 resize-none focus:outline-none p-[12px] text-[13px] leading-[1.75] min-h-0'
 						style={{
 							background: '#07080f',
 							color: '#dde1f0',

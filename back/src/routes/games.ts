@@ -44,10 +44,17 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 			likedSet = new Set(likedIds.map(id => String(id)))
 		}
 
-		res.json(games.map(g => ({
-			...g.toObject(),
-			isLiked: likedSet.has(String(g._id)),
-		})))
+		res.json(games.map(g => {
+			const obj = g.toObject() as Record<string, unknown>
+			const card = obj.gmCardNumber as string | undefined
+			delete obj.gmCardNumber          // never expose full number in list
+			return {
+				...obj,
+				isLiked:    likedSet.has(String(g._id)),
+				hasGmCard:  !!(card && card.length === 16),
+				gmCardLast4: (card && card.length === 16) ? card.slice(-4) : '',
+			}
+		}))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
@@ -70,6 +77,20 @@ router.get('/:id', async (req, res: Response): Promise<void> => {
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 		res.json(game)
+	} catch {
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+// GET /api/games/:id/card — повний номер картки для кнопки "Донат" (потрібна авторизація)
+router.get('/:id/card', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const game = await Game.findById(req.params.id).select('gmCardNumber participationCost')
+		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
+		res.json({
+			gmCardNumber:    game.gmCardNumber || '',
+			participationCost: game.participationCost || 0,
+		})
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
@@ -99,13 +120,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 		const {
 			title, description, minPlayers, maxPlayers, scenario,
 			useCoins, coinsPerPlayer, useInfluence, influencePerPlayer, scheduledAt,
-			coverImage, images,
+			coverImage, images, participationCost, gmCardNumber,
 		} = req.body
 
 		if (!title || !String(title).trim()) {
 			res.status(400).json({ message: 'Title is required' })
 			return
 		}
+
+		// Sanitize card number: keep digits only, must be exactly 16
+		const rawCard     = String(gmCardNumber || '').replace(/\D/g, '')
+		const storedCard  = rawCard.length === 16 ? rawCard : ''
 
 		const gameCode      = await generateUniqueCode()
 		const spectatorCode = await generateUniqueCode()
@@ -124,6 +149,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 			coinsPerPlayer:     useCoins ? (Number(coinsPerPlayer) || 0) : 0,
 			useInfluence:       !!useInfluence,
 			influencePerPlayer: useInfluence ? (Number(influencePerPlayer) || 0) : 0,
+			participationCost:  Math.max(0, Number(participationCost) || 0),
+			gmCardNumber:       storedCard,
 			scheduledAt:        scheduledAt ? new Date(scheduledAt) : undefined,
 			coverImage:         coverImage || '',
 			images:             Array.isArray(images) ? images.slice(0, 10) : [],
@@ -148,7 +175,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 		const {
 			title, description, minPlayers, maxPlayers, scenario,
 			useCoins, coinsPerPlayer, useInfluence, influencePerPlayer, scheduledAt,
-			coverImage, images,
+			coverImage, images, participationCost, gmCardNumber,
 		} = req.body
 
 		if (title !== undefined)       game.title = String(title).trim()
@@ -163,6 +190,13 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 		if (useInfluence !== undefined) {
 			game.useInfluence = !!useInfluence
 			game.influencePerPlayer = game.useInfluence ? (Number(influencePerPlayer) || 0) : 0
+		}
+		if (participationCost !== undefined) {
+			game.participationCost = Math.max(0, Number(participationCost) || 0)
+		}
+		if (gmCardNumber !== undefined) {
+			const rawCard = String(gmCardNumber).replace(/\D/g, '')
+			game.gmCardNumber = rawCard.length === 16 ? rawCard : ''
 		}
 		if (scheduledAt !== undefined) {
 			game.scheduledAt = scheduledAt ? new Date(scheduledAt) : undefined

@@ -75,6 +75,9 @@ export function useGameRoom(rawCode: string) {
 		socket.on('connect', async () => {
 			setConnected(true)
 			setConnStatus('connected')
+			// Clear stale LK connections so LiveKit remounts on reconnect
+			setLk(null)
+			setLkBreakout(null)
 			socket.emit('gr:join', {
 				gameCode,
 				userId: user.id,

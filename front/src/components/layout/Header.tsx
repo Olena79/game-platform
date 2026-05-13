@@ -120,14 +120,22 @@ export const Header = () => {
 				</Link>
 
 				{/* Desktop nav */}
-				<div className='hidden md:flex items-center gap-[24px] lg:gap-[32px] text-[13px] lg:text-[14px] text-[rgba(180,200,255,0.55)]'>
+				<div className='hidden md:flex items-center gap-[24px] lg:gap-[32px] text-[13px] lg:text-[14px] text-[rgba(200,218,255,0.82)]'>
 					<NavLink
 						to='/games'
 						className={({ isActive }) =>
-							`hover:text-white transition-colors cursor-pointer ${isActive ? 'text-[rgba(180,200,255,0.9)]' : ''}`
+							`hover:text-white transition-colors cursor-pointer ${isActive ? 'text-[rgba(225,237,255,0.97)]' : ''}`
 						}
 					>
 						{t('nav.games')}
+					</NavLink>
+					<NavLink
+						to='/community'
+						className={({ isActive }) =>
+							`hover:text-white transition-colors cursor-pointer ${isActive ? 'text-[rgba(225,237,255,0.97)]' : ''}`
+						}
+					>
+						{t('nav.community')}
 					</NavLink>
 					<button
 						onClick={toggleLang}
@@ -154,7 +162,7 @@ export const Header = () => {
 								<div className='absolute top-[calc(100%+10px)] right-0 bg-[rgba(3,6,25,0.97)] border border-[rgba(68,170,255,0.18)] rounded-[12px] py-[6px] min-w-[130px] backdrop-blur-[14px] shadow-[0_8px_28px_rgba(0,0,0,0.5)] z-[200]'>
 									<button
 										onClick={() => { setDropdownOpen(false); setLogoutModal(true) }}
-										className='w-full px-[16px] py-[10px] text-[13px] text-[rgba(255,90,160,0.8)] hover:text-[#ff5fa0] hover:bg-[rgba(255,90,160,0.06)] transition-all cursor-pointer text-left rounded-[8px]'
+										className='w-full px-[16px] py-[10px] text-[13px] text-[rgba(255,105,175,0.95)] hover:text-[#ff5fa0] hover:bg-[rgba(255,90,160,0.08)] transition-all cursor-pointer text-left rounded-[8px]'
 									>
 										{t('auth.btn_logout')}
 									</button>
@@ -180,12 +188,12 @@ export const Header = () => {
 
 				{/* Mobile: language switcher only */}
 				<button
-					className='md:hidden flex items-center gap-[6px] text-[rgba(180,200,255,0.6)] hover:text-[#44aaff] transition-colors cursor-pointer'
+					className='md:hidden flex items-center gap-[6px] text-[rgba(200,218,255,0.88)] hover:text-[#44aaff] transition-colors cursor-pointer'
 					onClick={toggleLang}
 					aria-label='Мова'
 				>
 					<Globe size={16} strokeWidth={1.8} />
-					<span className='text-[12px] font-[500]'>{currentLang}</span>
+					<span className='text-[13px] font-[500]'>{currentLang}</span>
 				</button>
 			</div>
 

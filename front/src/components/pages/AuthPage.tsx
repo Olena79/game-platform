@@ -186,7 +186,7 @@ export const AuthPage = () => {
 								className={`flex-1 pb-[12px] text-[14px] font-[600] transition-all border-b-2 cursor-pointer ${
 									(tab === 'login') === isLogin
 										? 'text-[#44aaff] border-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.5)]'
-										: 'text-[rgba(180,200,255,0.35)] border-[rgba(255,255,255,0.06)] hover:text-[rgba(180,200,255,0.65)]'
+										: 'text-[rgba(180,200,255,0.62)] border-[rgba(255,255,255,0.1)] hover:text-[rgba(210,225,255,0.88)]'
 								}`}
 							>
 								{t(tab === 'login' ? 'auth.tab_login' : 'auth.tab_register')}
@@ -250,7 +250,7 @@ export const AuthPage = () => {
 						<>
 							<div className='flex items-center gap-[12px] my-[18px]'>
 								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
-								<span className='text-[11px]' style={{ color: 'rgba(180,200,255,0.3)' }}>або</span>
+								<span className='text-[12px]' style={{ color: 'rgba(180,200,255,0.6)' }}>або</span>
 								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
 							</div>
 							<GoogleSignInButton

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Scroll, Users, CircleDollarSign, Zap, CalendarDays, X, ImagePlus } from 'lucide-react'
+import { Scroll, Users, CircleDollarSign, Zap, CalendarDays, X, ImagePlus, CreditCard, Banknote } from 'lucide-react'
 import { uploadToCloudinary } from '../../utils/cloudinary'
 import { useAuth } from '../../context/AuthContext'
 import { InputField } from '../minicomponents/InputField'
@@ -12,7 +12,7 @@ import { createGame, updateGame, getGameForEdit } from '../../actions/games'
 // ─── Local mini-components ───────────────────────────────────────────────────
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-	<span className='block text-[11px] uppercase tracking-[0.6px] text-[rgba(68,170,255,0.55)] font-[600] mb-[10px]'>
+	<span className='block text-[13px] uppercase tracking-[0.6px] text-[rgba(68,170,255,0.85)] font-[600] mb-[10px]'>
 		{children}
 	</span>
 )
@@ -74,20 +74,25 @@ const Toggle = ({
 			<div className={`absolute top-[4px] w-[16px] h-[16px] rounded-full transition-all duration-[220ms] ${
 				checked
 					? 'left-[22px] bg-[#44aaff] shadow-[0_0_8px_rgba(68,170,255,0.65)]'
-					: 'left-[4px] bg-[rgba(180,200,255,0.2)]'
+					: 'left-[4px] bg-[rgba(180,200,255,0.35)]'
 			}`} />
 		</div>
 		{icon && (
-			<span className={`transition-colors ${checked ? 'text-[rgba(180,200,255,0.7)]' : 'text-[rgba(180,200,255,0.25)]'}`}>
+			<span className={`transition-colors ${checked ? 'text-[rgba(180,200,255,0.7)]' : 'text-[rgba(180,200,255,0.5)]'}`}>
 				{icon}
 			</span>
 		)}
-		<span className={`text-[14px] transition-colors ${checked ? 'text-[rgba(180,200,255,0.85)]' : 'text-[rgba(180,200,255,0.4)]'}`}>
+		<span className={`text-[14px] transition-colors ${checked ? 'text-[rgba(180,200,255,0.85)]' : 'text-[rgba(180,200,255,0.72)]'}`}>
 			{label}
 		</span>
 		<input type='checkbox' checked={checked} onChange={e => onChange(e.target.checked)} className='hidden' />
 	</label>
 )
+
+// formats stored digits "1234567890123456" → "1234 5678 9012 3456"
+function formatCard(digits: string) {
+	return digits.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ')
+}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -111,6 +116,8 @@ export const CreateGamePage = () => {
 	const [useInfluence, setUseInfluence]         = useState(false)
 	const [influencePerPlayer, setInfluencePerPlayer] = useState(10)
 	const [scheduledAt, setScheduledAt]           = useState('')
+	const [participationCost, setParticipationCost] = useState(0)
+	const [gmCardNumber, setGmCardNumber]           = useState('')
 
 	const DEFAULT_COVER = 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'
 
@@ -144,6 +151,8 @@ export const CreateGamePage = () => {
 				if (g.scheduledAt) setScheduledAt(new Date(g.scheduledAt).toISOString().slice(0, 16))
 				if (g.coverImage) setCoverImage(g.coverImage)
 				setImages(g.images || [])
+				setParticipationCost(g.participationCost || 0)
+				if (g.gmCardNumber) setGmCardNumber(formatCard(g.gmCardNumber))
 			})
 			.catch(err => {
 				const msg = err instanceof Error ? err.message : ''
@@ -168,6 +177,8 @@ export const CreateGamePage = () => {
 		if (maxPlayers < minPlayers)          errs.maxPlayers = t('create_game.err_players')
 		if (useCoins && coinsPerPlayer < 1)   errs.coinsPerPlayer = '≥ 1'
 		if (useInfluence && influencePerPlayer < 1) errs.influencePerPlayer = '≥ 1'
+		const rawCard = gmCardNumber.replace(/\D/g, '')
+		if (rawCard.length > 0 && rawCard.length !== 16) errs.gmCardNumber = 'Потрібно 16 цифр'
 		setErrors(errs)
 		return Object.keys(errs).length === 0
 	}
@@ -177,6 +188,7 @@ export const CreateGamePage = () => {
 		if (!validate() || !token) return
 		setLoading(true)
 		try {
+			const rawCard = gmCardNumber.replace(/\D/g, '')
 			const body = {
 				title: title.trim(),
 				description,
@@ -187,6 +199,8 @@ export const CreateGamePage = () => {
 				coinsPerPlayer: useCoins ? coinsPerPlayer : 0,
 				useInfluence,
 				influencePerPlayer: useInfluence ? influencePerPlayer : 0,
+				participationCost,
+				gmCardNumber: rawCard.length === 16 ? rawCard : '',
 				scheduledAt: scheduledAt || undefined,
 				coverImage,
 				images,
@@ -310,9 +324,9 @@ export const CreateGamePage = () => {
 									value={description}
 									onChange={e => setDescription(e.target.value.slice(0, 500))}
 									rows={3}
-									className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.3)] rounded-[12px] py-[12px] px-[14px] text-[14px] leading-[1.65] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all resize-none'
+									className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.58)] rounded-[12px] py-[12px] px-[14px] text-[14px] leading-[1.65] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all resize-none'
 								/>
-								<span className={`text-[11px] text-right pr-[2px] transition-colors ${description.length >= 480 ? 'text-[rgba(255,183,40,0.7)]' : 'text-[rgba(100,140,220,0.3)]'}`}>
+								<span className={`text-[11px] text-right pr-[2px] transition-colors ${description.length >= 480 ? 'text-[rgba(255,183,40,0.7)]' : 'text-[rgba(100,140,220,0.55)]'}`}>
 									{description.length} / 500
 								</span>
 							</div>
@@ -326,7 +340,7 @@ export const CreateGamePage = () => {
 
 							{/* Cover image */}
 							<div className='flex flex-col gap-[8px]'>
-								<span className='text-[12px] text-[rgba(100,140,220,0.45)]'>{t('create_game.cover_label')}</span>
+								<span className='text-[13px] text-[rgba(140,170,255,0.75)]'>{t('create_game.cover_label')}</span>
 								<div className='relative w-full aspect-[16/7] rounded-[14px] overflow-hidden border border-[rgba(68,170,255,0.18)] bg-[#060e24]'>
 									<img
 										src={coverImage || DEFAULT_COVER}
@@ -356,7 +370,7 @@ export const CreateGamePage = () => {
 
 							{/* Additional images */}
 							<div className='flex flex-col gap-[8px]'>
-								<span className='text-[12px] text-[rgba(100,140,220,0.45)]'>
+								<span className='text-[13px] text-[rgba(140,170,255,0.75)]'>
 									{t('create_game.images_label')} ({images.length}/10)
 								</span>
 								<div className='grid grid-cols-4 gap-[8px] sm:grid-cols-5'>
@@ -395,17 +409,17 @@ export const CreateGamePage = () => {
 							<SectionLabel>{t('create_game.section_players')}</SectionLabel>
 							<div className='flex items-end gap-[12px]'>
 								<div className='flex flex-col gap-[6px] items-center'>
-									<span className='text-[11px] text-[rgba(100,140,220,0.4)] uppercase tracking-[0.4px]'>{t('create_game.min_label')}</span>
+									<span className='text-[12px] text-[rgba(140,170,255,0.72)] uppercase tracking-[0.4px]'>{t('create_game.min_label')}</span>
 									<NumInput value={minPlayers} onChange={setMinPlayers} min={1} max={99} className='w-[72px]' />
 								</div>
-								<span className='text-[rgba(100,140,220,0.3)] text-[20px] pb-[10px]'>—</span>
+								<span className='text-[rgba(140,170,255,0.55)] text-[20px] pb-[10px]'>—</span>
 								<div className='flex flex-col gap-[6px] items-center'>
-									<span className='text-[11px] text-[rgba(100,140,220,0.4)] uppercase tracking-[0.4px]'>{t('create_game.max_label')}</span>
+									<span className='text-[12px] text-[rgba(140,170,255,0.72)] uppercase tracking-[0.4px]'>{t('create_game.max_label')}</span>
 									<NumInput value={maxPlayers} onChange={setMaxPlayers} min={1} max={99} error={errors.maxPlayers} className='w-[72px]' />
 								</div>
 								<div className='flex items-center gap-[6px] pb-[10px]'>
 									<Users size={14} strokeWidth={1.8} className='text-[rgba(68,170,255,0.4)]' />
-									<span className='text-[13px] text-[rgba(100,140,220,0.4)] whitespace-nowrap'>{t('create_game.players_label')}</span>
+									<span className='text-[14px] text-[rgba(140,165,255,0.75)] whitespace-nowrap'>{t('create_game.players_label')}</span>
 								</div>
 							</div>
 							{errors.maxPlayers && (
@@ -423,7 +437,7 @@ export const CreateGamePage = () => {
 								value={scenario}
 								onChange={e => setScenario(e.target.value)}
 								rows={5}
-								className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.3)] rounded-[12px] py-[12px] px-[14px] text-[14px] leading-[1.7] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all resize-y min-h-[120px]'
+								className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.58)] rounded-[12px] py-[12px] px-[14px] text-[14px] leading-[1.7] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all resize-y min-h-[120px]'
 							/>
 						</section>
 
@@ -444,7 +458,7 @@ export const CreateGamePage = () => {
 									/>
 									{useCoins && (
 										<div className='flex items-center gap-[10px] pl-[54px]'>
-											<span className='text-[13px] text-[rgba(180,200,255,0.4)] whitespace-nowrap'>{t('create_game.per_player')}</span>
+											<span className='text-[13px] text-[rgba(180,200,255,0.72)] whitespace-nowrap'>{t('create_game.per_player')}</span>
 											<NumInput
 												value={coinsPerPlayer}
 												onChange={setCoinsPerPlayer}
@@ -466,7 +480,7 @@ export const CreateGamePage = () => {
 									/>
 									{useInfluence && (
 										<div className='flex items-center gap-[10px] pl-[54px]'>
-											<span className='text-[13px] text-[rgba(180,200,255,0.4)] whitespace-nowrap'>{t('create_game.per_player')}</span>
+											<span className='text-[13px] text-[rgba(180,200,255,0.72)] whitespace-nowrap'>{t('create_game.per_player')}</span>
 											<NumInput
 												value={influencePerPlayer}
 												onChange={setInfluencePerPlayer}
@@ -494,8 +508,70 @@ export const CreateGamePage = () => {
 								type='datetime-local'
 								value={scheduledAt}
 								onChange={e => setScheduledAt(e.target.value)}
-								className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.75)] rounded-[12px] py-[12px] px-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all [color-scheme:dark]'
+								className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.2)] text-[rgba(180,200,255,0.88)] rounded-[12px] py-[12px] px-[14px] text-[14px] focus:outline-none focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_14px_rgba(68,170,255,0.1)] transition-all [color-scheme:dark]'
 							/>
+						</section>
+
+						<Divider />
+
+						{/* ── Оплата / Донат ── */}
+						<section className='flex flex-col gap-[16px]'>
+							<SectionLabel>
+								<span className='flex items-center gap-[6px]'>
+									<Banknote size={12} strokeWidth={2} />
+									Оплата та донат
+								</span>
+							</SectionLabel>
+
+							{/* Participation cost */}
+							<div className='flex flex-col gap-[8px]'>
+								<span className='text-[13px] text-[rgba(140,170,255,0.82)]'>Вартість участі (грн)</span>
+								<div className='flex items-center gap-[10px]'>
+									<NumInput
+										value={participationCost}
+										onChange={setParticipationCost}
+										min={0}
+										className='w-[100px]'
+									/>
+									<span className='text-[13px] text-[rgba(140,170,255,0.65)]'>грн · 0 = безкоштовно</span>
+								</div>
+							</div>
+
+							{/* GM card number */}
+							<div className='flex flex-col gap-[8px]'>
+								<span className='text-[13px] text-[rgba(140,170,255,0.82)]'>
+									Картка ігромайстра (для донатів)
+								</span>
+								<div className='relative'>
+									<CreditCard size={14} strokeWidth={1.8}
+										className='absolute left-[12px] top-1/2 -translate-y-1/2 pointer-events-none'
+										style={{ color: errors.gmCardNumber ? 'rgba(255,90,160,0.6)' : 'rgba(68,170,255,0.45)' }}
+									/>
+									<input
+										type='text'
+										inputMode='numeric'
+										placeholder='1234 5678 9012 3456'
+										value={gmCardNumber}
+										onChange={e => {
+											const formatted = formatCard(e.target.value)
+											setGmCardNumber(formatted)
+											setErrors(prev => ({ ...prev, gmCardNumber: undefined! }))
+										}}
+										maxLength={19}
+										className={`w-full bg-[#060e24] rounded-[12px] py-[10px] pl-[38px] pr-[14px] text-[rgba(180,200,255,0.9)] text-[15px] font-[600] tracking-[3px] placeholder:tracking-normal placeholder:font-[400] placeholder:text-[rgba(100,140,220,0.3)] focus:outline-none transition-all ${
+											errors.gmCardNumber
+												? 'border border-[rgba(255,90,160,0.55)]'
+												: 'border border-[rgba(68,170,255,0.2)] focus:border-[rgba(68,170,255,0.6)] focus:shadow-[0_0_10px_rgba(68,170,255,0.1)]'
+										}`}
+									/>
+								</div>
+								{errors.gmCardNumber && (
+									<span className='text-[11px] text-[rgba(255,90,160,0.85)]'>{errors.gmCardNumber}</span>
+								)}
+								<span className='text-[12px] text-[rgba(100,140,220,0.65)]'>
+									Номер буде показано гравцям лише після натискання кнопки «Донат»
+								</span>
+							</div>
 						</section>
 
 						{/* ── Submit ── */}

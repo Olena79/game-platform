@@ -17,6 +17,8 @@ const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
 import { useAuth } from '../../context/AuthContext'
 import { sfx } from '../../utils/sounds'
+import { useMockParticipants } from '../../hooks/useMockParticipants'
+import { DevToolbar } from '../gameroom/DevToolbar'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 import { AnnouncementBanner } from '../gameroom/AnnouncementBanner'
@@ -27,7 +29,7 @@ import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
 import { ImagePanel } from '../gameroom/ImagePanel'
-import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign } from 'lucide-react'
+import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
@@ -64,7 +66,7 @@ class RoomErrorBoundary extends Component<
 
 const MOBILE_REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
 
-const ROOM_INACTIVE = 'rgba(175,190,240,0.75)'
+const ROOM_INACTIVE = 'rgba(200,215,255,0.9)'
 const ROOM_ACTIVE = '#0fffc8'
 
 function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
@@ -90,7 +92,7 @@ function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 					</span>
 				)}
 			</div>
-			<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
+			<span className='text-[13px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
 		</button>
 	)
 }
@@ -114,6 +116,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		shouldMute,
 		clearMuteSignal,
 		newPublicMsgSignal,
+		inBreakout,
 		breakoutInvite,
 		setBreakoutInvite,
 		joinBreakout,
@@ -154,6 +157,11 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 
 	const isSpectator = (me?.isSpectator ?? false) || isSpectatorJoin
 
+	const {
+		isDev, mockPlayers, mockSpeakingId, mockCount, mocksByRoom,
+		addMockPlayers, moveAllMocksToRoom, clearMocksInRoom, clearMockPlayers,
+	} = useMockParticipants()
+
 	const handleOpenObserver = () => {
 		window.open(`/room/${gameCode}/observe`, 'observer', 'width=1280,height=720,menubar=no,toolbar=no')
 	}
@@ -165,6 +173,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	const [localImageHidden, setLocalImageHidden] = useState(false)
 	const [micOn, setMicOn] = useState(false)
 	const [camOn, setCamOn] = useState(false)
+	const [screenOn, setScreenOn] = useState(false)
 	const [showCoinModal, setShowCoin] = useState(false)
 	const [showVoteModal, setShowVote] = useState(false)
 	const [showTimerModal, setShowTimer] = useState(false)
@@ -274,6 +283,14 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		clearMuteSignal()
 	}, [shouldMute]) // eslint-disable-line react-hooks/exhaustive-deps
 
+	// Auto-enable mic once for non-spectators when LiveKit local participant is ready
+	const autoMediaRef = useRef(false)
+	useEffect(() => {
+		if (!localParticipant || isSpectator || autoMediaRef.current) return
+		autoMediaRef.current = true
+		localParticipant.setMicrophoneEnabled(true).then(() => setMicOn(true)).catch(() => {})
+	}, [localParticipant]) // eslint-disable-line react-hooks/exhaustive-deps
+
 	const toggleMic = useCallback(async () => {
 		if (!localParticipant) return
 		const enabled = !micOn
@@ -287,6 +304,17 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		await localParticipant.setCameraEnabled(enabled)
 		setCamOn(enabled)
 	}, [localParticipant, camOn])
+
+	const toggleScreen = useCallback(async () => {
+		if (!localParticipant) return
+		const enabled = !screenOn
+		try {
+			await localParticipant.setScreenShareEnabled(enabled)
+			setScreenOn(enabled)
+		} catch {
+			// user cancelled the screen picker dialog
+		}
+	}, [localParticipant, screenOn])
 
 	useEffect(() => { setLocalImageHidden(false) }, [state?.shownImageUrl])
 
@@ -380,24 +408,24 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 
 					{/* View switcher */}
 					<div
-						className='flex-shrink-0 flex items-center gap-[7px] px-[12px] py-[7px]'
+						className='flex-shrink-0 flex items-center gap-[8px] px-[12px] py-[8px]'
 						style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}
 					>
-						<span className='text-[10px]' style={{ color: '#4a5070' }}>
+						<span className='text-[12px] font-[500]' style={{ color: '#8892b8' }}>
 							Вид:
 						</span>
 						{(['speaker', 'grid'] as const).map(v => (
 							<button
 								key={v}
 								onClick={() => setView(v)}
-								className='px-[12px] py-[4px] rounded-[6px] text-[11px] cursor-pointer transition-all'
+								className='px-[14px] py-[6px] rounded-[7px] text-[13px] font-[500] cursor-pointer transition-all'
 								style={{
-									background: view === v ? 'rgba(15,255,200,0.08)' : '#0f1120',
+									background: view === v ? 'rgba(15,255,200,0.1)' : '#0f1120',
 									border:
 										view === v
-											? '1px solid rgba(15,255,200,0.3)'
-											: '1px solid #1c1f35',
-									color: view === v ? '#0fffc8' : '#4a5070',
+											? '1px solid rgba(15,255,200,0.35)'
+											: '1px solid rgba(120,135,185,0.38)',
+									color: view === v ? '#0fffc8' : '#9aabcc',
 								}}
 							>
 								{v === 'speaker' ? '▶ Спікер' : '⊞ Всі гравці'}
@@ -455,6 +483,19 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 								🏦 {state.bankCoins}
 							</button>
 						)}
+
+						{/* DEV ONLY — mock participant testing toolbar */}
+						{isDev && (
+							<DevToolbar
+								mockCount={mockCount}
+								mocksByRoom={mocksByRoom}
+								breakoutRooms={state.breakoutRooms.map(r => ({ id: r.id, name: r.name }))}
+								onAdd={addMockPlayers}
+								onMoveAll={moveAllMocksToRoom}
+								onClearRoom={clearMocksInRoom}
+								onClearAll={clearMockPlayers}
+							/>
+						)}
 					</div>
 
 					{/* View content */}
@@ -467,8 +508,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							isMobile={isMobile}
 							micOn={micOn}
 							camOn={camOn}
+							screenOn={screenOn}
 							onToggleMic={toggleMic}
 							onToggleCam={toggleCam}
+							onToggleScreen={toggleScreen}
 							onReact={react}
 							onRaiseHand={raiseHand}
 							onLeave={handleLeave}
@@ -478,6 +521,9 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onChangeImage={url => showImage(url)}
 							playerReactions={playerReactions}
 							onMutePlayer={mutePlayer}
+							mockPlayers={mockPlayers}
+							mockSpeakingId={mockSpeakingId}
+							inBreakout={inBreakout}
 						/>
 					) : (
 						<GridView
@@ -488,8 +534,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							isMobile={isMobile}
 							micOn={micOn}
 							camOn={camOn}
+							screenOn={screenOn}
 							onToggleMic={toggleMic}
 							onToggleCam={toggleCam}
+							onToggleScreen={toggleScreen}
 							onReact={react}
 							onRaiseHand={raiseHand}
 							onLeave={handleLeave}
@@ -497,6 +545,9 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							onSetInfluence={setInfluence}
 							onMutePlayer={mutePlayer}
 							playerReactions={playerReactions}
+							mockPlayers={mockPlayers}
+							mockSpeakingId={mockSpeakingId}
+							inBreakout={inBreakout}
 						/>
 					)}
 				</div>
@@ -627,6 +678,14 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 									style={camOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{camOn ? <Video size={22} /> : <VideoOff size={22} />}
 									<span className='text-[11px]'>Камера</span>
+								</button>
+							)}
+							{!isSpectator && (
+								<button onClick={toggleScreen}
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									style={screenOn ? { background: 'rgba(68,170,255,0.08)', border: '1px solid rgba(68,170,255,0.3)', color: '#44aaff' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
+									{screenOn ? <ScreenShareOff size={22} /> : <ScreenShare size={22} />}
+									<span className='text-[11px]'>Екран</span>
 								</button>
 							)}
 							<button onClick={handleLeave}

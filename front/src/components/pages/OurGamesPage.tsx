@@ -1,10 +1,122 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search } from 'lucide-react'
+import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, GameData } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData } from '../../actions/games'
+
+// ─── Donate modal ─────────────────────────────────────────────────────────────
+
+function DonateModal({ gameId, cost, token, onClose }: {
+	gameId: string
+	cost: number
+	token: string | null
+	onClose: () => void
+}) {
+	const [cardNumber, setCardNumber] = useState<string | null>(null)
+	const [loading, setLoading] = useState(true)
+	const [copied, setCopied] = useState(false)
+
+	useEffect(() => {
+		if (!token) { setLoading(false); return }
+		fetchGameCard(token, gameId)
+			.then(d => setCardNumber(d.gmCardNumber || ''))
+			.catch(() => setCardNumber(''))
+			.finally(() => setLoading(false))
+	}, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const formatted = cardNumber
+		? cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ')
+		: ''
+
+	const handleCopy = async () => {
+		if (!cardNumber) return
+		try {
+			await navigator.clipboard.writeText(cardNumber)
+			setCopied(true)
+			setTimeout(() => setCopied(false), 2500)
+		} catch {
+			// fallback: select text manually
+		}
+	}
+
+	return (
+		<div className='fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-[16px]'
+			style={{ background: 'rgba(3,4,15,0.72)', backdropFilter: 'blur(4px)' }}
+			onClick={onClose}>
+			<div
+				className='w-full max-w-[340px] rounded-[20px] p-[24px] flex flex-col gap-[16px]'
+				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.2)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+				onClick={e => e.stopPropagation()}
+			>
+				{/* Header */}
+				<div className='flex items-center justify-between'>
+					<div className='flex items-center gap-[8px]'>
+						<CreditCard size={16} style={{ color: '#44aaff' }} />
+						<span className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.95)' }}>Донат ігромайстру</span>
+					</div>
+					<button onClick={onClose} className='w-[26px] h-[26px] rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-[rgba(255,255,255,0.08)]'
+						style={{ color: 'rgba(180,200,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+						<span className='text-[14px]'>✕</span>
+					</button>
+				</div>
+
+				{/* Cost */}
+				{cost > 0 && (
+					<div className='flex items-center gap-[8px] px-[14px] py-[10px] rounded-[10px]'
+						style={{ background: 'rgba(15,255,200,0.05)', border: '1px solid rgba(15,255,200,0.15)' }}>
+						<Banknote size={14} style={{ color: '#0fffc8' }} />
+						<span className='text-[13px]' style={{ color: 'rgba(200,230,220,0.85)' }}>Вартість участі:</span>
+						<span className='text-[15px] font-[700]' style={{ color: '#0fffc8' }}>{cost} грн</span>
+					</div>
+				)}
+
+				{/* Card number */}
+				<div className='flex flex-col gap-[10px]'>
+					{loading ? (
+						<div className='flex items-center justify-center py-[20px]'>
+							<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim' />
+						</div>
+					) : cardNumber ? (
+						<>
+							<span className='text-[11px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.5)' }}>
+								Номер картки
+							</span>
+							<button
+								onClick={handleCopy}
+								className='relative flex items-center justify-between gap-[8px] rounded-[12px] px-[16px] py-[14px] cursor-pointer transition-all hover:brightness-110 group'
+								style={{
+									background: copied ? 'rgba(15,255,200,0.08)' : 'rgba(68,170,255,0.06)',
+									border: copied ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,170,255,0.2)',
+								}}
+							>
+								<span className='text-[20px] font-[700] tracking-[3px] font-mono'
+									style={{ color: copied ? '#0fffc8' : 'rgba(200,218,255,0.95)' }}>
+									{formatted}
+								</span>
+								<span className='flex items-center gap-[5px] flex-shrink-0 text-[12px] font-[600]'
+									style={{ color: copied ? '#0fffc8' : 'rgba(68,170,255,0.75)' }}>
+									{copied ? <><Check size={13} /> Скопійовано</> : <><Copy size={13} /> Копіювати</>}
+								</span>
+							</button>
+							<span className='text-[11px]' style={{ color: 'rgba(100,140,220,0.4)' }}>
+								Натисніть щоб скопіювати номер картки
+							</span>
+						</>
+					) : (
+						<div className='flex flex-col items-center gap-[8px] py-[16px]'>
+							<span className='text-[28px]'>🤷</span>
+							<span className='text-[13px] text-center' style={{ color: 'rgba(160,185,240,0.7)' }}>
+								Упс! Ігромайстер не залишив даних картки
+							</span>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	)
+}
 
 type SortKey = 'date' | 'players_asc' | 'players_desc' | 'likes'
 type FilterKey = 'next7days' | 'next30days' | 'upTo10' | 'moreThan10'
@@ -37,6 +149,7 @@ export const OurGamesPage = () => {
 	const [playersModal, setPlayersModal] = useState<{ open: boolean; game: GameData | null }>({
 		open: false, game: null,
 	})
+	const [donateModal, setDonateModal] = useState<{ open: boolean; gameId: string; cost: number } | null>(null)
 
 	// ── Search / Sort / Filter ──────────────────────────────────────────────────
 	const [searchQuery, setSearchQuery]     = useState('')
@@ -332,22 +445,22 @@ export const OurGamesPage = () => {
 							style={{
 								background: 'transparent',
 								border: '1px solid #1e2235',
-								color: '#7a80a0',
+								color: '#c0cce8',
 							}}
 							onFocus={e => {
 								e.currentTarget.style.borderColor = '#2e3250'
-								e.currentTarget.style.color = '#dde1f0'
+								e.currentTarget.style.color = '#e0e8ff'
 							}}
 							onBlur={e => {
 								e.currentTarget.style.borderColor = '#1e2235'
-								e.currentTarget.style.color = searchQuery ? '#dde1f0' : '#7a80a0'
+								e.currentTarget.style.color = searchQuery ? '#e0e8ff' : '#c0cce8'
 							}}
 						/>
 					</div>
 
 					{/* Sort row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px]'>
-						<span className='text-[12px] flex-shrink-0 md:min-w-[52px]' style={{ color: '#3a4060' }}>Сорт:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: '#c0cce8' }}>Сорт:</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{SORT_OPTIONS.map(({ key, label, purple }) => {
 								const isActive = sortKey === key
@@ -355,12 +468,12 @@ export const OurGamesPage = () => {
 									<button
 										key={key}
 										onClick={() => setSortKey(key)}
-										className='px-[14px] py-[5px] rounded-[20px] text-[12px] font-[500] transition-all cursor-pointer whitespace-nowrap'
+										className='px-[14px] py-[5px] rounded-[20px] text-[13px] font-[500] transition-all cursor-pointer whitespace-nowrap'
 										style={isActive
 											? purple
 												? { background: 'rgba(204,68,255,0.05)', border: '1px solid rgba(204,68,255,0.22)', color: '#cc44ff' }
 												: { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
-											: { background: 'transparent', border: '1px solid #1e2235', color: '#4a5070' }
+											: { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
 										}
 									>
 										{label}
@@ -372,7 +485,7 @@ export const OurGamesPage = () => {
 
 					{/* Filter row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px] md:pt-0 pt-[10px] md:border-t-0 border-t border-[#111320]'>
-						<span className='text-[12px] flex-shrink-0 md:min-w-[52px]' style={{ color: '#3a4060' }}>Фільтр:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: '#c0cce8' }}>Фільтр:</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{FILTER_OPTIONS.map(({ key, label }) => {
 								const on = activeFilters.has(key)
@@ -380,10 +493,10 @@ export const OurGamesPage = () => {
 									<button
 										key={key}
 										onClick={() => toggleFilter(key)}
-										className='px-[14px] py-[5px] rounded-[20px] text-[12px] font-[500] transition-all cursor-pointer whitespace-nowrap'
+										className='px-[14px] py-[5px] rounded-[20px] text-[13px] font-[500] transition-all cursor-pointer whitespace-nowrap'
 										style={on
 											? { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
-											: { background: 'transparent', border: '1px solid #1e2235', color: '#4a5070' }
+											: { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
 										}
 									>
 										{label}
@@ -394,7 +507,7 @@ export const OurGamesPage = () => {
 								<button
 									onClick={() => setActiveFilters(new Set())}
 									className='px-[12px] py-[5px] rounded-[20px] text-[12px] transition-all cursor-pointer'
-									style={{ color: 'rgba(255,95,160,0.6)', border: '1px solid rgba(255,95,160,0.18)', background: 'transparent' }}
+									style={{ color: 'rgba(255,95,160,0.88)', border: '1px solid rgba(255,95,160,0.28)', background: 'transparent' }}
 								>
 									✕ Скинути
 								</button>
@@ -409,7 +522,7 @@ export const OurGamesPage = () => {
 						<div className='w-[60px] h-[60px] rounded-full bg-[rgba(68,170,255,0.07)] border border-[rgba(68,170,255,0.14)] flex items-center justify-center mb-[20px]'>
 							<Gamepad2 size={26} strokeWidth={1.4} className='text-[rgba(68,170,255,0.45)]' />
 						</div>
-						<p className='text-[rgba(180,200,255,0.3)] text-[15px]'>
+						<p className='text-[rgba(180,200,255,0.7)] text-[15px]'>
 							{debouncedSearch || activeFilters.size > 0 ? 'Нічого не знайдено' : t('our_games.empty')}
 						</p>
 					</div>
@@ -438,6 +551,7 @@ export const OurGamesPage = () => {
 								onUnregisterSpectator={() => handleUnregisterSpectator(game._id)}
 								onShowPlayers={() => setPlayersModal({ open: true, game })}
 								onEnterGame={() => navigate(`/game?code=${game.gameCode}`)}
+								onDonate={() => setDonateModal({ open: true, gameId: game._id, cost: game.participationCost || 0 })}
 							/>
 						))}
 					</div>
@@ -454,7 +568,7 @@ export const OurGamesPage = () => {
 			>
 				{modal.variant === 'success' && modal.gameCode && (
 					<div className='flex items-center gap-[10px] mt-[4px]'>
-						<span className='text-[12px] text-[rgba(180,200,255,0.5)]'>{t('our_games.game_code_label')}</span>
+						<span className='text-[13px] text-[rgba(200,215,255,0.8)]'>{t('our_games.game_code_label')}</span>
 						<span
 							className='text-[22px] font-[800] tracking-[4px] font-mono'
 							style={{ color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.4)' }}
@@ -498,6 +612,16 @@ export const OurGamesPage = () => {
 			>
 				<PlayersListContent game={playersModal.game} />
 			</Modal>
+
+			{/* Donate modal */}
+			{donateModal?.open && (
+				<DonateModal
+					gameId={donateModal.gameId}
+					cost={donateModal.cost}
+					token={token}
+					onClose={() => setDonateModal(null)}
+				/>
+			)}
 		</div>
 	)
 }
@@ -508,7 +632,7 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	const { t } = useTranslation()
 	if (!game) return null
 	if (game.registeredPlayers.length === 0) {
-		return <p className='text-[13px] text-[rgba(180,200,255,0.4)]'>{t('our_games.players_empty')}</p>
+		return <p className='text-[14px] text-[rgba(200,215,255,0.75)]'>{t('our_games.players_empty')}</p>
 	}
 	return (
 		<div className='flex flex-col gap-[8px]'>
@@ -533,7 +657,7 @@ const GameCard = ({
 	spectatorLoading, unspectatorLoading,
 	onEdit, onDelete, onRegister, onUnregister,
 	onRegisterSpectator, onUnregisterSpectator,
-	onShowPlayers, onEnterGame,
+	onShowPlayers, onEnterGame, onDonate,
 }: {
 	game: GameData
 	currentUserId?: string
@@ -555,6 +679,7 @@ const GameCard = ({
 	onUnregisterSpectator: () => void
 	onShowPlayers: () => void
 	onEnterGame: () => void
+	onDonate: () => void
 }) => {
 	const { t, i18n } = useTranslation()
 
@@ -678,29 +803,29 @@ const GameCard = ({
 
 			{/* Edit + Delete buttons — top-left so they don't overlap the heart (top-right) */}
 			{isCreator && (
-				<div className='absolute top-[14px] left-[14px] flex gap-[6px]'>
+				<div className='absolute top-[12px] left-[12px] flex gap-[7px]'>
 					<button
 						onClick={onEdit}
 						disabled={editLoading}
 						title={t('our_games.edit')}
-						className='w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 hover:scale-110'
-						style={{ background: 'rgba(8,12,30,0.82)', border: '1px solid rgba(68,170,255,0.28)', color: 'rgba(68,170,255,0.7)', backdropFilter: 'blur(4px)' }}
+						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
+						style={{ background: 'rgba(68,170,255,0.14)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(100,190,255,0.95)', backdropFilter: 'blur(6px)' }}
 					>
 						{editLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#44aaff] pulse-dot-anim' />
-							: <Pencil size={11} strokeWidth={2} />
+							: <><Pencil size={12} strokeWidth={2} />{t('our_games.edit')}</>
 						}
 					</button>
 					<button
 						onClick={onDelete}
 						disabled={deleteLoading}
 						title={t('our_games.delete')}
-						className='w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 hover:scale-110'
-						style={{ background: 'rgba(8,12,30,0.82)', border: '1px solid rgba(255,95,160,0.28)', color: 'rgba(255,95,160,0.7)', backdropFilter: 'blur(4px)' }}
+						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
+						style={{ background: 'rgba(255,95,160,0.12)', border: '1px solid rgba(255,95,160,0.5)', color: 'rgba(255,120,170,0.95)', backdropFilter: 'blur(6px)' }}
 					>
 						{deleteLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim' />
-							: <Trash2 size={11} strokeWidth={2} />
+							: <><Trash2 size={12} strokeWidth={2} />{t('our_games.delete')}</>
 						}
 					</button>
 				</div>
@@ -709,12 +834,12 @@ const GameCard = ({
 			{/* Title + creator */}
 			<div>
 				<h3 className='text-[17px] font-[700] text-white leading-[1.3] mb-[4px]'>
-					<span className='text-[rgba(180,200,255,0.65)] text-[13px] font-[400]'>
+					<span className='text-[rgba(200,215,255,0.82)] text-[13px] font-[400]'>
 						{t('our_games.title_prefix')} —{' '}
 					</span>
 					{game.title}
 				</h3>
-				<p className='text-[12px] text-[rgba(140,170,230,0.7)]'>
+				<p className='text-[13px] text-[rgba(160,185,240,0.88)]'>
 					{t('our_games.gamemaster_prefix')} — {game.creatorName}
 				</p>
 			</div>
@@ -749,13 +874,31 @@ const GameCard = ({
 						{formatDate(game.scheduledAt)}
 					</StatRow>
 				)}
+
+				<div className='flex items-center justify-between gap-[8px]'>
+					<StatRow icon={<Banknote size={13} strokeWidth={1.8} />} color='rgba(255,183,40,0.85)'>
+						{`Вартість участі: ${(game.participationCost ?? 0).toFixed(2).replace('.', ',')} грн`}
+					</StatRow>
+					<button
+						onClick={onDonate}
+						className='flex items-center gap-[4px] px-[9px] py-[4px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-115 flex-shrink-0'
+						style={{
+							background: 'rgba(255,183,40,0.08)',
+							border: '1px solid rgba(255,183,40,0.3)',
+							color: 'rgba(255,196,60,0.95)',
+						}}
+					>
+						<CreditCard size={11} strokeWidth={2} />
+						Донат
+					</button>
+				</div>
 			</div>
 
 			{/* GM codes block */}
 			{isCreator && game.spectatorCode && (
 				<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
 					style={{ background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }}>
-					<span className='text-[10px]' style={{ color: 'rgba(180,130,255,0.45)' }}>👁 Код глядача:</span>
+					<span className='text-[11px]' style={{ color: 'rgba(190,148,255,0.78)' }}>👁 Код глядача:</span>
 					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: '#c07fff' }}>{game.spectatorCode}</span>
 				</div>
 			)}
@@ -772,12 +915,12 @@ const GameCard = ({
 					<div className='flex items-center gap-[10px]'>
 						<button
 							onClick={onShowPlayers}
-							className='flex items-center gap-[5px] text-[11px] text-[rgba(68,170,255,0.4)] hover:text-[rgba(68,170,255,0.85)] cursor-pointer transition-colors'
+							className='flex items-center gap-[5px] text-[12px] text-[rgba(68,170,255,0.7)] hover:text-[rgba(68,170,255,0.95)] cursor-pointer transition-colors'
 						>
 							<UserCheck size={12} strokeWidth={1.8} />
 							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
 							{spectators.length > 0 && (
-								<span className='ml-[4px]' style={{ color: 'rgba(180,130,255,0.5)' }}>
+								<span className='ml-[4px]' style={{ color: 'rgba(190,148,255,0.78)' }}>
 									· {spectators.length} 👁
 								</span>
 							)}

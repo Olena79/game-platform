@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
-import { Gamepad2, LogIn, LogOut, Play } from 'lucide-react'
+import { Gamepad2, LogIn, LogOut, Play, Users } from 'lucide-react'
 import { Modal } from '../minicomponents/Modal'
 
 type NavBtnProps = {
@@ -12,7 +12,7 @@ type NavBtnProps = {
 	onClick?: () => void
 }
 
-const INACTIVE = 'rgba(175,190,240,0.75)'
+const INACTIVE = 'rgba(200,215,255,0.9)'
 const ACTIVE   = '#0fffc8'
 
 const NavBtn = ({ icon, label, active, onClick }: NavBtnProps) => (
@@ -25,7 +25,7 @@ const NavBtn = ({ icon, label, active, onClick }: NavBtnProps) => (
 		}}
 	>
 		{icon}
-		<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
+		<span className='text-[11px] font-[500] uppercase tracking-[0.05em]'>{label}</span>
 	</button>
 )
 
@@ -57,14 +57,27 @@ export const MobileBottomNav = () => {
 						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 					})}
 				>
-					<Gamepad2 size={22} strokeWidth={1.6} />
-					<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('nav.games')}</span>
+					<Gamepad2 size={20} strokeWidth={1.6} />
+					<span className='text-[11px] font-[500] uppercase tracking-[0.05em]'>{t('nav.games')}</span>
+				</NavLink>
+
+				{/* спільноти */}
+				<NavLink
+					to='/community'
+					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
+					style={({ isActive }) => ({
+						color: isActive ? ACTIVE : INACTIVE,
+						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
+					})}
+				>
+					<Users size={20} strokeWidth={1.6} />
+					<span className='text-[11px] font-[500] uppercase tracking-[0.05em]'>{t('nav.community')}</span>
 				</NavLink>
 
 				{/* вхід / вихід */}
 				{isLoggedIn ? (
 					<NavBtn
-						icon={<LogOut size={22} strokeWidth={1.6} />}
+						icon={<LogOut size={20} strokeWidth={1.6} />}
 						label={t('auth.btn_logout')}
 						onClick={() => setLogoutModal(true)}
 					/>
@@ -77,8 +90,8 @@ export const MobileBottomNav = () => {
 							background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 						})}
 					>
-						<LogIn size={22} strokeWidth={1.6} />
-						<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('auth.tab_login')}</span>
+						<LogIn size={20} strokeWidth={1.6} />
+						<span className='text-[11px] font-[500] uppercase tracking-[0.05em]'>{t('auth.tab_login')}</span>
 					</NavLink>
 				)}
 
@@ -91,8 +104,8 @@ export const MobileBottomNav = () => {
 						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
 					})}
 				>
-					<Play size={22} strokeWidth={1.6} />
-					<span className='text-[12px] font-[500] uppercase tracking-[0.05em]'>{t('nav.enter')}</span>
+					<Play size={20} strokeWidth={1.6} />
+					<span className='text-[11px] font-[500] uppercase tracking-[0.05em]'>{t('nav.enter')}</span>
 				</NavLink>
 			</nav>
 

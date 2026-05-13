@@ -45,12 +45,12 @@ export const InputField: React.FC<InputFieldProps> = ({
 					: 'border-[rgba(68,170,255,0.2)] focus-within:border-[rgba(68,170,255,0.6)] focus-within:shadow-[0_0_14px_rgba(68,170,255,0.12)]'
 			}`}>
 				{icon && (
-					<span className='absolute left-[14px] text-[rgba(68,170,255,0.5)] pointer-events-none'>
+					<span className='absolute left-[14px] text-[rgba(68,170,255,0.72)] pointer-events-none'>
 						{icon}
 					</span>
 				)}
 				{prefix && (
-					<span className={`${icon ? 'pl-[40px]' : 'pl-[14px]'} pr-[4px] py-[12px] text-[14px] text-[rgba(100,140,220,0.55)] select-none whitespace-nowrap`}>
+					<span className={`${icon ? 'pl-[40px]' : 'pl-[14px]'} pr-[4px] py-[12px] text-[14px] text-[rgba(150,175,255,0.78)] select-none whitespace-nowrap`}>
 						{prefix}
 					</span>
 				)}
@@ -60,7 +60,7 @@ export const InputField: React.FC<InputFieldProps> = ({
 					value={value}
 					onChange={handleChange}
 					autoComplete={autoComplete}
-					className={`flex-1 bg-transparent text-[rgba(180,200,255,0.85)] placeholder-[rgba(100,140,220,0.35)] py-[12px] text-[14px] focus:outline-none ${
+					className={`flex-1 bg-transparent text-[rgba(218,228,255,0.97)] placeholder-[rgba(140,165,255,0.52)] py-[12px] text-[14px] focus:outline-none ${
 						isPassword ? 'pr-[40px]' : 'pr-[14px]'
 					} ${
 						prefix ? 'pl-0' : icon ? 'pl-[40px]' : 'pl-[14px]'
@@ -71,7 +71,7 @@ export const InputField: React.FC<InputFieldProps> = ({
 						type='button'
 						tabIndex={-1}
 						onClick={() => setShowPass(p => !p)}
-						className='absolute right-[12px] text-[rgba(100,140,220,0.45)] hover:text-[rgba(68,170,255,0.8)] transition-colors cursor-pointer'
+						className='absolute right-[12px] text-[rgba(130,158,255,0.68)] hover:text-[rgba(68,170,255,0.9)] transition-colors cursor-pointer'
 					>
 						{showPass
 							? <EyeOff size={15} strokeWidth={1.8} />
@@ -81,7 +81,7 @@ export const InputField: React.FC<InputFieldProps> = ({
 				)}
 			</div>
 			{error && (
-				<span className='text-[12px] text-[rgba(255,90,160,0.85)] pl-[2px] leading-[1.4]'>
+				<span className='text-[13px] text-[rgba(255,110,175,0.97)] pl-[2px] leading-[1.4]'>
 					{error}
 				</span>
 			)}

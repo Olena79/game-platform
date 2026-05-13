@@ -1,6 +1,7 @@
 {
 	"nav": {
 		"games": "Games",
+		"community": "Community",
 		"about": "About",
 		"enter": "Enter the game",
 		"lang_label": "Interface language"
@@ -124,7 +125,7 @@
 		"coins_per_player": "coins per player",
 		"influence_per_player": "influence pts",
 		"edit": "Edit",
-		"delete": "Delete game",
+		"delete": "Delete",
 		"delete_confirm_title": "Delete game?",
 		"delete_confirm_msg": "Are you sure you want to delete this game? This action cannot be undone.",
 		"delete_confirm_yes": "Yes, delete",
