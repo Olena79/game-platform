@@ -30,10 +30,11 @@ export interface CommentData {
 	updatedAt: string
 }
 
-async function handle<T>(res: Response): Promise<T> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handle(res: Response): Promise<any> {
 	const data = await res.json()
 	if (!res.ok) throw new Error(data.message || 'Error')
-	return data as T
+	return data
 }
 
 export const getPosts = (
