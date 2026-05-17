@@ -616,10 +616,15 @@ export const OurGamesPage = () => {
 			>
 				{modal.variant === 'success' && modal.gameCode && (
 					<div className='flex items-center gap-[10px] mt-[4px]'>
-						<span className='text-[13px] text-[rgba(200,215,255,0.8)]'>{t('our_games.game_code_label')}</span>
+						<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,215,255,0.8)' : 'var(--text-muted)' }}>
+							{t('our_games.game_code_label')}
+						</span>
 						<span
 							className='text-[22px] font-[800] tracking-[4px] font-mono'
-							style={{ color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.4)' }}
+							style={isDark
+								? { color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.4)' }
+								: { color: 'var(--accent)' }
+							}
 						>
 							{modal.gameCode}
 						</span>
@@ -681,7 +686,7 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	const { isDark } = useTheme()
 	if (!game) return null
 	if (game.registeredPlayers.length === 0) {
-		return <p className='text-[14px] text-[rgba(200,215,255,0.75)]'>{t('our_games.players_empty')}</p>
+		return <p className='text-[14px]' style={{ color: isDark ? 'rgba(200,215,255,0.75)' : 'var(--text-muted)' }}>{t('our_games.players_empty')}</p>
 	}
 	return (
 		<div className='flex flex-col gap-[8px]'>
@@ -816,16 +821,20 @@ const GameCard = ({
 			className='group relative rounded-[20px] p-[24px] backdrop-blur-[10px] transition-all duration-[200ms] flex flex-col gap-[14px]'
 			style={isDark
 				? { border: '1px solid rgba(68,170,255,0.13)', background: 'rgba(3,6,25,0.52)' }
-				: { border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }
+				: { border: '1px solid var(--border-subtle)', background: 'var(--bg-card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }
 			}
 		>
 
 			{/* Cover image + like overlay */}
-			<div className='relative w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] bg-[#060e24]'>
+			<div
+				className='relative w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px]'
+				style={{ background: isDark ? '#060e24' : 'var(--border-subtle)' }}
+			>
 				<img
 					src={game.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'}
 					alt={game.title}
-					className='w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity duration-[200ms]'
+					className='w-full h-full object-cover transition-opacity duration-[200ms]'
+					style={{ opacity: isDark ? 0.7 : 1 }}
 				/>
 
 				{/* Heart like button — top-right over image */}
@@ -973,7 +982,7 @@ const GameCard = ({
 				</div>
 			)}
 
-			{/* Bottom row: players count + like + register buttons */}
+			{/* Bottom row: players count + register buttons */}
 			<div className='mt-auto flex flex-col gap-[8px]'>
 				{!isCreator && isLoggedIn && !isRegistered && !isSpectator && !isFull && (
 					<span className='text-[12px] font-[500] text-right' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
@@ -1005,11 +1014,14 @@ const GameCard = ({
 								<button
 									onClick={onUnregisterSpectator}
 									disabled={unspectatorLoading}
-									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-									style={{ color: 'rgba(180,130,255,0.7)', background: 'rgba(180,130,255,0.07)', border: '1px solid rgba(180,130,255,0.2)' }}
+									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[500] transition-all duration-[180ms] cursor-pointer disabled:opacity-40 hover:opacity-75'
+									style={isDark
+										? { color: 'rgba(180,200,255,0.65)', background: 'rgba(180,200,255,0.07)', border: '1px solid rgba(180,200,255,0.18)' }
+										: { color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border-medium)' }
+									}
 								>
 									{unspectatorLoading
-										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.7)' }} />
+										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: isDark ? 'rgba(180,200,255,0.6)' : 'var(--text-muted)' }} />
 										: t('our_games.btn_unregister')
 									}
 								</button>
@@ -1017,11 +1029,14 @@ const GameCard = ({
 								<button
 									onClick={onRegisterSpectator}
 									disabled={spectatorLoading}
-									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-									style={{ color: 'rgba(180,130,255,0.8)', background: 'rgba(180,130,255,0.06)', border: '1px solid rgba(180,130,255,0.18)' }}
+									className='px-[10px] py-[6px] rounded-[10px] text-[11px] font-[500] transition-all duration-[180ms] cursor-pointer disabled:opacity-40 hover:opacity-75'
+									style={isDark
+										? { color: 'rgba(180,200,255,0.55)', background: 'transparent', border: '1px solid rgba(180,200,255,0.15)' }
+										: { color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-medium)' }
+									}
 								>
 									{spectatorLoading
-										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: 'rgba(180,130,255,0.8)' }} />
+										? <span className='w-[4px] h-[4px] rounded-full pulse-dot-anim inline-block' style={{ background: isDark ? 'rgba(180,200,255,0.55)' : 'var(--text-muted)' }} />
 										: `👁 ${t('game.role_spectator')}`
 									}
 								</button>

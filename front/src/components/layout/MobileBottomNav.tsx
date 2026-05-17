@@ -35,6 +35,8 @@ export const MobileBottomNav = () => {
 	const { isDark } = useTheme()
 	const [logoutModal, setLogoutModal] = useState(false)
 	const INACTIVE = isDark ? 'rgba(200,215,255,0.9)' : 'var(--text-secondary)'
+	const NAV_ACTIVE = isDark ? '#0fffc8' : 'var(--accent)'
+	const NAV_ACTIVE_BG = isDark ? 'rgba(15,255,200,0.1)' : 'rgba(192,83,58,0.08)'
 
 	return (
 		<>
@@ -55,8 +57,8 @@ export const MobileBottomNav = () => {
 					to='/games'
 					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 					style={({ isActive }) => ({
-						color: isActive ? ACTIVE : INACTIVE,
-						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
+						color: isActive ? NAV_ACTIVE : INACTIVE,
+						background: isActive ? NAV_ACTIVE_BG : 'transparent',
 					})}
 				>
 					<Gamepad2 size={20} strokeWidth={1.6} />
@@ -68,8 +70,8 @@ export const MobileBottomNav = () => {
 					to='/community'
 					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 					style={({ isActive }) => ({
-						color: isActive ? ACTIVE : INACTIVE,
-						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
+						color: isActive ? NAV_ACTIVE : INACTIVE,
+						background: isActive ? NAV_ACTIVE_BG : 'transparent',
 					})}
 				>
 					<Users size={20} strokeWidth={1.6} />
@@ -88,8 +90,8 @@ export const MobileBottomNav = () => {
 						to='/auth'
 						className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 						style={({ isActive }) => ({
-							color: isActive ? ACTIVE : INACTIVE,
-							background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
+							color: isActive ? NAV_ACTIVE : INACTIVE,
+							background: isActive ? NAV_ACTIVE_BG : 'transparent',
 						})}
 					>
 						<LogIn size={20} strokeWidth={1.6} />
@@ -102,8 +104,8 @@ export const MobileBottomNav = () => {
 					to='/game'
 					className='flex flex-col items-center justify-center flex-1 h-full gap-[5px] transition-all'
 					style={({ isActive }) => ({
-						color: isActive ? ACTIVE : INACTIVE,
-						background: isActive ? 'rgba(15,255,200,0.1)' : 'transparent',
+						color: isActive ? NAV_ACTIVE : INACTIVE,
+						background: isActive ? NAV_ACTIVE_BG : 'transparent',
 					})}
 				>
 					<Play size={20} strokeWidth={1.6} />
