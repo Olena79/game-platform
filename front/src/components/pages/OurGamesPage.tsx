@@ -884,8 +884,8 @@ const GameCard = ({
 						title={t('our_games.edit')}
 						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
 						style={isDark
-							? { background: 'rgba(68,170,255,0.14)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(100,190,255,0.95)', backdropFilter: 'blur(6px)' }
-							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)', backdropFilter: 'blur(6px)' }
+							? { background: 'var(--bg-base)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(100,190,255,0.95)' }
+							: { background: 'var(--bg-base)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)' }
 						}
 					>
 						{editLoading
@@ -899,8 +899,8 @@ const GameCard = ({
 						title={t('our_games.delete')}
 						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
 						style={isDark
-							? { background: 'rgba(255,95,160,0.12)', border: '1px solid rgba(255,95,160,0.5)', color: 'rgba(255,120,170,0.95)', backdropFilter: 'blur(6px)' }
-							: { background: 'rgba(200,60,60,0.06)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)', backdropFilter: 'blur(6px)' }
+							? { background: 'var(--bg-base)', border: '1px solid rgba(255,95,160,0.5)', color: 'rgba(255,120,170,0.95)' }
+							: { background: 'var(--bg-base)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)' }
 						}
 					>
 						{deleteLoading
@@ -976,9 +976,12 @@ const GameCard = ({
 			{/* GM codes block */}
 			{isCreator && game.spectatorCode && (
 				<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
-					style={{ background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }}>
-					<span className='text-[11px]' style={{ color: 'rgba(190,148,255,0.78)' }}>👁 Код глядача:</span>
-					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: '#c07fff' }}>{game.spectatorCode}</span>
+					style={isDark
+						? { background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }
+						: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)' }
+					}>
+					<span className='text-[11px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>👁 Код глядача:</span>
+					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: isDark ? '#c07fff' : 'var(--accent)' }}>{game.spectatorCode}</span>
 				</div>
 			)}
 
