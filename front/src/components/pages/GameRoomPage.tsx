@@ -13,6 +13,7 @@ import {
 	RoomAudioRenderer as LKAudioRenderer,
 	useLocalParticipant,
 	useConnectionState,
+	useRoomContext,
 } from '@livekit/components-react'
 import { ConnectionState } from 'livekit-client'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
@@ -185,6 +186,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		: (state?.shownImageUrl ?? null)) ?? null
 
 	const { token: authToken } = useAuth()
+	const lkRoom = useRoomContext()
 	const { localParticipant } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
 	const [panelOpen, setPanelOpen] = useState(true)
@@ -218,6 +220,17 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		window.addEventListener('resize', handler)
 		return () => { window.removeEventListener('resize', handler); clearTimeout(timer) }
 	}, [])
+
+	// ── AudioContext unlock (mobile browsers require a user gesture) ──────────────
+	useEffect(() => {
+		const unlock = () => { lkRoom.startAudio() }
+		document.addEventListener('click', unlock, { once: true })
+		document.addEventListener('touchend', unlock, { once: true })
+		return () => {
+			document.removeEventListener('click', unlock)
+			document.removeEventListener('touchend', unlock)
+		}
+	}, [lkRoom])
 
 	// ── Unread chat counter ───────────────────────────────────────────────────────
 	const [unreadChat, setUnreadChat] = useState(0)
@@ -294,17 +307,18 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	}, [state])
 
 	// Mute All: GM can force-disable all participants' mics
+	const connectionState = useConnectionState()
 	useEffect(() => {
 		if (!shouldMute || isSpectator || !localParticipant) return
+		if (connectionState !== ConnectionState.Connected) return
 		localParticipant.setMicrophoneEnabled(false)
 		setMicOn(false)
 		clearMuteSignal()
-	}, [shouldMute]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [shouldMute, connectionState]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Apply pre-join media preferences once the LiveKit connection is fully established.
 	// localParticipant exists before ConnectionState.Connected, so gating on connection
 	// state is the only reliable way to ensure setMicrophoneEnabled actually publishes.
-	const connectionState = useConnectionState()
 	const autoMediaRef = useRef(false)
 	useEffect(() => {
 		if (connectionState !== ConnectionState.Connected || isSpectator || autoMediaRef.current) return

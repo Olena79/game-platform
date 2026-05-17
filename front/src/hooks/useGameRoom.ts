@@ -31,6 +31,13 @@ export function useGameRoom(rawCode: string) {
 	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
+	// Refs that mirror state so async connect handler never reads stale closures
+	const lkRef = useRef<LKData | null>(null)
+	const lkBreakoutRef = useRef<LKData | null>(null)
+	const currentBreakoutRoomIdRef = useRef<string | null>(null)
+
+	useEffect(() => { lkRef.current = lk }, [lk])
+	useEffect(() => { lkBreakoutRef.current = lkBreakout }, [lkBreakout])
 
 	// Resolved code info — populated after code resolution
 	const [resolved, setResolved] = useState<{ gameCode: string; isSpectatorJoin: boolean } | null>(null)
@@ -75,17 +82,22 @@ export function useGameRoom(rawCode: string) {
 		socket.on('connect', async () => {
 			setConnected(true)
 			setConnStatus('connected')
-			// Clear stale LK connections so LiveKit remounts on reconnect
-			setLk(null)
-			setLkBreakout(null)
 			socket.emit('gr:join', {
 				gameCode,
 				userId: user.id,
 				name: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
 				isSpectatorJoin,
 			})
-			const token = await fetchLKToken(`mindflow-${gameCode}`)
-			if (token) setLk(token)
+			// Only fetch main token on first connect; LiveKit manages its own reconnection
+			if (!lkRef.current) {
+				const token = await fetchLKToken(`mindflow-${gameCode}`)
+				if (token) setLk(token)
+			}
+			// Restore breakout session if socket reconnected while user was in a breakout room
+			if (currentBreakoutRoomIdRef.current && !lkBreakoutRef.current) {
+				const token = await fetchLKToken(`mindflow-${gameCode}-${currentBreakoutRoomIdRef.current}`)
+				if (token) setLkBreakout(token)
+			}
 		})
 
 		socket.on('connect_error', () => setConnStatus('failed'))
@@ -144,7 +156,10 @@ export function useGameRoom(rawCode: string) {
 		})
 
 		socket.on('gr:breakout-invited', (d: BreakoutInvite) => setBreakoutInvite(d))
-		socket.on('gr:breakout-return', () => setLkBreakout(null))
+		socket.on('gr:breakout-return', () => {
+			currentBreakoutRoomIdRef.current = null
+			setLkBreakout(null)
+		})
 		socket.on('gr:end-anim', () => setEndAnim(true))
 		socket.on('gr:record-status', (d: { status: string }) => setRecordStatus(d.status))
 		socket.on('gr:recording-notify', (d: { active: boolean }) => setRecordingActive(d.active))
@@ -172,6 +187,7 @@ export function useGameRoom(rawCode: string) {
 	}, [gameCode])
 
 	const joinBreakout = useCallback(async (roomId: string) => {
+		currentBreakoutRoomIdRef.current = roomId
 		const token = await fetchLKToken(`mindflow-${gameCode}-${roomId}`)
 		if (token) setLkBreakout(token)
 		emit('gr:breakout-join', { roomId })
@@ -179,6 +195,7 @@ export function useGameRoom(rawCode: string) {
 	}, [fetchLKToken, gameCode, emit])
 
 	const leaveBreakout = useCallback(() => {
+		currentBreakoutRoomIdRef.current = null
 		setLkBreakout(null)
 		emit('gr:breakout-leave')
 	}, [emit])

@@ -40,8 +40,8 @@
 	:root.light {
 		/* Backgrounds — beige/cream palette from "Ігри Сенсів" reference */
 		--bg-base:     #f2ebe3;
-		--bg-card:     #faf7f2;
-		--bg-elevated: #fdfbf8;
+		--bg-card:     #f6f0e9;
+		--bg-elevated: #faf6f2;
 		--bg-input:    #f0ebe4;
 
 		/* Text — dark, readable on cream */

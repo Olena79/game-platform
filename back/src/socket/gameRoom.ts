@@ -374,8 +374,9 @@ export function registerGameRoom(io: Server) {
 		socket.on('gr:mute-player', (d: { gameCode: string; targetUserId: string }) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
-			const target = state.players.find(p => p.userId === d.targetUserId)
-			if (target?.socketId) io.to(target.socketId).emit('gr:mute-player', {})
+			const uKey = `${d.gameCode}:${d.targetUserId}`
+			const sockets = userSockets.get(uKey)
+			if (sockets) sockets.forEach(sid => io.to(sid).emit('gr:mute-player', {}))
 		})
 
 		// ── Announcement ────────────────────────────────────────────────────
