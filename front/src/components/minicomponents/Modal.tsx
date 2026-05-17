@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 
 interface ModalProps {
 	isOpen: boolean
@@ -15,11 +16,18 @@ interface ModalProps {
 	children?: React.ReactNode
 }
 
-const ACCENT: Record<string, string> = {
+const ACCENT_DARK: Record<string, string> = {
 	success: '#0fffc8',
 	error:   '#ff5fa0',
 	warn:    '#ffb340',
 	default: '#44aaff',
+}
+
+const ACCENT_LIGHT: Record<string, string> = {
+	success: '#2a7a4a',
+	error:   '#c0533a',
+	warn:    '#c08030',
+	default: '#c0533a',
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -34,6 +42,8 @@ export const Modal: React.FC<ModalProps> = ({
 	closeLabel = 'OK',
 	children,
 }) => {
+	const { isDark } = useTheme()
+
 	useEffect(() => {
 		if (!isOpen) return
 		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -43,7 +53,7 @@ export const Modal: React.FC<ModalProps> = ({
 
 	if (!isOpen) return null
 
-	const accent = ACCENT[variant]
+	const accent = isDark ? ACCENT_DARK[variant] : ACCENT_LIGHT[variant]
 	const isConfirm = !!onConfirm
 
 	return createPortal(
@@ -51,35 +61,57 @@ export const Modal: React.FC<ModalProps> = ({
 			className='fixed inset-0 z-[500] flex items-center justify-center px-[20px]'
 			onMouseDown={onClose}
 		>
-			<div className='absolute inset-0 bg-[rgba(0,0,10,0.65)] backdrop-blur-[6px]' />
+			<div
+				className='absolute inset-0 backdrop-blur-[6px]'
+				style={{ background: isDark ? 'rgba(0,0,10,0.65)' : 'rgba(0,0,0,0.45)' }}
+			/>
 
 			<div
-				className='relative z-10 w-full max-w-[360px] border border-[rgba(68,170,255,0.18)] rounded-[24px] px-[28px] py-[32px] bg-[rgba(3,6,25,0.94)] backdrop-blur-[16px]'
-				style={{ boxShadow: `0 0 50px ${accent}1a, 0 8px 32px rgba(0,0,0,0.55)` }}
+				className='relative z-10 w-full max-w-[360px] rounded-[24px] px-[28px] py-[32px] backdrop-blur-[16px]'
+				style={{
+					background: isDark ? 'rgba(3,6,25,0.94)' : 'var(--bg-card)',
+					border: `1px solid ${isDark ? 'rgba(68,170,255,0.18)' : 'var(--border-subtle)'}`,
+					boxShadow: isDark
+						? `0 0 50px ${accent}1a, 0 8px 32px rgba(0,0,0,0.55)`
+						: '0 4px 24px rgba(0,0,0,0.10), 0 8px 32px rgba(0,0,0,0.06)',
+				}}
 				onMouseDown={e => e.stopPropagation()}
 			>
 				<button
 					onClick={onClose}
 					aria-label='Закрити'
-					className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center text-[#44aaff] border border-[rgba(68,170,255,0.35)] hover:text-white hover:border-[rgba(255,255,255,0.3)] hover:bg-[rgba(255,255,255,0.06)] transition-all cursor-pointer'
+					className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer hover:bg-[rgba(128,128,128,0.12)]'
+					style={{
+						color: isDark ? '#44aaff' : 'var(--text-muted)',
+						border: `1px solid ${isDark ? 'rgba(68,170,255,0.35)' : 'var(--border-medium)'}`,
+					}}
 				>
 					<X size={14} strokeWidth={2} />
 				</button>
 
 				<div
 					className='w-[36px] h-[3px] rounded-full mb-[18px]'
-					style={{ background: accent, boxShadow: `0 0 10px ${accent}88` }}
+					style={{
+						background: accent,
+						boxShadow: isDark ? `0 0 10px ${accent}88` : 'none',
+					}}
 				/>
 
 				<h3
 					className='text-[18px] font-[700] mb-[8px] leading-[1.3] pr-[30px]'
-					style={{ color: accent, textShadow: `0 0 18px ${accent}55` }}
+					style={{
+						color: accent,
+						textShadow: isDark ? `0 0 18px ${accent}55` : 'none',
+					}}
 				>
 					{title}
 				</h3>
 
 				{message && (
-					<p className='text-[14px] text-[rgba(210,225,255,0.9)] leading-[1.65] mb-[10px]'>
+					<p
+						className='text-[14px] leading-[1.65] mb-[10px]'
+						style={{ color: isDark ? 'rgba(210,225,255,0.9)' : 'var(--text-secondary)' }}
+					>
 						{message}
 					</p>
 				)}
@@ -103,7 +135,11 @@ export const Modal: React.FC<ModalProps> = ({
 						</button>
 						<button
 							onClick={onClose}
-							className='flex-1 py-[12px] rounded-[10px] text-[14px] font-[600] text-[rgba(195,212,255,0.78)] border border-[rgba(180,200,255,0.18)] hover:border-[rgba(180,200,255,0.38)] hover:text-[rgba(220,232,255,0.95)] transition-all cursor-pointer'
+							className='flex-1 py-[12px] rounded-[10px] text-[14px] font-[600] transition-all cursor-pointer'
+							style={{
+								color: isDark ? 'rgba(195,212,255,0.78)' : 'var(--text-secondary)',
+								border: `1px solid ${isDark ? 'rgba(180,200,255,0.18)' : 'var(--border-subtle)'}`,
+							}}
 						>
 							{cancelLabel}
 						</button>

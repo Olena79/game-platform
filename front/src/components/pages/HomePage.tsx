@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
 
 const TelegramIcon = () => (
@@ -10,37 +11,41 @@ const TelegramIcon = () => (
 	</svg>
 )
 
-const IconBlue3D = () => (
+const IconBlue3D = ({ glow }: { glow: boolean }) => (
 	<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<defs>
 			<radialGradient id="feat-orb-blue" cx="36%" cy="30%" r="62%">
-				<stop offset="0%" stopColor="#aaddff" />
-				<stop offset="50%" stopColor="#44aaff" />
-				<stop offset="100%" stopColor="#081e40" />
+				<stop offset="0%" stopColor={glow ? '#aaddff' : '#f0d4c0'} />
+				<stop offset="50%" stopColor={glow ? '#44aaff' : '#c0533a'} />
+				<stop offset="100%" stopColor={glow ? '#081e40' : '#7a2a15'} />
 			</radialGradient>
-			<filter id="feat-shd-blue" x="-30%" y="-30%" width="160%" height="160%">
-				<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#44aaff" floodOpacity="0.65" />
-			</filter>
+			{glow && (
+				<filter id="feat-shd-blue" x="-30%" y="-30%" width="160%" height="160%">
+					<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#44aaff" floodOpacity="0.65" />
+				</filter>
+			)}
 		</defs>
-		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-blue)" filter="url(#feat-shd-blue)" />
+		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-blue)" filter={glow ? 'url(#feat-shd-blue)' : undefined} />
 		<ellipse cx="10.5" cy="9.5" rx="4" ry="2.5" fill="white" fillOpacity="0.2" transform="rotate(-20 10.5 9.5)" />
 		<path d="M15.5 6L9.5 15h4.2L12 22.5l8-11h-4.5L15.5 6z" fill="white" fillOpacity="0.92" />
 	</svg>
 )
 
-const IconPurple3D = () => (
+const IconPurple3D = ({ glow }: { glow: boolean }) => (
 	<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<defs>
 			<radialGradient id="feat-orb-purple" cx="36%" cy="30%" r="62%">
-				<stop offset="0%" stopColor="#e0c0ff" />
-				<stop offset="50%" stopColor="#c07fff" />
-				<stop offset="100%" stopColor="#200840" />
+				<stop offset="0%" stopColor={glow ? '#e0c0ff' : '#e8c8b8'} />
+				<stop offset="50%" stopColor={glow ? '#c07fff' : '#9b4a2a'} />
+				<stop offset="100%" stopColor={glow ? '#200840' : '#5a2010'} />
 			</radialGradient>
-			<filter id="feat-shd-purple" x="-30%" y="-30%" width="160%" height="160%">
-				<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#c07fff" floodOpacity="0.6" />
-			</filter>
+			{glow && (
+				<filter id="feat-shd-purple" x="-30%" y="-30%" width="160%" height="160%">
+					<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#c07fff" floodOpacity="0.6" />
+				</filter>
+			)}
 		</defs>
-		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-purple)" filter="url(#feat-shd-purple)" />
+		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-purple)" filter={glow ? 'url(#feat-shd-purple)' : undefined} />
 		<ellipse cx="10.5" cy="9.5" rx="4" ry="2.5" fill="white" fillOpacity="0.2" transform="rotate(-20 10.5 9.5)" />
 		<line x1="14" y1="7.5" x2="8" y2="17.5" stroke="white" strokeWidth="1.3" strokeOpacity="0.85" strokeLinecap="round" />
 		<line x1="14" y1="7.5" x2="20" y2="17.5" stroke="white" strokeWidth="1.3" strokeOpacity="0.85" strokeLinecap="round" />
@@ -51,19 +56,21 @@ const IconPurple3D = () => (
 	</svg>
 )
 
-const IconTeal3D = () => (
+const IconTeal3D = ({ glow }: { glow: boolean }) => (
 	<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<defs>
 			<radialGradient id="feat-orb-teal" cx="36%" cy="30%" r="62%">
-				<stop offset="0%" stopColor="#aaffee" />
-				<stop offset="50%" stopColor="#0fffc8" />
-				<stop offset="100%" stopColor="#033020" />
+				<stop offset="0%" stopColor={glow ? '#aaffee' : '#f0dcd0'} />
+				<stop offset="50%" stopColor={glow ? '#0fffc8' : '#a84030'} />
+				<stop offset="100%" stopColor={glow ? '#033020' : '#6a2010'} />
 			</radialGradient>
-			<filter id="feat-shd-teal" x="-30%" y="-30%" width="160%" height="160%">
-				<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#0fffc8" floodOpacity="0.55" />
-			</filter>
+			{glow && (
+				<filter id="feat-shd-teal" x="-30%" y="-30%" width="160%" height="160%">
+					<feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#0fffc8" floodOpacity="0.55" />
+				</filter>
+			)}
 		</defs>
-		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-teal)" filter="url(#feat-shd-teal)" />
+		<circle cx="14" cy="14" r="12.5" fill="url(#feat-orb-teal)" filter={glow ? 'url(#feat-shd-teal)' : undefined} />
 		<ellipse cx="10.5" cy="9.5" rx="4" ry="2.5" fill="white" fillOpacity="0.2" transform="rotate(-20 10.5 9.5)" />
 		<path d="M6.5 14C8.5 10 11 8.5 14 8.5C17 8.5 19.5 10 21.5 14C19.5 18 17 19.5 14 19.5C11 19.5 8.5 18 6.5 14Z" stroke="white" strokeWidth="1.4" fill="none" strokeOpacity="0.9" strokeLinecap="round" strokeLinejoin="round" />
 		<circle cx="14" cy="14" r="3.2" fill="white" fillOpacity="0.88" />
@@ -74,6 +81,7 @@ const IconTeal3D = () => (
 export const HomePage = () => {
 	const { t } = useTranslation()
 	const { isLoggedIn } = useAuth()
+	const { isDark } = useTheme()
 	const navigate = useNavigate()
 	const [authModal, setAuthModal] = useState(false)
 
@@ -89,8 +97,8 @@ export const HomePage = () => {
 		<div>
 			{/* HERO */}
 			<section className='relative min-h-[82vh] md:min-h-[88vh] flex items-center px-[20px] md:px-[32px] lg:px-[48px] py-[20px] md:py-[60px] overflow-hidden'>
-				{/* Orb */}
-				<div className='absolute right-[-100px] md:right-[-120px] lg:right-[-80px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[500px] md:h-[500px] lg:w-[640px] lg:h-[640px] opacity-[0.65] md:opacity-[0.6] lg:opacity-[0.85] z-0 pointer-events-none'>
+				{/* Orb — dark mode only */}
+				{isDark && <div className='absolute right-[-100px] md:right-[-120px] lg:right-[-80px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[500px] md:h-[500px] lg:w-[640px] lg:h-[640px] opacity-[0.65] md:opacity-[0.6] lg:opacity-[0.85] z-0 pointer-events-none'>
 					<svg viewBox='0 0 640 640' xmlns='http://www.w3.org/2000/svg'>
 						<defs>
 							<radialGradient id='rg' cx='50%' cy='50%' r='50%'>
@@ -107,7 +115,7 @@ export const HomePage = () => {
 						<circle cx='320' cy='320' r='22' fill='rgba(68,170,255,0.4)' />
 						<circle cx='320' cy='320' r='9' fill='#7acfff' />
 					</svg>
-				</div>
+				</div>}
 
 				<div className='w-full max-w-[780px] z-10 relative'>
 					<div className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] md:text-[12px] px-[12px] md:px-[16px] py-[6px] md:py-[7px] rounded-[30px] mb-[20px] md:mb-[28px] tracking-[0.5px] uppercase font-medium'>
@@ -136,6 +144,7 @@ export const HomePage = () => {
 							target='_blank'
 							rel='noopener noreferrer'
 							className='inline-flex items-center gap-[8px] bg-transparent text-[rgba(180,200,255,0.7)] border border-[rgba(255,255,255,0.15)] px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] hover:border-[rgba(255,255,255,0.35)] hover:text-white transition-all cursor-pointer no-underline'
+							style={isDark ? undefined : { color: 'var(--accent)', borderColor: 'var(--accent)' }}
 						>
 							<TelegramIcon />
 							{t('home.hero.btn_learn')}
@@ -152,9 +161,9 @@ export const HomePage = () => {
 				<SectionTitle>{t('home.features.title')}</SectionTitle>
 				<SectionDesc>{t('home.features.desc')}</SectionDesc>
 				<div className='grid grid-cols-1 md:grid-cols-3 gap-[14px] md:gap-[16px]'>
-					<FeatureCard icon={<IconBlue3D />} title={t('home.features.card1_title')} desc={t('home.features.card1_desc')} color='blue' />
-					<FeatureCard icon={<IconPurple3D />} title={t('home.features.card2_title')} desc={t('home.features.card2_desc')} color='purple' />
-					<FeatureCard icon={<IconTeal3D />} title={t('home.features.card3_title')} desc={t('home.features.card3_desc')} color='teal' />
+					<FeatureCard icon={<IconBlue3D glow={isDark} />} title={t('home.features.card1_title')} desc={t('home.features.card1_desc')} color='blue' />
+					<FeatureCard icon={<IconPurple3D glow={isDark} />} title={t('home.features.card2_title')} desc={t('home.features.card2_desc')} color='purple' />
+					<FeatureCard icon={<IconTeal3D glow={isDark} />} title={t('home.features.card3_title')} desc={t('home.features.card3_desc')} color='teal' />
 				</div>
 			</section>
 

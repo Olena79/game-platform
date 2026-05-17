@@ -24,6 +24,7 @@ export interface IGame extends Document {
 	scheduledAt?: Date
 	coverImage: string
 	images: string[]
+	defaultTimerSeconds: number | null
 	gameCode: string
 	spectatorCode: string
 	registeredPlayers: IRegisteredPlayer[]
@@ -61,6 +62,7 @@ const GameSchema = new Schema<IGame>(
 		scheduledAt:        { type: Date },
 		coverImage:         { type: String, default: '' },
 		images:             { type: [String], default: [] },
+		defaultTimerSeconds: { type: Number, default: null },
 		gameCode:           { type: String, unique: true, sparse: true },
 		spectatorCode:      { type: String, unique: true, sparse: true },
 		registeredPlayers:  { type: [RegisteredPlayerSchema], default: [] },

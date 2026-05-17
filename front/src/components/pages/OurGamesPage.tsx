@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
 import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData } from '../../actions/games'
 
@@ -14,6 +15,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 	token: string | null
 	onClose: () => void
 }) {
+	const { isDark } = useTheme()
 	const [cardNumber, setCardNumber] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [copied, setCopied] = useState(false)
@@ -43,21 +45,30 @@ function DonateModal({ gameId, cost, token, onClose }: {
 
 	return (
 		<div className='fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-[16px]'
-			style={{ background: 'rgba(3,4,15,0.72)', backdropFilter: 'blur(4px)' }}
+			style={isDark
+				? { background: 'rgba(3,4,15,0.72)', backdropFilter: 'blur(4px)' }
+				: { background: 'rgba(240,235,228,0.8)', backdropFilter: 'blur(4px)' }
+			}
 			onClick={onClose}>
 			<div
 				className='w-full max-w-[340px] rounded-[20px] p-[24px] flex flex-col gap-[16px]'
-				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.2)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+				style={isDark
+					? { background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.2)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }
+					: { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: '0 16px 48px rgba(0,0,0,0.12)' }
+				}
 				onClick={e => e.stopPropagation()}
 			>
 				{/* Header */}
 				<div className='flex items-center justify-between'>
 					<div className='flex items-center gap-[8px]'>
-						<CreditCard size={16} style={{ color: '#44aaff' }} />
-						<span className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.95)' }}>Донат ігромайстру</span>
+						<CreditCard size={16} style={{ color: isDark ? '#44aaff' : 'var(--accent)' }} />
+						<span className='text-[15px] font-[700]' style={{ color: isDark ? 'rgba(220,230,255,0.95)' : 'var(--text-primary)' }}>Донат ігромайстру</span>
 					</div>
 					<button onClick={onClose} className='w-[26px] h-[26px] rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-[rgba(255,255,255,0.08)]'
-						style={{ color: 'rgba(180,200,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+						style={isDark
+							? { color: 'rgba(180,200,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+							: { color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }
+						}>
 						<span className='text-[14px]'>✕</span>
 					</button>
 				</div>
@@ -65,10 +76,13 @@ function DonateModal({ gameId, cost, token, onClose }: {
 				{/* Cost */}
 				{cost > 0 && (
 					<div className='flex items-center gap-[8px] px-[14px] py-[10px] rounded-[10px]'
-						style={{ background: 'rgba(15,255,200,0.05)', border: '1px solid rgba(15,255,200,0.15)' }}>
-						<Banknote size={14} style={{ color: '#0fffc8' }} />
-						<span className='text-[13px]' style={{ color: 'rgba(200,230,220,0.85)' }}>Вартість участі:</span>
-						<span className='text-[15px] font-[700]' style={{ color: '#0fffc8' }}>{cost} грн</span>
+						style={isDark
+							? { background: 'rgba(15,255,200,0.05)', border: '1px solid rgba(15,255,200,0.15)' }
+							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.15)' }
+						}>
+						<Banknote size={14} style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }} />
+						<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,230,220,0.85)' : 'var(--text-secondary)' }}>Вартість участі:</span>
+						<span className='text-[15px] font-[700]' style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }}>{cost} грн</span>
 					</div>
 				)}
 
@@ -80,34 +94,40 @@ function DonateModal({ gameId, cost, token, onClose }: {
 						</div>
 					) : cardNumber ? (
 						<>
-							<span className='text-[11px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.5)' }}>
+							<span className='text-[11px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.5)' : 'var(--text-muted)' }}>
 								Номер картки
 							</span>
 							<button
 								onClick={handleCopy}
 								className='relative flex items-center justify-between gap-[8px] rounded-[12px] px-[16px] py-[14px] cursor-pointer transition-all hover:brightness-110 group'
-								style={{
-									background: copied ? 'rgba(15,255,200,0.08)' : 'rgba(68,170,255,0.06)',
-									border: copied ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,170,255,0.2)',
-								}}
+								style={isDark
+									? {
+										background: copied ? 'rgba(15,255,200,0.08)' : 'rgba(68,170,255,0.06)',
+										border: copied ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,170,255,0.2)',
+									}
+									: {
+										background: 'rgba(192,83,58,0.06)',
+										border: '1px solid rgba(192,83,58,0.15)',
+									}
+								}
 							>
 								<span className='text-[20px] font-[700] tracking-[3px] font-mono'
-									style={{ color: copied ? '#0fffc8' : 'rgba(200,218,255,0.95)' }}>
+									style={{ color: isDark ? (copied ? '#0fffc8' : 'rgba(200,218,255,0.95)') : 'var(--text-primary)' }}>
 									{formatted}
 								</span>
 								<span className='flex items-center gap-[5px] flex-shrink-0 text-[12px] font-[600]'
-									style={{ color: copied ? '#0fffc8' : 'rgba(68,170,255,0.75)' }}>
+									style={{ color: isDark ? (copied ? '#0fffc8' : 'rgba(68,170,255,0.75)') : 'var(--accent)' }}>
 									{copied ? <><Check size={13} /> Скопійовано</> : <><Copy size={13} /> Копіювати</>}
 								</span>
 							</button>
-							<span className='text-[11px]' style={{ color: 'rgba(100,140,220,0.4)' }}>
+							<span className='text-[11px]' style={{ color: isDark ? 'rgba(100,140,220,0.4)' : 'var(--text-muted)' }}>
 								Натисніть щоб скопіювати номер картки
 							</span>
 						</>
 					) : (
 						<div className='flex flex-col items-center gap-[8px] py-[16px]'>
 							<span className='text-[28px]'>🤷</span>
-							<span className='text-[13px] text-center' style={{ color: 'rgba(160,185,240,0.7)' }}>
+							<span className='text-[13px] text-center' style={{ color: isDark ? 'rgba(160,185,240,0.7)' : 'var(--text-secondary)' }}>
 								Упс! Ігромайстер не залишив даних картки
 							</span>
 						</div>
@@ -125,6 +145,7 @@ export const OurGamesPage = () => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const { user, token, isLoggedIn } = useAuth()
+	const { isDark } = useTheme()
 
 	const [games, setGames]               = useState<GameData[]>([])
 	const [pageLoading, setPageLoading]   = useState(true)
@@ -403,7 +424,7 @@ export const OurGamesPage = () => {
 			<div className='absolute inset-0 flex items-start justify-center pointer-events-none z-0 pt-[80px]'>
 				<div
 					className='w-[600px] h-[600px] rounded-full'
-					style={{ background: 'radial-gradient(circle, rgba(40,80,255,0.10) 0%, transparent 65%)' }}
+					style={{ background: isDark ? 'radial-gradient(circle, rgba(40,80,255,0.10) 0%, transparent 65%)' : 'radial-gradient(circle, rgba(192,83,58,0.04) 0%, transparent 65%)' }}
 				/>
 			</div>
 
@@ -411,7 +432,13 @@ export const OurGamesPage = () => {
 				{/* Header */}
 				<div className='flex flex-col md:flex-row md:items-end md:justify-between gap-[20px] mb-[32px]'>
 					<div>
-						<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium mb-[14px]'>
+						<span
+							className='inline-flex items-center gap-[8px] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium mb-[14px]'
+							style={isDark
+								? { border: '1px solid rgba(68,170,255,0.35)', color: 'rgba(100,180,255,0.9)' }
+								: { border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }
+							}
+						>
 							<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
 							Games of Senses
 						</span>
@@ -435,32 +462,39 @@ export const OurGamesPage = () => {
 						<Search
 							size={14}
 							className='absolute left-[12px] top-1/2 -translate-y-1/2 pointer-events-none'
-							style={{ color: '#3a4060' }}
+							style={{ color: isDark ? '#3a4060' : 'var(--text-muted)' }}
 						/>
 						<input
 							value={searchQuery}
 							onChange={e => setSearchQuery(e.target.value)}
 							placeholder='Пошук за назвою або ігромайстером...'
 							className='w-full pl-[38px] pr-[14px] py-[10px] rounded-[8px] text-[13px] focus:outline-none transition-all'
-							style={{
-								background: 'transparent',
-								border: '1px solid #1e2235',
-								color: '#c0cce8',
-							}}
+							style={isDark
+								? { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
+								: { background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
+							}
 							onFocus={e => {
-								e.currentTarget.style.borderColor = '#2e3250'
-								e.currentTarget.style.color = '#e0e8ff'
+								if (isDark) {
+									e.currentTarget.style.borderColor = '#2e3250'
+									e.currentTarget.style.color = '#e0e8ff'
+								} else {
+									e.currentTarget.style.borderColor = 'var(--accent)'
+								}
 							}}
 							onBlur={e => {
-								e.currentTarget.style.borderColor = '#1e2235'
-								e.currentTarget.style.color = searchQuery ? '#e0e8ff' : '#c0cce8'
+								if (isDark) {
+									e.currentTarget.style.borderColor = '#1e2235'
+									e.currentTarget.style.color = searchQuery ? '#e0e8ff' : '#c0cce8'
+								} else {
+									e.currentTarget.style.borderColor = 'var(--border-subtle)'
+								}
 							}}
 						/>
 					</div>
 
 					{/* Sort row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px]'>
-						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: '#c0cce8' }}>Сорт:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>Сорт:</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{SORT_OPTIONS.map(({ key, label, purple }) => {
 								const isActive = sortKey === key
@@ -470,10 +504,14 @@ export const OurGamesPage = () => {
 										onClick={() => setSortKey(key)}
 										className='px-[14px] py-[5px] rounded-[20px] text-[13px] font-[500] transition-all cursor-pointer whitespace-nowrap'
 										style={isActive
-											? purple
-												? { background: 'rgba(204,68,255,0.05)', border: '1px solid rgba(204,68,255,0.22)', color: '#cc44ff' }
-												: { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
-											: { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
+											? isDark
+												? purple
+													? { background: 'rgba(204,68,255,0.05)', border: '1px solid rgba(204,68,255,0.22)', color: '#cc44ff' }
+													: { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
+												: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.4)', color: 'var(--accent)' }
+											: isDark
+												? { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
+												: { background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
 										}
 									>
 										{label}
@@ -485,7 +523,7 @@ export const OurGamesPage = () => {
 
 					{/* Filter row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px] md:pt-0 pt-[10px] md:border-t-0 border-t border-[#111320]'>
-						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: '#c0cce8' }}>Фільтр:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>Фільтр:</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{FILTER_OPTIONS.map(({ key, label }) => {
 								const on = activeFilters.has(key)
@@ -495,8 +533,12 @@ export const OurGamesPage = () => {
 										onClick={() => toggleFilter(key)}
 										className='px-[14px] py-[5px] rounded-[20px] text-[13px] font-[500] transition-all cursor-pointer whitespace-nowrap'
 										style={on
-											? { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
-											: { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
+											? isDark
+												? { background: 'rgba(0,255,225,0.05)', border: '1px solid rgba(0,255,225,0.22)', color: '#00ffe1' }
+												: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.4)', color: 'var(--accent)' }
+											: isDark
+												? { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
+												: { background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
 										}
 									>
 										{label}
@@ -519,10 +561,16 @@ export const OurGamesPage = () => {
 				{/* ── Games grid ─────────────────────────────────────────────────── */}
 				{visibleGames.length === 0 ? (
 					<div className='flex flex-col items-center justify-center py-[100px] text-center'>
-						<div className='w-[60px] h-[60px] rounded-full bg-[rgba(68,170,255,0.07)] border border-[rgba(68,170,255,0.14)] flex items-center justify-center mb-[20px]'>
-							<Gamepad2 size={26} strokeWidth={1.4} className='text-[rgba(68,170,255,0.45)]' />
+						<div
+							className='w-[60px] h-[60px] rounded-full flex items-center justify-center mb-[20px]'
+							style={isDark
+								? { background: 'rgba(68,170,255,0.07)', border: '1px solid rgba(68,170,255,0.14)' }
+								: { background: 'rgba(192,83,58,0.06)', border: '1px solid var(--border-subtle)' }
+							}
+						>
+							<Gamepad2 size={26} strokeWidth={1.4} style={{ color: isDark ? 'rgba(68,170,255,0.45)' : 'var(--text-muted)' }} />
 						</div>
-						<p className='text-[rgba(180,200,255,0.7)] text-[15px]'>
+						<p style={{ color: isDark ? 'rgba(180,200,255,0.7)' : 'var(--text-secondary)', fontSize: '15px' }}>
 							{debouncedSearch || activeFilters.size > 0 ? 'Нічого не знайдено' : t('our_games.empty')}
 						</p>
 					</div>
@@ -630,6 +678,7 @@ export const OurGamesPage = () => {
 
 const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	const { t } = useTranslation()
+	const { isDark } = useTheme()
 	if (!game) return null
 	if (game.registeredPlayers.length === 0) {
 		return <p className='text-[14px] text-[rgba(200,215,255,0.75)]'>{t('our_games.players_empty')}</p>
@@ -637,8 +686,14 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	return (
 		<div className='flex flex-col gap-[8px]'>
 			{game.registeredPlayers.map((p, i) => (
-				<div key={i} className='flex items-center gap-[8px] text-[13px] text-[rgba(180,200,255,0.75)]'>
-					<span className='w-[20px] h-[20px] rounded-full bg-[rgba(68,170,255,0.12)] border border-[rgba(68,170,255,0.2)] flex items-center justify-center text-[10px] text-[rgba(68,170,255,0.7)] flex-shrink-0'>
+				<div key={i} className='flex items-center gap-[8px] text-[13px]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)' }}>
+					<span
+						className='w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] flex-shrink-0'
+						style={isDark
+							? { background: 'rgba(68,170,255,0.12)', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(68,170,255,0.7)' }
+							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.2)', color: 'var(--accent)' }
+						}
+					>
 						{i + 1}
 					</span>
 					<span>{[p.name, p.surname].filter(Boolean).join(' ')}</span>
@@ -682,6 +737,7 @@ const GameCard = ({
 	onDonate: () => void
 }) => {
 	const { t, i18n } = useTranslation()
+	const { isDark } = useTheme()
 
 	const spectators   = game.spectators ?? []
 	const isCreator    = !!currentUserId && String(game.creatorId) === String(currentUserId)
@@ -718,7 +774,10 @@ const GameCard = ({
 				onClick={onUnregister}
 				disabled={unregisterLoading}
 				className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-50'
-				style={{ color: '#ff5fa0', background: 'rgba(255,95,160,0.07)', border: '1px solid rgba(255,95,160,0.25)' }}
+				style={isDark
+					? { color: '#ff5fa0', background: 'rgba(255,95,160,0.07)', border: '1px solid rgba(255,95,160,0.25)' }
+					: { color: 'var(--accent)', background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.25)' }
+				}
 			>
 				{unregisterLoading
 					? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim inline-block' />
@@ -753,7 +812,13 @@ const GameCard = ({
 	}
 
 	return (
-		<div className='group relative border border-[rgba(68,170,255,0.13)] rounded-[20px] p-[24px] bg-[rgba(3,6,25,0.52)] backdrop-blur-[10px] hover:border-[rgba(68,170,255,0.28)] hover:bg-[rgba(3,6,25,0.65)] transition-all duration-[200ms] flex flex-col gap-[14px]'>
+		<div
+			className='group relative rounded-[20px] p-[24px] backdrop-blur-[10px] transition-all duration-[200ms] flex flex-col gap-[14px]'
+			style={isDark
+				? { border: '1px solid rgba(68,170,255,0.13)', background: 'rgba(3,6,25,0.52)' }
+				: { border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }
+			}
+		>
 
 			{/* Cover image + like overlay */}
 			<div className='relative w-full aspect-[16/7] rounded-[12px] overflow-hidden mb-[6px] bg-[#060e24]'>
@@ -809,7 +874,10 @@ const GameCard = ({
 						disabled={editLoading}
 						title={t('our_games.edit')}
 						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
-						style={{ background: 'rgba(68,170,255,0.14)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(100,190,255,0.95)', backdropFilter: 'blur(6px)' }}
+						style={isDark
+							? { background: 'rgba(68,170,255,0.14)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(100,190,255,0.95)', backdropFilter: 'blur(6px)' }
+							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)', backdropFilter: 'blur(6px)' }
+						}
 					>
 						{editLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#44aaff] pulse-dot-anim' />
@@ -821,7 +889,10 @@ const GameCard = ({
 						disabled={deleteLoading}
 						title={t('our_games.delete')}
 						className='flex items-center gap-[5px] px-[10px] h-[32px] rounded-[10px] text-[12px] font-[600] transition-all cursor-pointer disabled:opacity-40 hover:brightness-125'
-						style={{ background: 'rgba(255,95,160,0.12)', border: '1px solid rgba(255,95,160,0.5)', color: 'rgba(255,120,170,0.95)', backdropFilter: 'blur(6px)' }}
+						style={isDark
+							? { background: 'rgba(255,95,160,0.12)', border: '1px solid rgba(255,95,160,0.5)', color: 'rgba(255,120,170,0.95)', backdropFilter: 'blur(6px)' }
+							: { background: 'rgba(200,60,60,0.06)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)', backdropFilter: 'blur(6px)' }
+						}
 					>
 						{deleteLoading
 							? <span className='w-[4px] h-[4px] rounded-full bg-[#ff5fa0] pulse-dot-anim' />
@@ -833,60 +904,59 @@ const GameCard = ({
 
 			{/* Title + creator */}
 			<div>
-				<h3 className='text-[17px] font-[700] text-white leading-[1.3] mb-[4px]'>
-					<span className='text-[rgba(200,215,255,0.82)] text-[13px] font-[400]'>
+				<h3 className='text-[17px] font-[700] leading-[1.3] mb-[4px]' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>
+					<span style={{ color: isDark ? 'rgba(200,215,255,0.82)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 400 }}>
 						{t('our_games.title_prefix')} —{' '}
 					</span>
 					{game.title}
 				</h3>
-				<p className='text-[13px] text-[rgba(160,185,240,0.88)]'>
+				<p className='text-[13px]' style={{ color: isDark ? 'rgba(160,185,240,0.88)' : 'var(--text-secondary)' }}>
 					{t('our_games.gamemaster_prefix')} — {game.creatorName}
 				</p>
 			</div>
 
 			{/* Short description */}
 			{game.description && (
-				<p className='text-[13px] text-[rgba(180,200,255,0.75)] leading-[1.6] line-clamp-3'>
+				<p className='text-[13px] leading-[1.6] line-clamp-3' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
 					{game.description}
 				</p>
 			)}
 
 			{/* Stats */}
 			<div className='flex flex-col gap-[7px]'>
-				<StatRow icon={<Users size={13} strokeWidth={1.8} />} color='rgba(68,170,255,0.6)'>
+				<StatRow icon={<Users size={13} strokeWidth={1.8} />} darkColor='rgba(68,170,255,0.6)'>
 					{game.minPlayers}–{game.maxPlayers} {t('our_games.players')}
 				</StatRow>
 
 				{game.useCoins && (
-					<StatRow icon={<CircleDollarSign size={13} strokeWidth={1.8} />} color='rgba(255,183,40,0.75)'>
+					<StatRow icon={<CircleDollarSign size={13} strokeWidth={1.8} />} darkColor='rgba(255,183,40,0.75)'>
 						{game.coinsPerPlayer} {t('our_games.coins_per_player')}
 					</StatRow>
 				)}
 
 				{game.useInfluence && (
-					<StatRow icon={<Zap size={13} strokeWidth={1.8} />} color='rgba(192,127,255,0.75)'>
+					<StatRow icon={<Zap size={13} strokeWidth={1.8} />} darkColor='rgba(192,127,255,0.75)'>
 						{game.influencePerPlayer} {t('our_games.influence_per_player')}
 					</StatRow>
 				)}
 
 				{game.scheduledAt && (
-					<StatRow icon={<CalendarDays size={13} strokeWidth={1.8} />} color='rgba(15,255,200,0.65)'>
+					<StatRow icon={<CalendarDays size={13} strokeWidth={1.8} />} darkColor='rgba(15,255,200,0.65)'>
 						{formatDate(game.scheduledAt)}
 					</StatRow>
 				)}
 
 				<div className='flex items-center justify-between gap-[8px]'>
-					<StatRow icon={<Banknote size={13} strokeWidth={1.8} />} color='rgba(255,183,40,0.85)'>
+					<StatRow icon={<Banknote size={13} strokeWidth={1.8} />} darkColor='rgba(255,183,40,0.85)'>
 						{`Вартість участі: ${(game.participationCost ?? 0).toFixed(2).replace('.', ',')} грн`}
 					</StatRow>
 					<button
 						onClick={onDonate}
 						className='flex items-center gap-[4px] px-[9px] py-[4px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-115 flex-shrink-0'
-						style={{
-							background: 'rgba(255,183,40,0.08)',
-							border: '1px solid rgba(255,183,40,0.3)',
-							color: 'rgba(255,196,60,0.95)',
-						}}
+						style={isDark
+							? { background: 'rgba(255,183,40,0.08)', border: '1px solid rgba(255,183,40,0.3)', color: 'rgba(255,196,60,0.95)' }
+							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.25)', color: 'var(--accent)' }
+						}
 					>
 						<CreditCard size={11} strokeWidth={2} />
 						Донат
@@ -906,7 +976,7 @@ const GameCard = ({
 			{/* Bottom row: players count + like + register buttons */}
 			<div className='mt-auto flex flex-col gap-[8px]'>
 				{!isCreator && isLoggedIn && !isRegistered && !isSpectator && !isFull && (
-					<span className='text-[12px] font-[500] text-right text-[rgba(180,200,255,0.75)]'>
+					<span className='text-[12px] font-[500] text-right' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
 						{t('our_games.register_as_label')}
 					</span>
 				)}
@@ -915,7 +985,8 @@ const GameCard = ({
 					<div className='flex items-center gap-[10px]'>
 						<button
 							onClick={onShowPlayers}
-							className='flex items-center gap-[5px] text-[12px] text-[rgba(68,170,255,0.7)] hover:text-[rgba(68,170,255,0.95)] cursor-pointer transition-colors'
+							className='flex items-center gap-[5px] text-[12px] transition-colors cursor-pointer'
+							style={{ color: isDark ? 'rgba(68,170,255,0.7)' : 'var(--text-muted)' }}
 						>
 							<UserCheck size={12} strokeWidth={1.8} />
 							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
@@ -966,14 +1037,17 @@ const GameCard = ({
 }
 
 const StatRow = ({
-	icon, color, children,
+	icon, darkColor, children,
 }: {
 	icon: React.ReactNode
-	color: string
+	darkColor: string
 	children: React.ReactNode
-}) => (
-	<div className='flex items-center gap-[7px] text-[13px]' style={{ color }}>
-		<span className='flex-shrink-0'>{icon}</span>
-		<span>{children}</span>
-	</div>
-)
+}) => {
+	const { isDark } = useTheme()
+	return (
+		<div className='flex items-center gap-[7px] text-[13px]' style={{ color: isDark ? darkColor : 'var(--accent)' }}>
+			<span className='flex-shrink-0'>{icon}</span>
+			<span style={{ color: isDark ? darkColor : 'var(--text-secondary)' }}>{children}</span>
+		</div>
+	)
+}

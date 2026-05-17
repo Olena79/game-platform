@@ -3,6 +3,7 @@ import React, {
 	useCallback,
 	useEffect,
 	useRef,
+	useMemo,
 	Component,
 	ReactNode,
 } from 'react'
@@ -11,7 +12,9 @@ import {
 	LiveKitRoom as LKRoom,
 	RoomAudioRenderer as LKAudioRenderer,
 	useLocalParticipant,
+	useConnectionState,
 } from '@livekit/components-react'
+import { ConnectionState } from 'livekit-client'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
 const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
@@ -28,13 +31,13 @@ import { TimerFloatOverlay } from '../gameroom/TimerFloatOverlay'
 import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
-import { ImagePanel } from '../gameroom/ImagePanel'
 import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
 import { ModPanel } from '../gameroom/ModPanel'
+import { PreJoinScreen } from '../gameroom/PreJoinScreen'
 import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
 
 type RoomHook = ReturnType<typeof useGameRoom>
@@ -98,7 +101,10 @@ function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 }
 
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
-function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
+function RoomContent({ room, gameCode, initMic, initCam }: {
+	room: RoomHook; gameCode: string
+	initMic: boolean; initCam: boolean
+}) {
 	const navigate = useNavigate()
 	const {
 		state,
@@ -166,13 +172,25 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		window.open(`/room/${gameCode}/observe`, 'observer', 'width=1280,height=720,menubar=no,toolbar=no')
 	}
 
+	// Resolve timer and image for the current room context.
+	// When in a breakout room, read from that room's own timer/image; otherwise main room.
+	const activeBreakoutRoom = (state && inBreakout)
+		? state.breakoutRooms.find(r => r.id === inBreakout) ?? null
+		: null
+	const activeTimer = (activeBreakoutRoom
+		? (activeBreakoutRoom.timer ?? null)
+		: (state?.timer ?? null)) ?? null
+	const activeShownImageUrl = (activeBreakoutRoom
+		? (activeBreakoutRoom.shownImageUrl ?? null)
+		: (state?.shownImageUrl ?? null)) ?? null
+
 	const { token: authToken } = useAuth()
 	const { localParticipant } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
 	const [panelOpen, setPanelOpen] = useState(true)
 	const [localImageHidden, setLocalImageHidden] = useState(false)
-	const [micOn, setMicOn] = useState(false)
-	const [camOn, setCamOn] = useState(false)
+	const [micOn, setMicOn] = useState(initMic)
+	const [camOn, setCamOn] = useState(initCam)
 	const [screenOn, setScreenOn] = useState(false)
 	const [showCoinModal, setShowCoin] = useState(false)
 	const [showVoteModal, setShowVote] = useState(false)
@@ -283,27 +301,46 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		clearMuteSignal()
 	}, [shouldMute]) // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Auto-enable mic once for non-spectators when LiveKit local participant is ready
+	// Apply pre-join media preferences once the LiveKit connection is fully established.
+	// localParticipant exists before ConnectionState.Connected, so gating on connection
+	// state is the only reliable way to ensure setMicrophoneEnabled actually publishes.
+	const connectionState = useConnectionState()
 	const autoMediaRef = useRef(false)
 	useEffect(() => {
-		if (!localParticipant || isSpectator || autoMediaRef.current) return
+		if (connectionState !== ConnectionState.Connected || isSpectator || autoMediaRef.current) return
 		autoMediaRef.current = true
-		localParticipant.setMicrophoneEnabled(true).then(() => setMicOn(true)).catch(() => {})
-	}, [localParticipant]) // eslint-disable-line react-hooks/exhaustive-deps
+		if (initMic) {
+			localParticipant?.setMicrophoneEnabled(true).catch(() => setMicOn(false))
+		}
+		if (initCam) {
+			localParticipant?.setCameraEnabled(true).catch(() => setCamOn(false))
+		}
+	}, [connectionState]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleMic = useCallback(async () => {
 		if (!localParticipant) return
-		const enabled = !micOn
-		await localParticipant.setMicrophoneEnabled(enabled)
-		setMicOn(enabled)
-	}, [localParticipant, micOn])
+		// Read actual track state from LiveKit, not from potentially-stale React state.
+		// This prevents desync when the user clicks rapidly or when the track was
+		// muted externally (e.g. by GM's mute-all).
+		const enabled = !localParticipant.isMicrophoneEnabled
+		try {
+			await localParticipant.setMicrophoneEnabled(enabled)
+			setMicOn(enabled)
+		} catch {
+			setMicOn(localParticipant.isMicrophoneEnabled)
+		}
+	}, [localParticipant])
 
 	const toggleCam = useCallback(async () => {
 		if (!localParticipant) return
-		const enabled = !camOn
-		await localParticipant.setCameraEnabled(enabled)
-		setCamOn(enabled)
-	}, [localParticipant, camOn])
+		const enabled = !localParticipant.isCameraEnabled
+		try {
+			await localParticipant.setCameraEnabled(enabled)
+			setCamOn(enabled)
+		} catch {
+			setCamOn(localParticipant.isCameraEnabled)
+		}
+	}, [localParticipant])
 
 	const toggleScreen = useCallback(async () => {
 		if (!localParticipant) return
@@ -316,7 +353,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 		}
 	}, [localParticipant, screenOn])
 
-	useEffect(() => { setLocalImageHidden(false) }, [state?.shownImageUrl])
+	useEffect(() => { setLocalImageHidden(false) }, [activeShownImageUrl])
 
 	const handleLeave = () => navigate('/games')
 
@@ -338,7 +375,13 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 	}
 
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId)
-	const imageToShow = !isGM && localImageHidden ? null : state.shownImageUrl
+	const imageToShow = !isGM && localImageHidden ? null : activeShownImageUrl
+	// State with room-scoped timer/image for panel components (ChatPanel, ModPanel).
+	// Memoized to avoid re-rendering panels on every state update that doesn't affect them.
+	const panelState = useMemo(
+		() => ({ ...state, timer: activeTimer, shownImageUrl: activeShownImageUrl }),
+		[state, activeTimer, activeShownImageUrl],
+	)
 
 	return (
 		<div
@@ -403,8 +446,8 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 			<div className='flex-1 flex overflow-hidden min-h-0'>
 				{/* Left / Main area */}
 				<div className='flex-1 flex flex-col overflow-hidden min-w-0 relative'>
-					{/* Floating timer overlay */}
-					{state.timer && <TimerFloatOverlay timer={state.timer} />}
+					{/* Floating timer overlay — uses current room's timer */}
+					{activeTimer && <TimerFloatOverlay timer={activeTimer} />}
 
 					{/* View switcher */}
 					<div
@@ -432,8 +475,24 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 							</button>
 						))}
 
-						{/* Image toggle button — GM: picker; players/spectators: local show/hide */}
-						{(state.shownImageUrl || (isGM && state.images.length > 0)) && (
+						{/* GM breakout room indicator — shown when GM has entered a breakout */}
+						{isGM && inBreakout && (
+							<div className='flex items-center gap-[6px] px-[9px] py-[3px] rounded-[7px]'
+								style={{ background: 'rgba(15,255,200,0.06)', border: '1px solid rgba(15,255,200,0.2)' }}>
+								<span className='text-[11px]' style={{ color: 'rgba(15,255,200,0.8)' }}>
+									🚪 {state.breakoutRooms.find(r => r.id === inBreakout)?.name ?? '...'}
+								</span>
+								<button
+									onClick={leaveBreakout}
+									className='text-[10px] px-[6px] py-[1px] rounded-[4px] cursor-pointer transition-all hover:brightness-125'
+									style={{ background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.25)', color: 'rgba(255,95,160,0.85)' }}>
+									← Вийти
+								</button>
+							</div>
+						)}
+
+						{/* Image toggle button — GM always sees it; others only when an image is shown */}
+						{(activeShownImageUrl || isGM) && (
 							<button
 								onClick={() =>
 									isGM
@@ -581,7 +640,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 				{panelOpen && !isMobile && (
 					<div className='flex-shrink-0 w-[239px] lg:w-[366px] flex flex-col overflow-hidden min-h-0'>
 						<ChatPanel
-							state={state}
+							state={panelState}
 							myId={myId}
 							isGM={isGM}
 							isSpectator={isSpectator}
@@ -719,7 +778,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 						<div className='fixed left-0 right-0 z-[55] flex flex-col'
 							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', height: '72vh', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ChatPanel
-								state={state} myId={myId} isGM={isGM} isSpectator={isSpectator}
+								state={panelState} myId={myId} isGM={isGM} isSpectator={isSpectator}
 								notes={notes} onNotesChange={setNotes}
 								onSendChat={sendChat} onCastVote={castVote} onCloseVote={closeVote} onClearVote={clearVote}
 								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
@@ -737,7 +796,7 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 						<div className='fixed left-0 right-0 z-[55]'
 							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ModPanel
-								state={state}
+								state={panelState}
 								onAnnounce={() => { setShowAnnounce(true); setMobilePanelOpen(null) }}
 								onVoting={() => { setShowVote(true); setMobilePanelOpen(null) }}
 								onSpectatorVoting={() => { setShowSpectatorVote(true); setMobilePanelOpen(null) }}
@@ -843,8 +902,10 @@ function RoomContent({ room, gameCode }: { room: RoomHook; gameCode: string }) {
 					players={state.players}
 					images={state.images}
 					myId={myId}
+					inBreakout={inBreakout}
 					onCreate={createBreakout}
 					onInvite={inviteBreakout}
+					onJoin={roomId => { joinBreakout(roomId); setShowBreakout(false) }}
 					onEnd={endBreakout}
 					onClose={() => setShowBreakout(false)}
 				/>
@@ -1091,6 +1152,13 @@ function GameRoomInner() {
 
 	const activeLk = inBreakout ? lkBreakout : lk
 
+	// Pre-join screen — shown once before the first LiveKit connection.
+	// The user selects their mic/cam preferences here; those choices seed
+	// the UI state inside RoomContent so it's always in sync with the actual tracks.
+	const [preJoinDone, setPreJoinDone] = useState(false)
+	const [initMic, setInitMic] = useState(false)
+	const [initCam, setInitCam] = useState(false)
+
 	if (isLoading) {
 		return (
 			<div
@@ -1170,6 +1238,23 @@ function GameRoomInner() {
 		)
 	}
 
+	// Show pre-join once — before LiveKit connects for the first time.
+	// Breakout room switches (inBreakout changes) skip pre-join since preJoinDone stays true.
+	if (!preJoinDone) {
+		const userName = [user?.name, user?.surname].filter(Boolean).join(' ') || user?.name || ''
+		return (
+			<PreJoinScreen
+				roomTitle={room.state?.title ?? ''}
+				userName={userName}
+				onJoin={(mic, cam) => {
+					setInitMic(mic)
+					setInitCam(cam)
+					setPreJoinDone(true)
+				}}
+			/>
+		)
+	}
+
 	return (
 		<LiveKitRoom
 			key={activeLk.roomName}
@@ -1180,7 +1265,7 @@ function GameRoomInner() {
 			video={false}
 			style={{ height: '100vh', background: '#07080f' }}
 		>
-			<RoomContent room={room} gameCode={code} />
+			<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
 		</LiveKitRoom>
 	)
 }

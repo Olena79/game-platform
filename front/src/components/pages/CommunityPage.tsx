@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import {
 	PostData, CommentData,
 	getPosts, createPost, updatePost, deletePost, likePost, unlikePost,
@@ -23,19 +24,22 @@ function initials(name: string, surname: string): string {
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-const Avatar = ({ name, surname, size = 38 }: { name: string; surname: string; size?: number }) => (
-	<div
-		className='rounded-full flex items-center justify-center font-[700] flex-shrink-0 select-none'
-		style={{
-			width: size, height: size, fontSize: size * 0.38,
-			background: 'rgba(68,170,255,0.18)',
-			border: '1.5px solid rgba(68,170,255,0.38)',
-			color: 'rgba(120,200,255,0.95)',
-		}}
-	>
-		{initials(name, surname) || '?'}
-	</div>
-)
+const Avatar = ({ name, surname, size = 38 }: { name: string; surname: string; size?: number }) => {
+	const { isDark } = useTheme()
+	return (
+		<div
+			className='rounded-full flex items-center justify-center font-[700] flex-shrink-0 select-none'
+			style={{
+				width: size, height: size, fontSize: size * 0.38,
+				background: isDark ? 'rgba(68,170,255,0.18)' : 'rgba(192,83,58,0.1)',
+				border: isDark ? '1.5px solid rgba(68,170,255,0.38)' : '1.5px solid rgba(192,83,58,0.25)',
+				color: isDark ? 'rgba(120,200,255,0.95)' : 'var(--accent)',
+			}}
+		>
+			{initials(name, surname) || '?'}
+		</div>
+	)
+}
 
 // ─── CommentItem ──────────────────────────────────────────────────────────────
 
@@ -68,20 +72,21 @@ const CommentItem = ({
 	onLike, onDelete, onStartEdit, onSaveEdit, onCancelEdit, onEditTextChange,
 	onStartReply, onSaveReply, onCancelReply, onReplyTextChange,
 }: CommentItemProps) => {
+	const { isDark } = useTheme()
 	const isOwn      = currentUserId === comment.authorId
 	const isEditing  = editingId === comment._id
 	const isReplying = replyingToId === comment._id
 	const fullName   = [comment.authorName, comment.authorSurname].filter(Boolean).join(' ')
 
 	return (
-		<div className={depth > 0 ? 'pl-[18px] border-l-2 border-[rgba(68,170,255,0.18)]' : ''}>
+		<div className={depth > 0 ? `pl-[18px] border-l-2 ${isDark ? 'border-[rgba(68,170,255,0.18)]' : 'border-[rgba(192,83,58,0.18)]'}` : ''}>
 			<div className='py-[11px]'>
 				<div className='flex items-start gap-[9px]'>
 					<Avatar name={comment.authorName} surname={comment.authorSurname} size={30} />
 					<div className='flex-1 min-w-0'>
 						<div className='flex items-center gap-[7px] flex-wrap'>
-							<span className='text-[14px] font-[600]' style={{ color: 'rgba(215,232,255,0.97)' }}>{fullName}</span>
-							<span className='text-[12px]' style={{ color: 'rgba(155,185,240,0.72)' }}>{fmtDate(comment.createdAt)}</span>
+							<span className='text-[14px] font-[600]' style={{ color: isDark ? 'rgba(215,232,255,0.97)' : 'var(--text-primary)' }}>{fullName}</span>
+							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.72)' : 'var(--text-muted)' }}>{fmtDate(comment.createdAt)}</span>
 							{comment.editedAt && (
 								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.65)' }}>· відредаговано</span>
 							)}
@@ -94,19 +99,27 @@ const CommentItem = ({
 									onChange={e => onEditTextChange(e.target.value.slice(0, 500))}
 									rows={2}
 									autoFocus
-									className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.38)] rounded-[9px] px-[11px] py-[9px] text-[14px] text-[rgba(215,232,255,0.95)] placeholder-[rgba(100,140,220,0.5)] focus:outline-none focus:border-[rgba(68,170,255,0.7)] resize-none transition-all'
+									className='w-full rounded-[9px] px-[11px] py-[9px] text-[14px] focus:outline-none resize-none transition-all'
+									style={{
+										background: isDark ? '#060e24' : 'var(--bg-input)',
+										border: isDark ? '1px solid rgba(68,170,255,0.38)' : '1px solid var(--border-subtle)',
+										color: isDark ? 'rgba(215,232,255,0.95)' : 'var(--text-primary)',
+									}}
 								/>
 								<div className='flex gap-[7px]'>
 									<button
 										onClick={() => onSaveEdit(comment._id)}
 										className='px-[12px] py-[5px] rounded-[8px] text-[13px] font-[600] cursor-pointer transition-all'
-										style={{ background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.48)', color: 'rgba(120,200,255,0.95)' }}
+										style={isDark
+											? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.48)', color: 'rgba(120,200,255,0.95)' }
+											: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)' }
+										}
 									>Зберегти</button>
-									<button onClick={onCancelEdit} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: 'rgba(170,190,240,0.75)' }}>Скасувати</button>
+									<button onClick={onCancelEdit} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>Скасувати</button>
 								</div>
 							</div>
 						) : (
-							<p className='mt-[5px] text-[14px] leading-[1.65] whitespace-pre-wrap break-words' style={{ color: 'rgba(215,230,255,0.92)' }}>
+							<p className='mt-[5px] text-[14px] leading-[1.65] whitespace-pre-wrap break-words' style={{ color: isDark ? 'rgba(215,230,255,0.92)' : 'var(--text-primary)' }}>
 								{comment.text}
 							</p>
 						)}
@@ -116,7 +129,7 @@ const CommentItem = ({
 								<button
 									onClick={() => isLoggedIn && onLike(comment._id, comment.isLiked)}
 									className={`flex items-center gap-[5px] text-[13px] transition-all ${isLoggedIn ? 'cursor-pointer hover:opacity-90' : 'cursor-default'}`}
-									style={{ color: comment.isLiked ? 'rgba(255,80,150,0.98)' : 'rgba(190,210,255,0.68)' }}
+									style={{ color: comment.isLiked ? (isDark ? 'rgba(255,80,150,0.98)' : 'rgba(192,83,58,0.98)') : (isDark ? 'rgba(190,210,255,0.68)' : 'var(--text-muted)') }}
 								>
 									<Heart size={14} strokeWidth={2} fill={comment.isLiked ? 'currentColor' : 'none'} />
 									{comment.likesCount > 0 && <span className='font-[600]'>{comment.likesCount}</span>}
@@ -126,7 +139,7 @@ const CommentItem = ({
 									<button
 										onClick={() => onStartReply(comment._id)}
 										className='flex items-center gap-[5px] text-[13px] cursor-pointer transition-all hover:opacity-90'
-										style={{ color: 'rgba(192,130,255,0.82)' }}
+										style={{ color: isDark ? 'rgba(192,130,255,0.82)' : 'var(--text-secondary)' }}
 									>
 										<CornerDownRight size={13} strokeWidth={2} />
 										Відповісти
@@ -135,10 +148,10 @@ const CommentItem = ({
 
 								{isOwn && (
 									<>
-										<button onClick={() => onStartEdit(comment._id, comment.text)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: 'rgba(68,170,255,0.88)' }}>
+										<button onClick={() => onStartEdit(comment._id, comment.text)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(68,170,255,0.88)' : 'var(--accent)' }}>
 											<Pencil size={12} strokeWidth={2} />Ред.
 										</button>
-										<button onClick={() => onDelete(comment._id)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: 'rgba(255,95,160,0.88)' }}>
+										<button onClick={() => onDelete(comment._id)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(255,95,160,0.88)' : 'rgba(180,50,50,0.9)' }}>
 											<Trash2 size={12} strokeWidth={2} />Вид.
 										</button>
 									</>
@@ -155,11 +168,19 @@ const CommentItem = ({
 							onChange={e => onReplyTextChange(e.target.value.slice(0, 500))}
 							rows={2} autoFocus
 							placeholder='Ваша відповідь...'
-							className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.28)] rounded-[9px] px-[11px] py-[9px] text-[14px] text-[rgba(215,232,255,0.95)] placeholder-[rgba(130,160,230,0.5)] focus:outline-none focus:border-[rgba(68,170,255,0.58)] resize-none transition-all'
+							className='w-full rounded-[9px] px-[11px] py-[9px] text-[14px] focus:outline-none resize-none transition-all'
+							style={{
+								background: isDark ? '#060e24' : 'var(--bg-input)',
+								border: isDark ? '1px solid rgba(68,170,255,0.28)' : '1px solid var(--border-subtle)',
+								color: isDark ? 'rgba(215,232,255,0.95)' : 'var(--text-primary)',
+							}}
 						/>
 						<div className='flex gap-[7px]'>
-							<button onClick={() => onSaveReply(comment._id)} className='px-[12px] py-[5px] rounded-[8px] text-[13px] font-[600] cursor-pointer transition-all' style={{ background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.45)', color: 'rgba(120,200,255,0.95)' }}>Відповісти</button>
-							<button onClick={onCancelReply} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: 'rgba(170,190,240,0.75)' }}>Скасувати</button>
+							<button onClick={() => onSaveReply(comment._id)} className='px-[12px] py-[5px] rounded-[8px] text-[13px] font-[600] cursor-pointer transition-all' style={isDark
+								? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.45)', color: 'rgba(120,200,255,0.95)' }
+								: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.35)', color: 'var(--accent)' }
+							}>Відповісти</button>
+							<button onClick={onCancelReply} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>Скасувати</button>
 						</div>
 					</div>
 				)}
@@ -200,6 +221,7 @@ const CommentSection = ({
 	postId, comments, loading, isLoggedIn, token, currentUserId,
 	onCommentCreate, onCommentUpdate, onCommentDelete, onCommentLike,
 }: CommentSectionProps) => {
+	const { isDark } = useTheme()
 	const [newText, setNewText]               = useState('')
 	const [submitting, setSubmitting]         = useState(false)
 	const [editingId, setEditingId]           = useState<string | null>(null)
@@ -217,7 +239,7 @@ const CommentSection = ({
 	}
 
 	return (
-		<div className='mt-[2px] pt-[14px] border-t border-[rgba(68,170,255,0.1)]'>
+		<div className='mt-[2px] pt-[14px]' style={{ borderTop: `1px solid ${isDark ? 'rgba(68,170,255,0.1)' : 'var(--border-subtle)'}` }}>
 			{isLoggedIn && (
 				<div className='flex flex-col gap-[7px] mb-[16px]'>
 					<textarea
@@ -225,15 +247,23 @@ const CommentSection = ({
 						onChange={e => setNewText(e.target.value.slice(0, 500))}
 						rows={2}
 						placeholder='Написати коментар...'
-						className='w-full bg-[#060e24] border border-[rgba(68,170,255,0.22)] rounded-[10px] px-[13px] py-[10px] text-[14px] text-[rgba(215,232,255,0.95)] placeholder-[rgba(130,160,230,0.5)] focus:outline-none focus:border-[rgba(68,170,255,0.58)] resize-none transition-all'
+						className='w-full rounded-[10px] px-[13px] py-[10px] text-[14px] focus:outline-none resize-none transition-all'
+						style={{
+							background: isDark ? '#060e24' : 'var(--bg-input)',
+							border: isDark ? '1px solid rgba(68,170,255,0.22)' : '1px solid var(--border-subtle)',
+							color: isDark ? 'rgba(215,232,255,0.95)' : 'var(--text-primary)',
+						}}
 					/>
 					<div className='flex items-center justify-between'>
-						<span className='text-[12px]' style={{ color: 'rgba(130,160,220,0.58)' }}>{newText.length} / 500</span>
+						<span className='text-[12px]' style={{ color: isDark ? 'rgba(130,160,220,0.58)' : 'var(--text-muted)' }}>{newText.length} / 500</span>
 						<button
 							onClick={handleSubmit}
 							disabled={!newText.trim() || submitting}
 							className='flex items-center gap-[6px] px-[14px] py-[7px] rounded-[9px] text-[13px] font-[600] cursor-pointer transition-all disabled:opacity-40'
-							style={{ background: 'rgba(68,170,255,0.16)', border: '1px solid rgba(68,170,255,0.45)', color: 'rgba(120,200,255,0.95)' }}
+							style={isDark
+								? { background: 'rgba(68,170,255,0.16)', border: '1px solid rgba(68,170,255,0.45)', color: 'rgba(120,200,255,0.95)' }
+								: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.35)', color: 'var(--accent)' }
+							}
 						>
 							<Send size={13} strokeWidth={2} />
 							{submitting ? '...' : 'Відправити'}
@@ -247,27 +277,28 @@ const CommentSection = ({
 					<div className='w-[5px] h-[5px] rounded-full bg-[#44aaff] pulse-dot-anim' />
 				</div>
 			) : (
-				<div className='flex flex-col divide-y divide-[rgba(68,170,255,0.07)]'>
+				<div className='flex flex-col' style={{ gap: 0 }}>
 					{rootComments.length === 0 && !isLoggedIn && (
-						<p className='text-[14px] py-[10px]' style={{ color: 'rgba(155,185,240,0.58)' }}>Коментарів поки немає</p>
+						<p className='text-[14px] py-[10px]' style={{ color: isDark ? 'rgba(155,185,240,0.58)' : 'var(--text-muted)' }}>Коментарів поки немає</p>
 					)}
-					{rootComments.map(c => (
-						<CommentItem
-							key={c._id}
-							comment={c} replies={repliesFor(c._id)} depth={0}
-							currentUserId={currentUserId} isLoggedIn={isLoggedIn} token={token}
-							editingId={editingId} editingText={editingText}
-							replyingToId={replyingToId} replyText={replyText}
-							onLike={onCommentLike} onDelete={onCommentDelete}
-							onStartEdit={(id, text) => { setEditingId(id); setEditingText(text) }}
-							onSaveEdit={async (id) => { await onCommentUpdate(id, editingText.trim()); setEditingId(null); setEditingText('') }}
-							onCancelEdit={() => { setEditingId(null); setEditingText('') }}
-							onEditTextChange={setEditingText}
-							onStartReply={(id) => { setReplyingToId(id); setReplyText('') }}
-							onSaveReply={async (parentId) => { if (replyText.trim()) { await onCommentCreate(replyText.trim(), parentId); setReplyingToId(null); setReplyText('') } }}
-							onCancelReply={() => { setReplyingToId(null); setReplyText('') }}
-							onReplyTextChange={setReplyText}
-						/>
+					{rootComments.map((c, i) => (
+						<div key={c._id} style={i > 0 ? { borderTop: `1px solid ${isDark ? 'rgba(68,170,255,0.07)' : 'var(--border-subtle)'}` } : {}}>
+							<CommentItem
+								comment={c} replies={repliesFor(c._id)} depth={0}
+								currentUserId={currentUserId} isLoggedIn={isLoggedIn} token={token}
+								editingId={editingId} editingText={editingText}
+								replyingToId={replyingToId} replyText={replyText}
+								onLike={onCommentLike} onDelete={onCommentDelete}
+								onStartEdit={(id, text) => { setEditingId(id); setEditingText(text) }}
+								onSaveEdit={async (id) => { await onCommentUpdate(id, editingText.trim()); setEditingId(null); setEditingText('') }}
+								onCancelEdit={() => { setEditingId(null); setEditingText('') }}
+								onEditTextChange={setEditingText}
+								onStartReply={(id) => { setReplyingToId(id); setReplyText('') }}
+								onSaveReply={async (parentId) => { if (replyText.trim()) { await onCommentCreate(replyText.trim(), parentId); setReplyingToId(null); setReplyText('') } }}
+								onCancelReply={() => { setReplyingToId(null); setReplyText('') }}
+								onReplyTextChange={setReplyText}
+							/>
+						</div>
 					))}
 				</div>
 			)}
@@ -300,13 +331,17 @@ const PostCard = ({
 	onToggleExpand, onLike, onEdit, onDelete,
 	onCommentCreate, onCommentUpdate, onCommentDelete, onCommentLike,
 }: PostCardProps) => {
+	const { isDark } = useTheme()
 	const isOwn    = currentUserId === post.authorId
 	const fullName = [post.authorName, post.authorSurname].filter(Boolean).join(' ')
 
 	return (
 		<div
 			className='rounded-[20px] px-[22px] py-[20px] flex flex-col gap-[14px] transition-all'
-			style={{ background: 'rgba(8,12,38,0.78)', border: '1px solid rgba(68,170,255,0.17)', backdropFilter: 'blur(10px)' }}
+			style={isDark
+				? { background: 'rgba(8,12,38,0.78)', border: '1px solid rgba(68,170,255,0.17)', backdropFilter: 'blur(10px)' }
+				: { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }
+			}
 		>
 			{/* Header */}
 			<div className='flex items-start justify-between gap-[10px]'>
@@ -314,8 +349,8 @@ const PostCard = ({
 					<Avatar name={post.authorName} surname={post.authorSurname} />
 					<div className='min-w-0'>
 						<div className='flex items-center gap-[8px] flex-wrap'>
-							<span className='text-[15px] font-[600]' style={{ color: 'rgba(225,238,255,0.98)' }}>{fullName}</span>
-							<span className='text-[12px]' style={{ color: 'rgba(155,185,240,0.75)' }}>{fmtDate(post.createdAt)}</span>
+							<span className='text-[15px] font-[600]' style={{ color: isDark ? 'rgba(225,238,255,0.98)' : 'var(--text-primary)' }}>{fullName}</span>
+							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.75)' : 'var(--text-muted)' }}>{fmtDate(post.createdAt)}</span>
 							{post.editedAt && (
 								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.72)' }}>· відредаговано</span>
 							)}
@@ -323,7 +358,10 @@ const PostCard = ({
 						{post.topic && (
 							<span
 								className='inline-block mt-[5px] px-[9px] py-[3px] rounded-[7px] text-[12px] font-[500]'
-								style={{ background: 'rgba(68,170,255,0.12)', border: '1px solid rgba(68,170,255,0.32)', color: 'rgba(130,210,255,0.97)' }}
+								style={isDark
+									? { background: 'rgba(68,170,255,0.12)', border: '1px solid rgba(68,170,255,0.32)', color: 'rgba(130,210,255,0.97)' }
+									: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.2)', color: 'var(--accent)' }
+								}
 							>
 								{post.topic}
 							</span>
@@ -336,7 +374,10 @@ const PostCard = ({
 						<button
 							onClick={onEdit}
 							className='flex items-center gap-[5px] px-[10px] py-[5px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-125'
-							style={{ background: 'rgba(68,170,255,0.1)', border: '1px solid rgba(68,170,255,0.32)', color: 'rgba(100,190,255,0.92)' }}
+							style={isDark
+								? { background: 'rgba(68,170,255,0.1)', border: '1px solid rgba(68,170,255,0.32)', color: 'rgba(100,190,255,0.92)' }
+								: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)' }
+							}
 						>
 							<Pencil size={12} strokeWidth={2} />
 							<span className='hidden sm:inline'>Ред.</span>
@@ -344,7 +385,10 @@ const PostCard = ({
 						<button
 							onClick={onDelete}
 							className='flex items-center gap-[5px] px-[10px] py-[5px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-125'
-							style={{ background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.28)', color: 'rgba(255,120,170,0.92)' }}
+							style={isDark
+								? { background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.28)', color: 'rgba(255,120,170,0.92)' }
+								: { background: 'rgba(200,60,60,0.06)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)' }
+							}
 						>
 							<Trash2 size={12} strokeWidth={2} />
 							<span className='hidden sm:inline'>Вид.</span>
@@ -354,7 +398,7 @@ const PostCard = ({
 			</div>
 
 			{/* Text */}
-			<p className='text-[15px] leading-[1.72] whitespace-pre-wrap break-words' style={{ color: 'rgba(218,232,255,0.95)' }}>
+			<p className='text-[15px] leading-[1.72] whitespace-pre-wrap break-words' style={{ color: isDark ? 'rgba(218,232,255,0.95)' : 'var(--text-primary)' }}>
 				{post.text}
 			</p>
 
@@ -363,7 +407,7 @@ const PostCard = ({
 				<button
 					onClick={() => isLoggedIn && onLike()}
 					className={`flex items-center gap-[6px] text-[14px] font-[500] transition-all ${isLoggedIn ? 'cursor-pointer hover:opacity-90' : 'cursor-default opacity-60'}`}
-					style={{ color: post.isLiked ? 'rgba(255,75,145,0.98)' : 'rgba(190,210,255,0.7)' }}
+					style={{ color: post.isLiked ? (isDark ? 'rgba(255,75,145,0.98)' : 'rgba(192,83,58,0.98)') : (isDark ? 'rgba(190,210,255,0.7)' : 'var(--text-muted)') }}
 					title={!isLoggedIn ? 'Увійдіть, щоб вподобати' : undefined}
 				>
 					<Heart size={16} strokeWidth={2} fill={post.isLiked ? 'currentColor' : 'none'} />
@@ -373,7 +417,7 @@ const PostCard = ({
 				<button
 					onClick={onToggleExpand}
 					className='flex items-center gap-[6px] text-[14px] font-[500] cursor-pointer transition-all hover:opacity-90'
-					style={{ color: expanded ? 'rgba(0,240,200,0.95)' : 'rgba(0,210,180,0.68)' }}
+					style={{ color: expanded ? (isDark ? 'rgba(0,240,200,0.95)' : 'var(--accent)') : (isDark ? 'rgba(0,210,180,0.68)' : 'var(--text-muted)') }}
 				>
 					<MessageCircle size={16} strokeWidth={2} />
 					{post.commentsCount > 0 && <span>{post.commentsCount}</span>}
@@ -401,9 +445,6 @@ const PostCard = ({
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
-const modalInputCls = 'w-full bg-[#060e24] border border-[rgba(68,170,255,0.22)] rounded-[11px] px-[15px] py-[11px] text-[15px] text-[rgba(218,232,255,0.95)] placeholder-[rgba(130,160,230,0.5)] focus:outline-none focus:border-[rgba(68,170,255,0.6)] transition-all'
-const modalTextareaCls = `${modalInputCls} resize-none leading-[1.65]`
-
 const PostModal = ({
 	title, token, initialTopic = '', initialText = '',
 	onClose, onSubmit,
@@ -412,10 +453,15 @@ const PostModal = ({
 	onClose: () => void; onSubmit: (topic: string, text: string) => Promise<void>
 	authorName?: string; authorSurname?: string
 }) => {
+	const { isDark } = useTheme()
 	const [topic, setTopic]     = useState(initialTopic)
 	const [text, setText]       = useState(initialText)
 	const [loading, setLoading] = useState(false)
 	const [error, setError]     = useState('')
+
+	const inputStyle: React.CSSProperties = isDark
+		? { background: '#060e24', border: '1px solid rgba(68,170,255,0.22)', color: 'rgba(218,232,255,0.95)' }
+		: { background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
 
 	const handle = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -434,11 +480,14 @@ const PostModal = ({
 		>
 			<div
 				className='w-full max-w-[540px] rounded-[22px] px-[26px] py-[30px] flex flex-col gap-[18px]'
-				style={{ background: 'rgba(4,8,28,0.99)', border: '1px solid rgba(68,170,255,0.25)', boxShadow: '0 20px 60px rgba(0,0,0,0.65)' }}
+				style={isDark
+					? { background: 'rgba(4,8,28,0.99)', border: '1px solid rgba(68,170,255,0.25)', boxShadow: '0 20px 60px rgba(0,0,0,0.65)' }
+					: { background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }
+				}
 			>
 				<div className='flex items-center justify-between'>
-					<h2 className='text-[20px] font-[700] text-white'>{title}</h2>
-					<button onClick={onClose} className='text-[rgba(180,200,255,0.45)] hover:text-white transition-colors cursor-pointer'><X size={20} strokeWidth={2} /></button>
+					<h2 className='text-[20px] font-[700]' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>{title}</h2>
+					<button onClick={onClose} className='transition-colors cursor-pointer' style={{ color: isDark ? 'rgba(180,200,255,0.45)' : 'var(--text-muted)' }}><X size={20} strokeWidth={2} /></button>
 				</div>
 
 				<form onSubmit={handle} className='flex flex-col gap-[13px]'>
@@ -447,7 +496,8 @@ const PostModal = ({
 						placeholder="Тема (необов'язково)"
 						value={topic}
 						onChange={e => setTopic(e.target.value.slice(0, 100))}
-						className={modalInputCls}
+						className='w-full rounded-[11px] px-[15px] py-[11px] text-[15px] focus:outline-none transition-all'
+						style={inputStyle}
 					/>
 					<div className='flex flex-col gap-[5px]'>
 						<textarea
@@ -455,16 +505,23 @@ const PostModal = ({
 							value={text}
 							onChange={e => setText(e.target.value.slice(0, 1000))}
 							rows={5} autoFocus
-							className={modalTextareaCls}
+							className='w-full rounded-[11px] px-[15px] py-[11px] text-[15px] focus:outline-none resize-none leading-[1.65] transition-all'
+							style={inputStyle}
 						/>
-						<span className={`text-[12px] text-right pr-[2px] ${text.length >= 900 ? 'text-[rgba(255,183,40,0.75)]' : 'text-[rgba(130,160,220,0.55)]'}`}>
+						<span className={`text-[12px] text-right pr-[2px] ${text.length >= 900 ? 'text-[rgba(255,183,40,0.75)]' : ''}`} style={text.length < 900 ? { color: isDark ? 'rgba(130,160,220,0.55)' : 'var(--text-muted)' } : {}}>
 							{text.length} / 1000
 						</span>
 					</div>
 					{error && <p className='text-[14px] text-[rgba(255,90,160,0.92)]'>{error}</p>}
 					<div className='flex gap-[10px] pt-[4px]'>
-						<button type='button' onClick={onClose} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[500] cursor-pointer transition-all' style={{ border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.7)' }}>Скасувати</button>
-						<button type='submit' disabled={loading || !text.trim()} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all disabled:opacity-40' style={{ background: 'rgba(68,170,255,0.2)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(130,210,255,0.98)' }}>
+						<button type='button' onClick={onClose} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[500] cursor-pointer transition-all' style={isDark
+							? { border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.7)' }
+							: { border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
+						}>Скасувати</button>
+						<button type='submit' disabled={loading || !text.trim()} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all disabled:opacity-40' style={isDark
+							? { background: 'rgba(68,170,255,0.2)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(130,210,255,0.98)' }
+							: { background: 'rgba(192,83,58,0.15)', border: '1px solid rgba(192,83,58,0.45)', color: 'var(--accent)' }
+						}>
 							{loading ? '...' : 'Опублікувати'}
 						</button>
 					</div>
@@ -476,64 +533,81 @@ const PostModal = ({
 
 // ─── OrbButton ────────────────────────────────────────────────────────────────
 
-const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
-	<div className={`flex flex-col items-center gap-[18px] ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
-		<div className='relative flex items-center justify-center' style={{ width: 188, height: 188 }}>
-			{/* Sparkles */}
-			<span className='absolute top-[14px] left-[12px] text-[12px] orb-sp-1 pointer-events-none select-none' style={{ color: '#0fffc8' }}>✦</span>
-			<span className='absolute top-[22px] right-[10px] text-[9px] orb-sp-2 pointer-events-none select-none' style={{ color: '#c07fff' }}>✦</span>
-			<span className='absolute bottom-[16px] left-[8px] text-[10px] orb-sp-3 pointer-events-none select-none' style={{ color: '#44aaff' }}>✦</span>
-			<span className='absolute bottom-[10px] right-[16px] text-[11px] orb-sp-1 pointer-events-none select-none' style={{ color: '#ff5fa0' }}>✦</span>
-			<span className='absolute' style={{ top: '48%', left: 2, color: '#c07fff', fontSize: 8 }} >✦</span>
-			<span className='absolute' style={{ top: '52%', right: 2, color: '#0fffc8', fontSize: 8 }}>✦</span>
+const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => {
+	const { isDark } = useTheme()
+	return (
+		<div className={`flex flex-col items-center gap-[18px] ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
+			<div className='relative flex items-center justify-center' style={{ width: 188, height: 188 }}>
+				{/* Sparkles */}
+				<span className='absolute top-[14px] left-[12px] text-[12px] orb-sp-1 pointer-events-none select-none' style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }}>✦</span>
+				<span className='absolute top-[22px] right-[10px] text-[9px] orb-sp-2 pointer-events-none select-none' style={{ color: isDark ? '#c07fff' : 'rgba(140,60,30,0.7)' }}>✦</span>
+				<span className='absolute bottom-[16px] left-[8px] text-[10px] orb-sp-3 pointer-events-none select-none' style={{ color: isDark ? '#44aaff' : 'var(--accent)' }}>✦</span>
+				<span className='absolute bottom-[10px] right-[16px] text-[11px] orb-sp-1 pointer-events-none select-none' style={{ color: isDark ? '#ff5fa0' : 'rgba(140,60,30,0.7)' }}>✦</span>
+				<span className='absolute' style={{ top: '48%', left: 2, color: isDark ? '#c07fff' : 'var(--accent)', fontSize: 8 }} >✦</span>
+				<span className='absolute' style={{ top: '52%', right: 2, color: isDark ? '#0fffc8' : 'rgba(140,60,30,0.7)', fontSize: 8 }}>✦</span>
 
-			{/* Outer orbit ring */}
-			<div className='absolute inset-0 rounded-full orb-orbit pointer-events-none'
-				style={{ border: '1.5px solid rgba(0,255,200,0.38)', boxShadow: '0 0 14px rgba(0,255,200,0.18)' }} />
+				{/* Outer orbit ring */}
+				<div className='absolute inset-0 rounded-full orb-orbit pointer-events-none'
+					style={isDark
+						? { border: '1.5px solid rgba(0,255,200,0.38)', boxShadow: '0 0 14px rgba(0,255,200,0.18)' }
+						: { border: '1.5px solid rgba(192,83,58,0.3)' }
+					} />
 
-			{/* Tilted ellipse orbit */}
-			<div className='absolute orb-orbit-slow pointer-events-none'
-				style={{
-					width: 200, height: 60,
-					top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-					borderRadius: '50%',
-					border: '1.5px solid rgba(68,170,255,0.32)',
-					boxShadow: '0 0 12px rgba(68,170,255,0.16)',
-				}} />
+				{/* Tilted ellipse orbit */}
+				<div className='absolute orb-orbit-slow pointer-events-none'
+					style={{
+						width: 200, height: 60,
+						top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+						borderRadius: '50%',
+						...(isDark
+							? { border: '1.5px solid rgba(68,170,255,0.32)', boxShadow: '0 0 12px rgba(68,170,255,0.16)' }
+							: { border: '1.5px solid rgba(192,83,58,0.2)' }
+						),
+					}} />
 
-			{/* Ambient glow behind button */}
-			<div className='absolute rounded-full pointer-events-none'
-				style={{
-					width: 148, height: 148, top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-					background: 'radial-gradient(circle, rgba(60,30,200,0.22) 0%, transparent 70%)',
-				}} />
+				{/* Ambient glow behind button */}
+				<div className='absolute rounded-full pointer-events-none'
+					style={{
+						width: 148, height: 148, top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+						background: isDark
+							? 'radial-gradient(circle, rgba(60,30,200,0.22) 0%, transparent 70%)'
+							: 'radial-gradient(circle, rgba(192,83,58,0.08) 0%, transparent 70%)',
+					}} />
 
-			{/* Main button */}
-			<button
-				onClick={onClick}
-				className='relative z-10 w-[120px] h-[120px] rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.07] orb-glow-anim'
-				style={{
-					background: 'radial-gradient(circle at 36% 36%, rgba(60,120,255,0.26), rgba(110,0,230,0.22) 55%, rgba(4,8,32,0.88))',
-					border: '2px solid rgba(80,160,255,0.48)',
-				}}
-			>
-				<div className='relative'>
-					<MessageCircle size={46} strokeWidth={1.5} style={{ color: 'rgba(0,245,205,0.9)' }} />
-					<Pencil size={20} strokeWidth={2.2}
-						className='absolute -bottom-[2px] -right-[2px]'
-						style={{ color: 'rgba(200,120,255,0.98)' }}
-					/>
-				</div>
-			</button>
+				{/* Main button */}
+				<button
+					onClick={onClick}
+					className={`relative z-10 w-[120px] h-[120px] rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.07] ${isDark ? 'orb-glow-anim' : ''}`}
+					style={isDark
+						? {
+							background: 'radial-gradient(circle at 36% 36%, rgba(60,120,255,0.26), rgba(110,0,230,0.22) 55%, rgba(4,8,32,0.88))',
+							border: '2px solid rgba(80,160,255,0.48)',
+						}
+						: {
+							background: 'radial-gradient(circle at 36% 36%, rgba(192,83,58,0.18), rgba(140,60,30,0.14) 55%, rgba(242,235,227,0.4))',
+							border: '2px solid rgba(192,83,58,0.35)',
+						}
+					}
+				>
+					<div className='relative'>
+						<MessageCircle size={46} strokeWidth={1.5} style={{ color: isDark ? 'rgba(0,245,205,0.9)' : 'var(--accent)' }} />
+						<Pencil size={20} strokeWidth={2.2}
+							className='absolute -bottom-[2px] -right-[2px]'
+							style={{ color: isDark ? 'rgba(200,120,255,0.98)' : 'rgba(140,60,30,0.85)' }}
+						/>
+					</div>
+				</button>
+			</div>
+			<span className='text-[17px] font-[600]' style={{ color: isDark ? 'rgba(225,240,255,0.97)' : 'var(--text-primary)' }}>Створити запит</span>
 		</div>
-		<span className='text-[17px] font-[600]' style={{ color: 'rgba(225,240,255,0.97)' }}>Створити запит</span>
-	</div>
-)
+	)
+}
 
 // ─── CommunityPage ────────────────────────────────────────────────────────────
 
 export const CommunityPage = () => {
 	const { user, token, isLoggedIn } = useAuth()
+	const { isDark } = useTheme()
 
 	const [posts, setPosts]               = useState<PostData[]>([])
 	const [total, setTotal]               = useState(0)
@@ -702,19 +776,31 @@ export const CommunityPage = () => {
 
 	return (
 		<div className='relative min-h-[88vh] flex flex-col items-center px-[16px] py-[36px] md:py-[52px] overflow-hidden'>
-			<div className='absolute inset-0 flex items-center justify-center pointer-events-none z-0'>
-				<div className='w-[700px] h-[700px] rounded-full' style={{ background: 'radial-gradient(circle, rgba(68,30,200,0.12) 0%, transparent 65%)' }} />
-			</div>
+			{isDark && (
+				<div className='absolute inset-0 flex items-center justify-center pointer-events-none z-0'>
+					<div className='w-[700px] h-[700px] rounded-full' style={{ background: 'radial-gradient(circle, rgba(68,30,200,0.12) 0%, transparent 65%)' }} />
+				</div>
+			)}
+			{!isDark && (
+				<div className='absolute inset-0 flex items-center justify-center pointer-events-none z-0'>
+					<div className='w-[700px] h-[700px] rounded-full' style={{ background: 'radial-gradient(circle, rgba(192,83,58,0.04) 0%, transparent 65%)' }} />
+				</div>
+			)}
 
 			<div className='relative z-10 w-full max-w-[700px] flex flex-col gap-[28px]'>
 				{/* Title */}
 				<div className='flex flex-col items-center gap-[7px]'>
-					<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(130,200,255,0.9)] text-[12px] px-[15px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-[600]'>
+					<span className='inline-flex items-center gap-[8px] text-[12px] px-[15px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-[600]'
+						style={{
+							border: `1px solid ${isDark ? 'rgba(68,170,255,0.35)' : 'var(--border-medium)'}`,
+							color: isDark ? 'rgba(130,200,255,0.9)' : 'var(--text-muted)',
+						}}
+					>
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
 						Спільнота
 					</span>
-					<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-white text-center'>Спільноти</h1>
-					<p className='text-[15px] text-center' style={{ color: 'rgba(160,190,240,0.82)' }}>
+					<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-center' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>Спільноти</h1>
+					<p className='text-[15px] text-center' style={{ color: isDark ? 'rgba(160,190,240,0.82)' : 'var(--text-secondary)' }}>
 						Запитуйте, обговорюйте, діліться думками
 					</p>
 				</div>
@@ -731,14 +817,20 @@ export const CommunityPage = () => {
 							key={s} onClick={() => setSort(s)}
 							className='px-[16px] py-[8px] rounded-[11px] text-[14px] font-[500] cursor-pointer transition-all'
 							style={sort === s
-								? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.5)', color: 'rgba(130,215,255,0.98)' }
-								: { background: 'transparent', border: '1px solid rgba(68,170,255,0.14)', color: 'rgba(170,200,255,0.78)' }
+								? (isDark
+									? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.5)', color: 'rgba(130,215,255,0.98)' }
+									: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.4)', color: 'var(--accent)' }
+								)
+								: (isDark
+									? { background: 'transparent', border: '1px solid rgba(68,170,255,0.14)', color: 'rgba(170,200,255,0.78)' }
+									: { background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
+								)
 							}
 						>
 							{s === 'new' ? '✦ Нові' : '🔥 Популярні'}
 						</button>
 					))}
-					<span className='ml-auto text-[13px]' style={{ color: 'rgba(150,180,240,0.68)' }}>
+					<span className='ml-auto text-[13px]' style={{ color: isDark ? 'rgba(150,180,240,0.68)' : 'var(--text-muted)' }}>
 						{total > 0 && `${total} публікацій`}
 					</span>
 				</div>
@@ -749,7 +841,7 @@ export const CommunityPage = () => {
 						<div className='w-[7px] h-[7px] rounded-full bg-[#44aaff] pulse-dot-anim' />
 					</div>
 				) : posts.length === 0 ? (
-					<div className='flex flex-col items-center gap-[12px] py-[56px]' style={{ color: 'rgba(155,185,240,0.62)' }}>
+					<div className='flex flex-col items-center gap-[12px] py-[56px]' style={{ color: isDark ? 'rgba(155,185,240,0.62)' : 'var(--text-muted)' }}>
 						<MessageCircle size={42} strokeWidth={1.2} />
 						<p className='text-[16px] font-[500]'>Поки немає публікацій</p>
 						<p className='text-[14px]'>Будьте першим — натисніть на орб вище</p>
@@ -778,7 +870,10 @@ export const CommunityPage = () => {
 							<button
 								onClick={loadMore} disabled={loadingMore}
 								className='mx-auto px-[22px] py-[11px] rounded-[12px] text-[14px] font-[500] cursor-pointer transition-all disabled:opacity-50'
-								style={{ border: '1px solid rgba(68,170,255,0.22)', color: 'rgba(150,195,255,0.82)' }}
+								style={isDark
+									? { border: '1px solid rgba(68,170,255,0.22)', color: 'rgba(150,195,255,0.82)' }
+									: { border: '1px solid var(--border-medium)', color: 'var(--text-secondary)' }
+								}
 							>
 								{loadingMore ? 'Завантаження...' : 'Показати більше'}
 							</button>
@@ -815,12 +910,23 @@ export const CommunityPage = () => {
 			{/* Delete confirm */}
 			{deleteConfirm && (
 				<div className='fixed inset-0 z-[200] flex items-center justify-center p-[16px]' style={{ background: 'rgba(2,4,20,0.8)', backdropFilter: 'blur(7px)' }}>
-					<div className='w-full max-w-[390px] rounded-[20px] px-[26px] py-[30px] flex flex-col gap-[18px]' style={{ background: 'rgba(4,8,28,0.99)', border: '1px solid rgba(255,95,160,0.28)' }}>
-						<h3 className='text-[19px] font-[700] text-white'>Видалити пост?</h3>
-						<p className='text-[14px]' style={{ color: 'rgba(190,210,255,0.78)' }}>Цю дію неможливо скасувати. Всі коментарі також будуть видалені.</p>
+					<div className='w-full max-w-[390px] rounded-[20px] px-[26px] py-[30px] flex flex-col gap-[18px]'
+						style={isDark
+							? { background: 'rgba(4,8,28,0.99)', border: '1px solid rgba(255,95,160,0.28)' }
+							: { background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)' }
+						}
+					>
+						<h3 className='text-[19px] font-[700]' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>Видалити пост?</h3>
+						<p className='text-[14px]' style={{ color: isDark ? 'rgba(190,210,255,0.78)' : 'var(--text-secondary)' }}>Цю дію неможливо скасувати. Всі коментарі також будуть видалені.</p>
 						<div className='flex gap-[10px]'>
-							<button onClick={() => setDeleteConfirm(null)} className='flex-1 py-[11px] rounded-[11px] text-[15px] cursor-pointer transition-all' style={{ border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.72)' }}>Скасувати</button>
-							<button onClick={() => handleDeletePost(deleteConfirm)} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all' style={{ background: 'rgba(255,95,160,0.14)', border: '1px solid rgba(255,95,160,0.42)', color: 'rgba(255,120,170,0.98)' }}>Видалити</button>
+							<button onClick={() => setDeleteConfirm(null)} className='flex-1 py-[11px] rounded-[11px] text-[15px] cursor-pointer transition-all' style={isDark
+								? { border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.72)' }
+								: { border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
+							}>Скасувати</button>
+							<button onClick={() => handleDeletePost(deleteConfirm)} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all' style={isDark
+								? { background: 'rgba(255,95,160,0.14)', border: '1px solid rgba(255,95,160,0.42)', color: 'rgba(255,120,170,0.98)' }
+								: { background: 'rgba(200,60,60,0.06)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)' }
+							}>Видалити</button>
 						</div>
 					</div>
 				</div>

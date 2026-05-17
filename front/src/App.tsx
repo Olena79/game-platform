@@ -57,13 +57,13 @@ const Stars = () => {
 	return (
 		<div
 			ref={ref}
-			className='fixed inset-0 z-0 pointer-events-none overflow-hidden'
+			className='stars-bg fixed inset-0 z-0 pointer-events-none overflow-hidden'
 		/>
 	)
 }
 
 const SiteLayout = () => (
-	<div className='min-h-screen flex flex-col text-[#e0e8ff]'>
+	<div className='min-h-screen flex flex-col' style={{ color: 'var(--text-primary)' }}>
 		<Stars />
 		<div className='rainbow-line relative z-10' />
 		<Header />

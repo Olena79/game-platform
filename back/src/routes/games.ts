@@ -120,7 +120,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 		const {
 			title, description, minPlayers, maxPlayers, scenario,
 			useCoins, coinsPerPlayer, useInfluence, influencePerPlayer, scheduledAt,
-			coverImage, images, participationCost, gmCardNumber,
+			coverImage, images, participationCost, gmCardNumber, defaultTimerSeconds,
 		} = req.body
 
 		if (!title || !String(title).trim()) {
@@ -152,8 +152,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 			participationCost:  Math.max(0, Number(participationCost) || 0),
 			gmCardNumber:       storedCard,
 			scheduledAt:        scheduledAt ? new Date(scheduledAt) : undefined,
-			coverImage:         coverImage || '',
-			images:             Array.isArray(images) ? images.slice(0, 10) : [],
+			coverImage:          coverImage || '',
+			images:              Array.isArray(images) ? images.slice(0, 10) : [],
+			defaultTimerSeconds: Number(defaultTimerSeconds) > 0 ? Number(defaultTimerSeconds) : null,
 		})
 
 		res.status(201).json(game)
@@ -175,7 +176,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 		const {
 			title, description, minPlayers, maxPlayers, scenario,
 			useCoins, coinsPerPlayer, useInfluence, influencePerPlayer, scheduledAt,
-			coverImage, images, participationCost, gmCardNumber,
+			coverImage, images, participationCost, gmCardNumber, defaultTimerSeconds,
 		} = req.body
 
 		if (title !== undefined)       game.title = String(title).trim()
@@ -203,6 +204,9 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 		}
 		if (coverImage !== undefined) game.coverImage = coverImage
 		if (images !== undefined)     game.images = Array.isArray(images) ? images.slice(0, 10) : []
+		if (defaultTimerSeconds !== undefined) {
+			game.defaultTimerSeconds = Number(defaultTimerSeconds) > 0 ? Number(defaultTimerSeconds) : null
+		}
 
 		await game.save()
 		res.json(game)

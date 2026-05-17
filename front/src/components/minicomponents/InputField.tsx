@@ -39,13 +39,13 @@ export const InputField: React.FC<InputFieldProps> = ({
 
 	return (
 		<div className='flex flex-col gap-[4px]'>
-			<div className={`relative flex items-center bg-[#060e24] rounded-[12px] border transition-all ${
+			<div className={`input-field-root relative flex items-center bg-[#060e24] rounded-[12px] border transition-all ${
 				error
-					? 'border-[rgba(255,90,160,0.55)] shadow-[0_0_10px_rgba(255,90,160,0.07)]'
+					? 'is-error border-[rgba(255,90,160,0.55)] shadow-[0_0_10px_rgba(255,90,160,0.07)]'
 					: 'border-[rgba(68,170,255,0.2)] focus-within:border-[rgba(68,170,255,0.6)] focus-within:shadow-[0_0_14px_rgba(68,170,255,0.12)]'
 			}`}>
 				{icon && (
-					<span className='absolute left-[14px] text-[rgba(68,170,255,0.72)] pointer-events-none'>
+					<span className='input-icon absolute left-[14px] text-[rgba(68,170,255,0.72)] pointer-events-none'>
 						{icon}
 					</span>
 				)}
@@ -71,7 +71,7 @@ export const InputField: React.FC<InputFieldProps> = ({
 						type='button'
 						tabIndex={-1}
 						onClick={() => setShowPass(p => !p)}
-						className='absolute right-[12px] text-[rgba(130,158,255,0.68)] hover:text-[rgba(68,170,255,0.9)] transition-colors cursor-pointer'
+						className='input-toggle-pass absolute right-[12px] text-[rgba(130,158,255,0.68)] hover:text-[rgba(68,170,255,0.9)] transition-colors cursor-pointer'
 					>
 						{showPass
 							? <EyeOff size={15} strokeWidth={1.8} />

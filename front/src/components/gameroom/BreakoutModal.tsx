@@ -7,15 +7,17 @@ interface Props {
 	players: RoomPlayer[]
 	images: string[]
 	myId: string
+	inBreakout: string | null
 	onCreate: (name: string, imageUrl: string, timerSeconds: number | null) => void
 	onInvite: (roomId: string, playerIds: string[]) => void
+	onJoin: (roomId: string) => void
 	onEnd: (roomId: string) => void
 	onClose: () => void
 }
 
 export const BreakoutModal = ({
-	breakoutRooms, players, images, myId,
-	onCreate, onInvite, onEnd, onClose,
+	breakoutRooms, players, images, myId, inBreakout,
+	onCreate, onInvite, onJoin, onEnd, onClose,
 }: Props) => {
 	const [tab, setTab]             = useState<'rooms' | 'create'>('rooms')
 	const [name, setName]           = useState('')
@@ -134,11 +136,26 @@ export const BreakoutModal = ({
 							<div key={br.id} className='rounded-[10px] p-[12px] flex flex-col gap-[8px]'
 								style={{ background: '#0f1120', border: '1px solid #1c1f35' }}>
 								<div className='flex items-center justify-between'>
-									<span className='text-[13px] font-[600]' style={{ color: 'rgba(220,230,255,0.85)' }}>{br.name}</span>
+									<div className='flex items-center gap-[7px]'>
+										<span className='text-[13px] font-[600]' style={{ color: 'rgba(220,230,255,0.85)' }}>{br.name}</span>
+										{inBreakout === br.id && (
+											<span className='text-[9px] px-[5px] py-[1px] rounded-[4px]'
+												style={{ background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
+												● Ви тут
+											</span>
+										)}
+									</div>
 									<div className='flex items-center gap-[6px]'>
 										<span className='text-[11px]' style={{ color: 'rgba(100,140,220,0.45)' }}>
 											{br.playerIds.length} гравців
 										</span>
+										{inBreakout !== br.id && (
+											<button onClick={() => { onJoin(br.id); onClose() }}
+												className='text-[10px] px-[7px] py-[3px] rounded-[5px] cursor-pointer transition-all'
+												style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: 'rgba(15,255,200,0.85)' }}>
+												Увійти →
+											</button>
+										)}
 										<button onClick={() => onEnd(br.id)}
 											className='text-[10px] px-[7px] py-[3px] rounded-[5px] cursor-pointer'
 											style={{ background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.2)', color: 'rgba(255,95,160,0.7)' }}>

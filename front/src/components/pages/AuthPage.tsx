@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, X } from 'lucide-react'
 import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
 import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
@@ -26,6 +27,7 @@ interface GoogleSignInButtonProps {
 
 const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonProps) => {
 	const { t } = useTranslation()
+	const { isDark } = useTheme()
 	const googleLogin = useGoogleLogin({
 		onSuccess: tokenResponse => onSuccess(tokenResponse.access_token),
 		onError,
@@ -35,7 +37,35 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 			type='button'
 			onClick={() => googleLogin()}
 			disabled={loading}
-			className='w-full flex items-center justify-center gap-[10px] py-[12px] rounded-[12px] text-[13px] font-[500] text-[rgba(220,230,255,0.8)] border border-[rgba(255,255,255,0.11)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.22)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[rgba(220,230,255,1)] hover:shadow-[0_0_18px_rgba(255,255,255,0.05)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
+			className='w-full flex items-center justify-center gap-[10px] py-[12px] rounded-[12px] text-[13px] font-[500] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
+			style={isDark
+				? {
+					color: 'rgba(220,230,255,0.8)',
+					border: '1px solid rgba(255,255,255,0.11)',
+					background: 'rgba(255,255,255,0.03)',
+				}
+				: {
+					color: 'var(--text-secondary)',
+					border: '1px solid rgba(192,83,58,0.25)',
+					background: 'rgba(192,83,58,0.04)',
+				}
+			}
+			onMouseEnter={e => {
+				if (isDark) {
+					e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
+					e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+				} else {
+					e.currentTarget.style.borderColor = 'rgba(192,83,58,0.4)'
+				}
+			}}
+			onMouseLeave={e => {
+				if (isDark) {
+					e.currentTarget.style.borderColor = 'rgba(255,255,255,0.11)'
+					e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+				} else {
+					e.currentTarget.style.borderColor = 'rgba(192,83,58,0.25)'
+				}
+			}}
 		>
 			<GoogleIcon />
 			{t('auth.btn_google')}
@@ -62,6 +92,7 @@ export const AuthPage = () => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const { login } = useAuth()
+	const { isDark } = useTheme()
 
 	const [isLogin, setIsLogin] = useState(true)
 	const [name, setName]           = useState('')
@@ -156,42 +187,65 @@ export const AuthPage = () => {
 			<div className='absolute inset-0 flex items-center justify-center pointer-events-none z-0'>
 				<div
 					className='w-[580px] h-[580px] rounded-full'
-					style={{ background: 'radial-gradient(circle, rgba(40,80,255,0.16) 0%, transparent 65%)' }}
+					style={{ background: isDark ? 'radial-gradient(circle, rgba(40,80,255,0.16) 0%, transparent 65%)' : 'radial-gradient(circle, rgba(192,83,58,0.05) 0%, transparent 65%)' }}
 				/>
 			</div>
 
 			<div className='relative z-10 w-full max-w-[440px]'>
 				<div className='flex justify-center mb-[28px]'>
-					<span className='inline-flex items-center gap-[8px] border border-[rgba(68,170,255,0.35)] text-[rgba(100,180,255,0.9)] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium'>
+					<span
+						className='inline-flex items-center gap-[8px] text-[11px] px-[14px] py-[6px] rounded-[30px] tracking-[0.5px] uppercase font-medium'
+						style={isDark
+							? { border: '1px solid rgba(68,170,255,0.35)', color: 'rgba(100,180,255,0.9)' }
+							: { border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }
+						}
+					>
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
 						Games of Senses
 					</span>
 				</div>
 
-				<div className='relative border border-[rgba(68,170,255,0.18)] rounded-[24px] px-[28px] md:px-[36px] py-[36px] md:py-[44px] bg-[rgba(3,6,25,0.6)] backdrop-blur-[14px]'>
+				<div
+					className='relative rounded-[24px] px-[28px] md:px-[36px] py-[36px] md:py-[44px]'
+					style={isDark
+						? { border: '1px solid rgba(68,170,255,0.18)', background: 'rgba(3,6,25,0.6)', backdropFilter: 'blur(14px)' }
+						: { border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }
+					}
+				>
 					<button
 						onClick={() => navigate(-1)}
 						aria-label='Закрити'
-						className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center text-[#44aaff] border border-[rgba(68,170,255,0.35)] md:text-[rgba(180,200,255,0.35)] md:border-[rgba(255,255,255,0.08)] hover:text-white hover:border-[rgba(255,255,255,0.3)] hover:bg-[rgba(255,255,255,0.06)] transition-all cursor-pointer'
+						className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer hover:bg-[rgba(255,255,255,0.06)]'
+						style={isDark
+							? { color: '#44aaff', border: '1px solid rgba(68,170,255,0.35)' }
+							: { color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }
+						}
 					>
 						<X size={14} strokeWidth={2} />
 					</button>
 
 					{/* Tabs */}
 					<div className='flex mb-[32px]'>
-						{(['login', 'register'] as const).map(tab => (
-							<button
-								key={tab}
-								onClick={() => switchTab(tab)}
-								className={`flex-1 pb-[12px] text-[14px] font-[600] transition-all border-b-2 cursor-pointer ${
-									(tab === 'login') === isLogin
-										? 'text-[#44aaff] border-[#44aaff] [text-shadow:0_0_12px_rgba(68,170,255,0.5)]'
-										: 'text-[rgba(180,200,255,0.62)] border-[rgba(255,255,255,0.1)] hover:text-[rgba(210,225,255,0.88)]'
-								}`}
-							>
-								{t(tab === 'login' ? 'auth.tab_login' : 'auth.tab_register')}
-							</button>
-						))}
+						{(['login', 'register'] as const).map(tab => {
+							const isActive = (tab === 'login') === isLogin
+							return (
+								<button
+									key={tab}
+									onClick={() => switchTab(tab)}
+									className='flex-1 pb-[12px] text-[14px] font-[600] transition-all border-b-2 cursor-pointer'
+									style={isActive
+										? isDark
+											? { color: '#44aaff', borderColor: '#44aaff', textShadow: '0 0 12px rgba(68,170,255,0.5)' }
+											: { color: 'var(--accent)', borderColor: 'var(--accent)' }
+										: isDark
+											? { color: 'rgba(180,200,255,0.62)', borderColor: 'rgba(255,255,255,0.1)' }
+											: { color: 'var(--text-muted)', borderColor: 'var(--border-subtle)' }
+									}
+								>
+									{t(tab === 'login' ? 'auth.tab_login' : 'auth.tab_register')}
+								</button>
+							)
+						})}
 					</div>
 
 					<form onSubmit={handleSubmit} className='flex flex-col gap-[12px]' noValidate>
@@ -249,9 +303,9 @@ export const AuthPage = () => {
 					{import.meta.env.VITE_GOOGLE_CLIENT_ID && (
 						<>
 							<div className='flex items-center gap-[12px] my-[18px]'>
-								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
-								<span className='text-[12px]' style={{ color: 'rgba(180,200,255,0.6)' }}>або</span>
-								<div className='flex-1 h-[1px]' style={{ background: 'rgba(68,170,255,0.12)' }} />
+								<div className='flex-1 h-[1px]' style={{ background: isDark ? 'rgba(68,170,255,0.12)' : 'var(--border-subtle)' }} />
+								<span className='text-[12px]' style={{ color: isDark ? 'rgba(180,200,255,0.6)' : 'var(--text-muted)' }}>або</span>
+								<div className='flex-1 h-[1px]' style={{ background: isDark ? 'rgba(68,170,255,0.12)' : 'var(--border-subtle)' }} />
 							</div>
 							<GoogleSignInButton
 								loading={loading}

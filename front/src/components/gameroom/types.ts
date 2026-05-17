@@ -48,6 +48,8 @@ export interface BreakoutRoom {
 	timerSeconds: number | null
 	endsAt: number | null
 	playerIds: string[]
+	timer: RoomTimer | null
+	shownImageUrl: string | null
 }
 
 export interface RoomTimer {
@@ -78,5 +80,6 @@ export interface GameRoomState {
 	title: string
 	gamemasterId: string
 	shownImageUrl: string | null
+	defaultTimerSeconds: number | null
 	hasObserver?: boolean
 }

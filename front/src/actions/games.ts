@@ -29,6 +29,7 @@ export interface GameData {
 	scheduledAt?: string
 	coverImage: string
 	images: string[]
+	defaultTimerSeconds?: number | null
 	gameCode: string
 	spectatorCode?: string
 	registeredPlayers: RegisteredPlayer[]
