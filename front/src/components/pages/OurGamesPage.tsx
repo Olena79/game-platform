@@ -15,6 +15,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 	token: string | null
 	onClose: () => void
 }) {
+	const { t } = useTranslation()
 	const { isDark } = useTheme()
 	const [cardNumber, setCardNumber] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
@@ -62,7 +63,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 				<div className='flex items-center justify-between'>
 					<div className='flex items-center gap-[8px]'>
 						<CreditCard size={16} style={{ color: isDark ? '#44aaff' : 'var(--accent)' }} />
-						<span className='text-[15px] font-[700]' style={{ color: isDark ? 'rgba(220,230,255,0.95)' : 'var(--text-primary)' }}>Донат ігромайстру</span>
+						<span className='text-[15px] font-[700]' style={{ color: isDark ? 'rgba(220,230,255,0.95)' : 'var(--text-primary)' }}>{t('donate.title')}</span>
 					</div>
 					<button onClick={onClose} className='w-[26px] h-[26px] rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-[rgba(255,255,255,0.08)]'
 						style={isDark
@@ -81,8 +82,8 @@ function DonateModal({ gameId, cost, token, onClose }: {
 							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.15)' }
 						}>
 						<Banknote size={14} style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }} />
-						<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,230,220,0.85)' : 'var(--text-secondary)' }}>Вартість участі:</span>
-						<span className='text-[15px] font-[700]' style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }}>{cost} грн</span>
+						<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,230,220,0.85)' : 'var(--text-secondary)' }}>{t('our_games.cost_label')}</span>
+						<span className='text-[15px] font-[700]' style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }}>{cost} {t('our_games.currency')}</span>
 					</div>
 				)}
 
@@ -95,7 +96,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 					) : cardNumber ? (
 						<>
 							<span className='text-[11px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.5)' : 'var(--text-muted)' }}>
-								Номер картки
+								{t('donate.card_label')}
 							</span>
 							<button
 								onClick={handleCopy}
@@ -117,18 +118,18 @@ function DonateModal({ gameId, cost, token, onClose }: {
 								</span>
 								<span className='flex items-center gap-[5px] flex-shrink-0 text-[12px] font-[600]'
 									style={{ color: isDark ? (copied ? '#0fffc8' : 'rgba(68,170,255,0.75)') : 'var(--accent)' }}>
-									{copied ? <><Check size={13} /> Скопійовано</> : <><Copy size={13} /> Копіювати</>}
+									{copied ? <><Check size={13} /> {t('donate.copied')}</> : <><Copy size={13} /> {t('donate.copy')}</>}
 								</span>
 							</button>
 							<span className='text-[11px]' style={{ color: isDark ? 'rgba(100,140,220,0.4)' : 'var(--text-muted)' }}>
-								Натисніть щоб скопіювати номер картки
+								{t('donate.copy_hint')}
 							</span>
 						</>
 					) : (
 						<div className='flex flex-col items-center gap-[8px] py-[16px]'>
 							<span className='text-[28px]'>🤷</span>
 							<span className='text-[13px] text-center' style={{ color: isDark ? 'rgba(160,185,240,0.7)' : 'var(--text-secondary)' }}>
-								Упс! Ігромайстер не залишив даних картки
+								{t('donate.no_card')}
 							</span>
 						</div>
 					)}
@@ -406,17 +407,17 @@ export const OurGamesPage = () => {
 	}
 
 	const SORT_OPTIONS: { key: SortKey; label: string; purple?: boolean }[] = [
-		{ key: 'date',         label: '↗ Найближча дата' },
-		{ key: 'players_asc',  label: '↑ Гравці' },
-		{ key: 'players_desc', label: '↓ Гравці' },
-		{ key: 'likes',        label: '♥ Популярні', purple: true },
+		{ key: 'date',         label: t('our_games.sort_nearest') },
+		{ key: 'players_asc',  label: t('our_games.sort_players_asc') },
+		{ key: 'players_desc', label: t('our_games.sort_players_desc') },
+		{ key: 'likes',        label: t('our_games.sort_popular'), purple: true },
 	]
 
 	const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
-		{ key: 'next7days',   label: '7 днів' },
-		{ key: 'next30days',  label: '30 днів' },
-		{ key: 'upTo10',      label: '≤ 10 гравців' },
-		{ key: 'moreThan10',  label: '> 10 гравців' },
+		{ key: 'next7days',   label: t('our_games.filter_7days') },
+		{ key: 'next30days',  label: t('our_games.filter_30days') },
+		{ key: 'upTo10',      label: t('our_games.filter_max10') },
+		{ key: 'moreThan10',  label: t('our_games.filter_min10') },
 	]
 
 	return (
@@ -467,7 +468,7 @@ export const OurGamesPage = () => {
 						<input
 							value={searchQuery}
 							onChange={e => setSearchQuery(e.target.value)}
-							placeholder='Пошук за назвою або ігромайстером...'
+							placeholder={t('our_games.search_placeholder')}
 							className='w-full pl-[38px] pr-[14px] py-[10px] rounded-[8px] text-[13px] focus:outline-none transition-all'
 							style={isDark
 								? { background: 'transparent', border: '1px solid #1e2235', color: '#c0cce8' }
@@ -494,7 +495,7 @@ export const OurGamesPage = () => {
 
 					{/* Sort row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px]'>
-						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>Сорт:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>{t('our_games.sort_label')}</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{SORT_OPTIONS.map(({ key, label, purple }) => {
 								const isActive = sortKey === key
@@ -523,7 +524,7 @@ export const OurGamesPage = () => {
 
 					{/* Filter row */}
 					<div className='flex md:flex-row flex-col md:items-center items-start gap-[7px] md:pt-0 pt-[10px] md:border-t-0 border-t border-[#111320]'>
-						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>Фільтр:</span>
+						<span className='text-[13px] font-[500] flex-shrink-0 md:min-w-[52px]' style={{ color: isDark ? '#c0cce8' : 'var(--text-secondary)' }}>{t('our_games.filter_label')}</span>
 						<div className='flex flex-wrap gap-[6px]'>
 							{FILTER_OPTIONS.map(({ key, label }) => {
 								const on = activeFilters.has(key)
@@ -551,7 +552,7 @@ export const OurGamesPage = () => {
 									className='px-[12px] py-[5px] rounded-[20px] text-[12px] transition-all cursor-pointer'
 									style={{ color: 'rgba(255,95,160,0.88)', border: '1px solid rgba(255,95,160,0.28)', background: 'transparent' }}
 								>
-									✕ Скинути
+									{t('our_games.reset')}
 								</button>
 							)}
 						</div>
@@ -571,7 +572,7 @@ export const OurGamesPage = () => {
 							<Gamepad2 size={26} strokeWidth={1.4} style={{ color: isDark ? 'rgba(68,170,255,0.45)' : 'var(--text-muted)' }} />
 						</div>
 						<p style={{ color: isDark ? 'rgba(180,200,255,0.7)' : 'var(--text-secondary)', fontSize: '15px' }}>
-							{debouncedSearch || activeFilters.size > 0 ? 'Нічого не знайдено' : t('our_games.empty')}
+							{debouncedSearch || activeFilters.size > 0 ? t('our_games.nothing_found') : t('our_games.empty')}
 						</p>
 					</div>
 				) : (
@@ -840,7 +841,7 @@ const GameCard = ({
 				{/* Heart like button — top-right over image */}
 				<button
 					onClick={isLoggedIn ? onToggleLike : undefined}
-					title={isLoggedIn ? (isLikedByMe ? 'Прибрати лайк' : 'Лайкнути') : 'Увійдіть щоб лайкнути'}
+					title={isLoggedIn ? (isLikedByMe ? t('our_games.like_remove') : t('our_games.like_add')) : t('our_games.like_login')}
 					className='absolute top-[10px] right-[10px] z-10 flex items-center justify-center transition-transform hover:scale-110'
 					style={{ cursor: isLoggedIn ? 'pointer' : 'default' }}
 				>
@@ -957,7 +958,7 @@ const GameCard = ({
 
 				<div className='flex items-center justify-between gap-[8px]'>
 					<StatRow icon={<Banknote size={13} strokeWidth={1.8} />} darkColor='rgba(255,183,40,0.85)'>
-						{`Вартість участі: ${(game.participationCost ?? 0).toFixed(2).replace('.', ',')} грн`}
+						{`${t('our_games.cost_label')} ${(game.participationCost ?? 0).toFixed(2).replace('.', ',')} ${t('our_games.currency')}`}
 					</StatRow>
 					<button
 						onClick={onDonate}
@@ -968,7 +969,7 @@ const GameCard = ({
 						}
 					>
 						<CreditCard size={11} strokeWidth={2} />
-						Донат
+						{t('our_games.donate_btn')}
 					</button>
 				</div>
 			</div>
@@ -980,7 +981,7 @@ const GameCard = ({
 						? { background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }
 						: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)' }
 					}>
-					<span className='text-[11px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>👁 Код глядача:</span>
+					<span className='text-[11px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>{t('our_games.spectator_code_label')}</span>
 					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: isDark ? '#c07fff' : 'var(--accent)' }}>{game.spectatorCode}</span>
 				</div>
 			)}

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Send } from 'lucide-react'
 import type { GameRoomState, RoomPlayer, ChatMessage } from './types'
 import { VotingPanel } from './VotingPanel'
@@ -50,6 +51,7 @@ export const ChatPanel = ({
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
+	const { t } = useTranslation()
 	const [tab, setTab]   = useState<string>('chat')
 	const [text, setText] = useState('')
 	const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
@@ -79,7 +81,7 @@ export const ChatPanel = ({
 	const selectedNames = selectedRecipients
 		.map(id => state.players.find(p => p.userId === id)?.name?.split(' ')[0] ?? '')
 		.filter(Boolean)
-	const toLabel = selectedRecipients.length === 0 ? 'Всі' : selectedNames.join(', ')
+	const toLabel = selectedRecipients.length === 0 ? t('room.chat.all_public') : selectedNames.join(', ')
 	const isPrivateMode = !isSpectator && selectedRecipients.length > 0
 
 	const activeMsgsLen = isDMTab
@@ -159,12 +161,12 @@ export const ChatPanel = ({
 				<button onClick={() => setTab('chat')}
 					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
 					style={tabBtnStyle(tab === 'chat')}>
-					Гравці
+					{t('room.chat.players_tab')}
 				</button>
 				<button onClick={() => setTab('spectatorChat')}
 					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap flex items-center gap-[5px]'
 					style={tabBtnStyle(tab === 'spectatorChat')}>
-					Глядачі
+					{t('room.chat.spectators_tab')}
 					{spectatorChatMsgs.length > 0 && tab !== 'spectatorChat' && (
 						<span className='text-[9px] font-[800] px-[5px] py-[1px] rounded-full'
 							style={{ background: 'rgba(74,80,112,0.4)', color: '#7a80a0', minWidth: '16px', textAlign: 'center' }}>
@@ -194,12 +196,12 @@ export const ChatPanel = ({
 						<button onClick={() => setTab('scenario')}
 							className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
 							style={tabBtnStyle(tab === 'scenario')}>
-							Сценарій
+							{t('room.chat.scenario_tab')}
 						</button>
 						<button onClick={() => setTab('notes')}
 							className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
 							style={tabBtnStyle(tab === 'notes')}>
-							Нотатки
+							{t('room.chat.notes_tab')}
 						</button>
 					</>
 				)}
@@ -211,7 +213,7 @@ export const ChatPanel = ({
 					<div className='flex-1 overflow-y-auto overflow-x-hidden p-[10px] flex flex-col gap-[8px] min-h-0'>
 						{((privateChats ?? {})[tab] ?? []).length === 0 && (
 							<p className='text-[12px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
-								Почніть розмову...
+								{t('room.chat.dm_empty')}
 							</p>
 						)}
 						{((privateChats ?? {})[tab] ?? []).map((msg: ChatMessage) => (
@@ -231,7 +233,7 @@ export const ChatPanel = ({
 							value={text}
 							onChange={e => setText(e.target.value)}
 							onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-							placeholder='Написати приватно...'
+							placeholder={t('room.chat.private_placeholder')}
 							className='flex-1 rounded-[6px] px-[10px] py-[7px] text-[13px] focus:outline-none'
 							style={{
 								background: 'rgba(15,255,200,0.03)',
@@ -297,7 +299,7 @@ export const ChatPanel = ({
 							style={{ borderTop: '1px solid #151824', background: '#0b0d1a' }}>
 							<span className='text-[11px] uppercase tracking-[0.06em] flex-shrink-0'
 								style={{ color: '#7a88b0' }}>
-								Кому:
+								{t('room.chat.to_label')}
 							</span>
 							<button
 								onClick={() => setRecipientMenuOpen(v => !v)}
@@ -328,7 +330,7 @@ export const ChatPanel = ({
 												}}>
 												{selectedRecipients.length === 0 && '✓'}
 											</span>
-											Всі (публічне)
+											{t('room.chat.all_public')}
 										</button>
 										{recipientOptions.map(p => {
 											const sel = selectedRecipients.includes(p.userId)
@@ -355,7 +357,7 @@ export const ChatPanel = ({
 										})}
 										{recipientOptions.length === 0 && (
 											<p className='px-[12px] py-[8px] text-[12px]' style={{ color: 'rgba(140,170,255,0.55)' }}>
-												Немає гравців
+												{t('room.chat.no_players')}
 											</p>
 										)}
 									</div>
@@ -371,7 +373,7 @@ export const ChatPanel = ({
 								value={text}
 								onChange={e => setText(e.target.value)}
 								onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-								placeholder={isPrivateMode ? 'Написати приватно...' : 'Написати...'}
+								placeholder={isPrivateMode ? t('room.chat.private_placeholder') : t('room.chat.message_placeholder')}
 								className='flex-1 rounded-[6px] px-[10px] py-[7px] text-[13px] focus:outline-none'
 								style={{
 									background: isPrivateMode ? 'rgba(15,255,200,0.03)' : '#0f1120',
@@ -393,7 +395,7 @@ export const ChatPanel = ({
 						<div className='flex-shrink-0 px-[10px] py-[8px] flex items-center gap-[6px]'
 							style={{ borderTop: '1px solid #151824' }}>
 							<span className='text-[12px]' style={{ color: 'rgba(130,145,195,0.75)' }}>
-								👁 Тільки перегляд
+								{t('room.chat.spectator_view')}
 							</span>
 						</div>
 					)}
@@ -407,7 +409,7 @@ export const ChatPanel = ({
 								{state.scenario}
 							</p>
 						: <p className='text-[13px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
-								Сценарій не вказано
+								{t('room.chat.no_scenario')}
 							</p>
 					}
 				</div>
@@ -419,11 +421,11 @@ export const ChatPanel = ({
 					<div className='flex-shrink-0 px-[10px] pt-[10px] pb-[8px]'
 						style={{ borderBottom: '1px solid #151824' }}>
 						<p className='text-[11px] uppercase tracking-[0.08em] mb-[6px]' style={{ color: '#7a88b0' }}>
-							Вставити гравця
+							{t('room.chat.insert_player')}
 						</p>
 						<div className='flex flex-col gap-[4px] max-h-[120px] overflow-y-auto pr-[2px]'>
 							{notesPlayers.length === 0 && (
-								<p className='text-[12px]' style={{ color: 'rgba(140,170,255,0.52)' }}>Немає гравців</p>
+								<p className='text-[12px]' style={{ color: 'rgba(140,170,255,0.52)' }}>{t('room.chat.no_players')}</p>
 							)}
 							{notesPlayers.map(p => (
 								<button
@@ -447,7 +449,7 @@ export const ChatPanel = ({
 						ref={notesRef}
 						value={notes}
 						onChange={e => onNotesChange(e.target.value)}
-						placeholder='Ваші нотатки під час гри...'
+						placeholder={t('room.chat.notes_placeholder')}
 						className='flex-1 resize-none focus:outline-none p-[12px] text-[13px] leading-[1.75] min-h-0'
 						style={{
 							background: '#07080f',

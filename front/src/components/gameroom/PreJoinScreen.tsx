@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Mic, MicOff, Video, VideoOff, ArrowRight } from 'lucide-react'
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
+	const { t } = useTranslation()
 	const [micOn, setMicOn] = useState(true)
 	const [camOn, setCamOn] = useState(false)
 	const [camAvailable, setCamAvailable] = useState(true)
@@ -71,7 +73,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 				<div className='text-center'>
 					<p className='text-[11px] uppercase tracking-[0.1em] mb-[5px]'
 						style={{ color: 'rgba(100,140,220,0.45)' }}>
-						Підключення до кімнати
+						{t('room.prejoin.title')}
 					</p>
 					<h2 className='text-[19px] font-[700]'
 						style={{ color: 'rgba(220,230,255,0.92)' }}>
@@ -106,7 +108,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 								{initials}
 							</div>
 							<span className='text-[12px]' style={{ color: 'rgba(100,140,220,0.4)' }}>
-								{!camAvailable ? 'Камера недоступна' : 'Камера вимкнена'}
+								{!camAvailable ? t('room.prejoin.cam_unavailable') : t('room.prejoin.cam_off_preview')}
 							</span>
 						</div>
 					)}
@@ -133,7 +135,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 					>
 						{micOn ? <Mic size={24} strokeWidth={1.8} /> : <MicOff size={24} strokeWidth={1.8} />}
 						<span className='text-[11px] font-[500]'>
-							{micOn ? 'Мікрофон увімк.' : 'Мікрофон вимк.'}
+							{micOn ? t('room.prejoin.mic_on') : t('room.prejoin.mic_off')}
 						</span>
 					</button>
 
@@ -147,7 +149,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 					>
 						{camOn ? <Video size={24} strokeWidth={1.8} /> : <VideoOff size={24} strokeWidth={1.8} />}
 						<span className='text-[11px] font-[500]'>
-							{camOn ? 'Камера увімк.' : 'Камера вимк.'}
+							{camOn ? t('room.prejoin.cam_on') : t('room.prejoin.cam_off')}
 						</span>
 					</button>
 				</div>
@@ -163,12 +165,12 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 						boxShadow: '0 4px 20px rgba(15,255,200,0.07)',
 					}}
 				>
-					Увійти в кімнату
+					{t('room.prejoin.enter')}
 					<ArrowRight size={16} strokeWidth={2.5} />
 				</button>
 
 				<p className='text-[11px]' style={{ color: 'rgba(100,140,220,0.28)' }}>
-					Налаштування медіа збережуться при вході
+					{t('room.prejoin.settings_hint')}
 				</p>
 			</div>
 		</div>

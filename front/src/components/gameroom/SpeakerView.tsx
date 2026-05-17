@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from '@livekit/components-react'
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
@@ -133,6 +134,7 @@ function PlayerStats({ player }: { player: RoomPlayer }) {
 function state_placeholder_coins(_p: RoomPlayer) { return null }
 
 function CoverImageBlock({ state }: { state: GameRoomState }) {
+	const { t } = useTranslation()
 	const coverUrl = state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'
 
 	return (
@@ -168,7 +170,7 @@ function CoverImageBlock({ state }: { state: GameRoomState }) {
 						textTransform: 'uppercase',
 						textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.9)',
 					}}>
-						Вітаємо друзів на грі
+						{t('room.speaker.welcome')}
 					</p>
 					<p className='text-[36px] md:text-[54px] lg:text-[108px]' style={{
 						color: '#0fffc8',
@@ -184,7 +186,7 @@ function CoverImageBlock({ state }: { state: GameRoomState }) {
 			)}
 			<p className='absolute bottom-[8px] left-0 right-0 text-center text-[14px]'
 				style={{ color: 'rgba(160,185,255,0.75)', zIndex: 3, pointerEvents: 'none' }}>
-				{state.status === 'lobby' ? 'Очікуємо початку...' : 'Тиша...'}
+				{state.status === 'lobby' ? t('room.speaker.waiting') : t('room.speaker.silence')}
 			</p>
 		</div>
 	)
@@ -196,6 +198,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 	playerReactions: Record<string, { emoji: string; key: number }>
 	isMockSpeaking?: boolean
 }) {
+	const { t } = useTranslation()
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = speakerPlayer
@@ -240,7 +243,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 							style={speakerPlayer.role
 								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
 								: { color: 'rgba(155,175,230,0.72)', background: 'transparent', border: '1px solid rgba(130,155,220,0.25)' }}>
-							{speakerPlayer.role || 'Введіть вашу роль'}
+							{speakerPlayer.role || t('room.speaker.role_placeholder')}
 						</span>
 						<MicDot active={speaking} />
 					</div>
@@ -272,7 +275,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 							style={speakerPlayer.role
 								? { color: '#0fffc8', background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.2)' }
 								: { color: 'rgba(155,175,230,0.72)', background: 'transparent', border: '1px solid rgba(130,155,220,0.25)' }}>
-							{speakerPlayer.role || 'Введіть вашу роль'}
+							{speakerPlayer.role || t('room.speaker.role_placeholder')}
 						</span>
 						<MicDot active={speaking} />
 					</div>
@@ -295,6 +298,7 @@ export const SpeakerView = ({
 	mockSpeakingId = null,
 	inBreakout = null,
 }: Props) => {
+	const { t } = useTranslation()
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const realMainPlayers = inBreakout
@@ -408,10 +412,10 @@ export const SpeakerView = ({
 				</div>
 				<div className='flex items-center gap-[8px]'>
 					<span className='text-[12px]' style={{ color: '#7a88b0' }}>
-						{mainPlayers.filter(p => !p.isSpectator).length} онлайн
+						{mainPlayers.filter(p => !p.isSpectator).length} {t('room.speaker.online')}
 					</span>
 					<span className='text-[12px]' style={{ color: '#7a88b0' }}>
-						👁 {state.players.filter(p => p.isSpectator && p.connected).length} глядачів
+						👁 {state.players.filter(p => p.isSpectator && p.connected).length} {t('room.speaker.spectators')}
 					</span>
 				</div>
 			</div>
@@ -426,7 +430,7 @@ export const SpeakerView = ({
 					<div className='absolute top-[10px] left-[10px] flex items-center gap-[5px] px-[8px] py-[3px] rounded-[5px]'
 						style={{ background: 'rgba(15,17,32,0.85)', border: '1px solid rgba(68,170,255,0.3)' }}>
 						<ScreenShare size={10} style={{ color: 'rgba(68,170,255,0.9)' }} />
-						<span className='text-[11px] font-[600]' style={{ color: 'rgba(68,170,255,0.9)' }}>Демонстрація екрану</span>
+						<span className='text-[11px] font-[600]' style={{ color: 'rgba(68,170,255,0.9)' }}>{t('room.speaker.screen_share')}</span>
 					</div>
 				</div>
 			) : imageUrl
@@ -453,12 +457,12 @@ export const SpeakerView = ({
 			{!isMobile && (
 				<div className='flex-shrink-0 flex items-center gap-[5px] px-[10px] py-[6px] flex-wrap'
 					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label='Мік' />}
-					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label='Кам' />}
+					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label={t('room.speaker.mic_label')} />}
+					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label={t('room.speaker.cam_label')} />}
 					{!isSpectator && onToggleScreen && (
-						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={13}/> : <ScreenShare size={13}/>} label='Екран' />
+						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={13}/> : <ScreenShare size={13}/>} label={t('room.speaker.screen_label')} />
 					)}
-					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label='Вийти' variant='red' />
+					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={13}/>} label={t('room.speaker.leave_label')} variant='red' />
 					<div className='flex-shrink-0 w-[1px] h-[18px] mx-[2px]' style={{ background: '#1c1f35' }} />
 					{REACTIONS.map(emoji => (
 						<button key={emoji} onClick={() => handleReact(emoji)}
@@ -591,6 +595,7 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, i
 	player: RoomPlayer; reaction?: { emoji: string; key: number }; gameStarted: boolean
 	isGM?: boolean; onMutePlayer?: (uid: string) => void; isMockSpeaking?: boolean
 }) {
+	const { t } = useTranslation()
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
@@ -631,7 +636,7 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, i
 					onClick={() => onMutePlayer!(player.userId)}
 					className='absolute top-[2px] right-[2px] w-[16px] h-[16px] rounded-[3px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer'
 					style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid #1c1f35', color: '#ff3850' }}
-					title='Вимкнути мік'>
+					title={t('room.speaker.mic_label')}>
 					<VolumeX size={9} strokeWidth={2} />
 				</button>
 			)}
@@ -640,6 +645,7 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, i
 }
 
 function StripTile({ player, reaction, isMockSpeaking }: { player: RoomPlayer; reaction?: { emoji: string; key: number }; isMockSpeaking?: boolean }) {
+	const { t } = useTranslation()
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
@@ -678,7 +684,7 @@ function StripTile({ player, reaction, isMockSpeaking }: { player: RoomPlayer; r
 				{player.isGamemaster
 					? <span className='text-[8px] font-[700] px-[4px] py-[1px] rounded-[3px] whitespace-nowrap'
 						style={{ background: 'rgba(15,255,200,0.1)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.2)' }}>
-						Ігромайстер
+						{t('room.speaker.gamemaster')}
 					</span>
 					: <>
 						{player.coins > 0 && <span className='text-[10px] flex items-center gap-[1px]' style={{ color: '#7a88b0' }}><CircleDollarSign size={9} />{player.coins}</span>}

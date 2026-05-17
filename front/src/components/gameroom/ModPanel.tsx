@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Video, Square } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
 
@@ -47,8 +48,9 @@ export const ModPanel = ({
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
 	onOpenObserver, onRecordStart, onRecordStop, recordStatus,
 }: Props) => {
+	const { t } = useTranslation()
 	const remaining = useTimer(state.timer)
-	const t = state.timer
+	const timer = state.timer
 
 	const hasObserver = state.hasObserver ?? false
 	const isRecording = recordStatus === 'recording'
@@ -85,18 +87,18 @@ export const ModPanel = ({
 	return (
 		<div className='flex flex-col gap-[8px] p-[10px]' style={{ borderTop: '1px solid #151824' }}>
 			<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>
-				Панель ведучого
+				{t('room.mod.title')}
 			</span>
 
 			{/* Timer display */}
-			{t && (
+			{timer && (
 				<div className='flex items-center gap-[6px] rounded-[8px] px-[10px] py-[7px]'
 					style={{ background: 'rgba(200,168,48,0.08)', border: '1px solid rgba(200,168,48,0.22)' }}>
 					<div className='flex-1'>
-						<div className='text-[11px] mb-[1px]' style={{ color: 'rgba(200,168,48,0.85)' }}>{t.label}</div>
+						<div className='text-[11px] mb-[1px]' style={{ color: 'rgba(200,168,48,0.85)' }}>{timer.label}</div>
 						<div className='text-[18px] font-[700] font-mono' style={{ color: '#c8a830' }}>{fmt(remaining)}</div>
 					</div>
-					{!t.running
+					{!timer.running
 						? <button onClick={onTimerStart} className='text-[11px] px-[8px] py-[5px] rounded-[6px] cursor-pointer transition-all'
 								style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>▶</button>
 						: <button onClick={onTimerStop} className='text-[11px] px-[8px] py-[5px] rounded-[6px] cursor-pointer transition-all'
@@ -108,25 +110,25 @@ export const ModPanel = ({
 			)}
 
 			<div className='grid grid-cols-3 gap-[5px]'>
-				{toolBtn(<Megaphone size={14} />, 'Оголошення', onAnnounce, 'default', !!state.announcement)}
-				{toolBtn(<Vote size={14} />, 'Голосування', onVoting, 'default', !!state.activeVote)}
-				{toolBtn(<Users size={14} />, 'Глядачі', onSpectatorVoting, 'default', !!state.spectatorVote)}
-				{toolBtn(<Timer size={14} />, 'Таймер', onTimer)}
-				{toolBtn(<VolumeX size={14} />, 'Мют всіх', onMuteAll, 'warn')}
-				{toolBtn(<DoorOpen size={14} />, `Кімнати (${state.breakoutRooms.length})`, onBreakout)}
-				{toolBtn(<Square size={14} />, 'Зупинити гру', onEndGame, 'danger')}
+				{toolBtn(<Megaphone size={14} />, t('room.mod.announce'), onAnnounce, 'default', !!state.announcement)}
+				{toolBtn(<Vote size={14} />, t('room.mod.vote'), onVoting, 'default', !!state.activeVote)}
+				{toolBtn(<Users size={14} />, t('room.mod.spectators'), onSpectatorVoting, 'default', !!state.spectatorVote)}
+				{toolBtn(<Timer size={14} />, t('room.mod.timer'), onTimer)}
+				{toolBtn(<VolumeX size={14} />, t('room.mod.mute_all'), onMuteAll, 'warn')}
+				{toolBtn(<DoorOpen size={14} />, `${t('room.mod.breakout')} (${state.breakoutRooms.length})`, onBreakout)}
+				{toolBtn(<Square size={14} />, t('room.mod.stop_game'), onEndGame, 'danger')}
 			</div>
 
 			{/* Observer / Recording section */}
 			<div className='mt-[2px] flex flex-col gap-[5px]' style={{ borderTop: '1px solid #1c1f35', paddingTop: '8px' }}>
-				<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>Запис</span>
+				<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>{t('room.mod.recording')}</span>
 
 				{!hasObserver ? (
 					<button onClick={onOpenObserver}
 						className='flex items-center justify-center gap-[6px] rounded-[8px] p-[8px] cursor-pointer transition-all hover:brightness-125'
 						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: 'rgba(115,128,175,1)' }}>
 						<Video size={13} />
-						<span className='text-[12px]'>Відкрити спостерігача</span>
+						<span className='text-[12px]'>{t('room.mod.open_observer')}</span>
 					</button>
 				) : (
 					<div className='flex flex-col gap-[5px]'>
@@ -137,7 +139,7 @@ export const ModPanel = ({
 							}}>
 							<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
 							<span className='text-[12px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
-								{isRecording ? '● Запис активний' : isUploading ? `Завантаження...` : isDone ? '✓ Збережено' : isPrepared ? 'Готовий' : 'Спостерігач підключений'}
+								{isRecording ? t('room.mod.rec_active') : isUploading ? t('room.mod.rec_uploading') : isDone ? t('room.mod.rec_saved') : isPrepared ? t('room.mod.rec_ready') : t('room.mod.observer_connected')}
 							</span>
 						</div>
 						<div className='grid grid-cols-2 gap-[5px]'>
@@ -146,14 +148,14 @@ export const ModPanel = ({
 								disabled={!isPrepared}
 								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
 								style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
-								<span className='text-[11px]'>▶ Старт</span>
+								<span className='text-[11px]'>{t('room.mod.rec_start')}</span>
 							</button>
 							<button
 								onClick={onRecordStop}
 								disabled={!isRecording}
 								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
 								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
-								<span className='text-[11px]'>■ Стоп</span>
+								<span className='text-[11px]'>{t('room.mod.rec_stop')}</span>
 							</button>
 						</div>
 					</div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
 	onCreate: (question: string, options: string[], isAnonymous: boolean, multipleChoice: boolean) => void
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export const VotingModal = ({ onCreate, onClose }: Props) => {
+	const { t } = useTranslation()
 	const [question, setQuestion]         = useState('')
 	const [options, setOptions]           = useState(['', ''])
 	const [isAnonymous, setAnonymous]     = useState(false)
@@ -37,11 +39,11 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 			>
 				<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
-					🗳️ Нове голосування
+					{t('room.vote.title')}
 				</h3>
 
 				<textarea
-					placeholder='Питання...'
+					placeholder={t('room.vote.question_placeholder')}
 					value={question}
 					onChange={e => setQuestion(e.target.value.slice(0, 300))}
 					rows={2}
@@ -53,7 +55,7 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 					{options.map((opt, i) => (
 						<div key={i} className='flex gap-[6px]'>
 							<input
-								placeholder={`Варіант ${i + 1}`}
+								placeholder={`${t('room.vote.option_placeholder')}${i + 1}`}
 								value={opt}
 								onChange={e => setOption(i, e.target.value.slice(0, 100))}
 								className='flex-1 rounded-[8px] px-[10px] py-[7px] text-[12px] focus:outline-none'
@@ -72,7 +74,7 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 						<button onClick={addOption}
 							className='flex items-center gap-[5px] text-[11px] py-[5px] cursor-pointer transition-colors'
 							style={{ color: 'rgba(68,170,255,0.5)' }}>
-							<Plus size={12} /> Додати варіант
+							<Plus size={12} /> {t('room.vote.add_option')}
 						</button>
 					)}
 				</div>
@@ -81,12 +83,12 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 					<button onClick={() => setAnonymous(p => !p)}
 						className='flex-1 py-[6px] rounded-[7px] text-[11px] font-[600] cursor-pointer transition-all'
 						style={btnStyle(isAnonymous)}>
-						🔒 Анонімно
+						{t('room.vote.anonymous')}
 					</button>
 					<button onClick={() => setMultiple(p => !p)}
 						className='flex-1 py-[6px] rounded-[7px] text-[11px] font-[600] cursor-pointer transition-all'
 						style={btnStyle(multipleChoice)}>
-						☑️ Кілька
+						{t('room.vote.multiple')}
 					</button>
 				</div>
 
@@ -94,13 +96,13 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 					<button onClick={onClose}
 						className='flex-1 py-[9px] rounded-[9px] text-[12px] cursor-pointer transition-all'
 						style={{ background: 'rgba(15,17,32,0.5)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }}>
-						Скасувати
+						{t('room.vote.cancel')}
 					</button>
 					<button onClick={handleCreate}
 						disabled={!question.trim() || options.filter(o => o.trim()).length < 2}
 						className='flex-1 py-[9px] rounded-[9px] text-[12px] font-[600] cursor-pointer transition-all disabled:opacity-40'
 						style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
-						Запустити
+						{t('room.vote.start')}
 					</button>
 				</div>
 			</div>

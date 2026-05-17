@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Send, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { BreakoutRoom, RoomPlayer } from './types'
 
 interface Props {
@@ -19,6 +20,7 @@ export const BreakoutModal = ({
 	breakoutRooms, players, images, myId, inBreakout,
 	onCreate, onInvite, onJoin, onEnd, onClose,
 }: Props) => {
+	const { t } = useTranslation()
 	const [tab, setTab]             = useState<'rooms' | 'create'>('rooms')
 	const [name, setName]           = useState('')
 	const [imageUrl, setImageUrl]   = useState(images[0] ?? '')
@@ -65,7 +67,7 @@ export const BreakoutModal = ({
 			>
 				<div className='flex items-center justify-between'>
 					<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
-						🚪 Кімнати
+						{t('room.breakout.title')}
 					</h3>
 					<button onClick={onClose} className='cursor-pointer' style={{ color: 'rgba(100,140,220,0.4)' }}>
 						<X size={16} strokeWidth={2} />
@@ -73,11 +75,11 @@ export const BreakoutModal = ({
 				</div>
 
 				<div className='flex gap-[6px]'>
-					{(['rooms', 'create'] as const).map(t => (
-						<button key={t} onClick={() => setTab(t)}
+					{(['rooms', 'create'] as const).map(tb => (
+						<button key={tb} onClick={() => setTab(tb)}
 							className='flex-1 py-[6px] rounded-[7px] text-[11px] font-[600] cursor-pointer transition-all'
-							style={tabStyle(tab === t)}>
-							{t === 'rooms' ? `Кімнати (${breakoutRooms.length}/5)` : '+ Нова'}
+							style={tabStyle(tab === tb)}>
+							{tb === 'rooms' ? `${t('room.breakout.tab_rooms')} (${breakoutRooms.length}/5)` : t('room.breakout.tab_new')}
 						</button>
 					))}
 				</div>
@@ -85,7 +87,7 @@ export const BreakoutModal = ({
 				{tab === 'create' && (
 					<div className='flex flex-col gap-[10px]'>
 						<input
-							placeholder='Назва кімнати...'
+							placeholder={t('room.breakout.room_name_placeholder')}
 							value={name}
 							onChange={e => setName(e.target.value.slice(0, 50))}
 							className='w-full rounded-[8px] px-[10px] py-[8px] text-[13px] focus:outline-none'
@@ -93,7 +95,7 @@ export const BreakoutModal = ({
 						/>
 						{images.length > 0 && (
 							<div>
-								<p className='text-[11px] mb-[6px]' style={{ color: 'rgba(100,140,220,0.45)' }}>Картинка:</p>
+								<p className='text-[11px] mb-[6px]' style={{ color: 'rgba(100,140,220,0.45)' }}>{t('room.breakout.image_label')}</p>
 								<div className='flex gap-[5px] flex-wrap'>
 									{images.map((url, i) => (
 										<button key={i} onClick={() => setImageUrl(url)}
@@ -107,7 +109,7 @@ export const BreakoutModal = ({
 						)}
 						<label className='flex items-center gap-[8px] cursor-pointer text-[12px]' style={{ color: 'rgba(180,200,255,0.6)' }}>
 							<input type='checkbox' checked={useTmer} onChange={e => setUseTimer(e.target.checked)} className='accent-[#0fffc8]' />
-							Авто-повернення через
+							{t('room.breakout.auto_return')}
 							{useTmer && (
 								<input type='number' min={1} max={120} value={minutes}
 									onChange={e => setMinutes(Math.max(1, Number(e.target.value)))}
@@ -115,12 +117,12 @@ export const BreakoutModal = ({
 									style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.85)' }}
 								/>
 							)}
-							{useTmer && <span>хв</span>}
+							{useTmer && <span>{t('room.breakout.minutes')}</span>}
 						</label>
 						<button onClick={handleCreate} disabled={!name.trim() || breakoutRooms.length >= 5}
 							className='py-[9px] rounded-[9px] text-[12px] font-[600] cursor-pointer transition-all disabled:opacity-40 flex items-center justify-center gap-[6px]'
 							style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
-							<Plus size={13} /> Створити кімнату
+							<Plus size={13} /> {t('room.breakout.create')}
 						</button>
 					</div>
 				)}
@@ -129,7 +131,7 @@ export const BreakoutModal = ({
 					<div className='flex flex-col gap-[10px]'>
 						{breakoutRooms.length === 0 && (
 							<p className='text-[12px] text-center py-[20px]' style={{ color: 'rgba(100,140,220,0.35)' }}>
-								Немає активних кімнат
+								{t('room.breakout.empty')}
 							</p>
 						)}
 						{breakoutRooms.map(br => (
@@ -147,19 +149,19 @@ export const BreakoutModal = ({
 									</div>
 									<div className='flex items-center gap-[6px]'>
 										<span className='text-[11px]' style={{ color: 'rgba(100,140,220,0.45)' }}>
-											{br.playerIds.length} гравців
+											{br.playerIds.length} {t('room.breakout.players_count')}
 										</span>
 										{inBreakout !== br.id && (
 											<button onClick={() => { onJoin(br.id); onClose() }}
 												className='text-[10px] px-[7px] py-[3px] rounded-[5px] cursor-pointer transition-all'
 												style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: 'rgba(15,255,200,0.85)' }}>
-												Увійти →
+												{t('room.breakout.join')}
 											</button>
 										)}
 										<button onClick={() => onEnd(br.id)}
 											className='text-[10px] px-[7px] py-[3px] rounded-[5px] cursor-pointer'
 											style={{ background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.2)', color: 'rgba(255,95,160,0.7)' }}>
-											Завершити
+											{t('room.breakout.end')}
 										</button>
 									</div>
 								</div>
@@ -191,7 +193,7 @@ export const BreakoutModal = ({
 									<button onClick={() => sendInvites(br.id)}
 										className='self-end flex items-center gap-[5px] text-[11px] px-[10px] py-[5px] rounded-[7px] cursor-pointer transition-all'
 										style={{ background: 'rgba(68,170,255,0.08)', border: '1px solid rgba(68,170,255,0.25)', color: 'rgba(68,170,255,0.8)' }}>
-										<Send size={11} /> Запросити
+										<Send size={11} /> {t('room.breakout.invite')}
 									</button>
 								)}
 							</div>

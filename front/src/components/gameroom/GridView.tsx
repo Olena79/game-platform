@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const REACTION_BADGE_CSS = `
 @keyframes reactionBadge {
@@ -90,6 +91,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	gameStarted: boolean
 	isMockSpeaking?: boolean
 }) {
+	const { t } = useTranslation()
 	const participants = useParticipants()
 	const { localParticipant } = useLocalParticipant()
 	const participant = participants.find(p => p.identity === player.userId)
@@ -192,7 +194,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 						<>
 							<span className='text-[11px] font-[700] px-[5px] py-[1px] rounded-[4px] self-start'
 								style={{ background: 'rgba(15,255,200,0.1)', color: '#0fffc8', border: '1px solid rgba(15,255,200,0.3)' }}>
-								Ігромайстер
+								{t('room.grid.gamemaster')}
 							</span>
 							<div className='text-[11px] truncate'
 								style={{ color: speaking ? 'rgba(15,255,200,0.9)' : 'rgba(200,218,255,0.85)' }}>
@@ -206,7 +208,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 							onChange={e => setRoleInput(e.target.value.slice(0, 60))}
 							onBlur={() => { onSetRole(player.userId, roleInput); setEditRole(false) }}
 							onKeyDown={e => { if (e.key === 'Enter') { onSetRole(player.userId, roleInput); setEditRole(false) } }}
-							placeholder='Введіть вашу роль'
+							placeholder={t('room.grid.role_placeholder')}
 							className='w-full text-[11px] rounded-[4px] px-[4px] py-[1px] focus:outline-none'
 							style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.3)', color: 'rgba(180,200,255,0.9)' }}
 						/>
@@ -246,7 +248,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 						<button onClick={() => onMutePlayer(player.userId)}
 							className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
 							style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#ff3850' }}
-							title='Вимкнути мік'>
+							title={t('room.grid.mute_title')}>
 							<VolumeX size={9} strokeWidth={2} />
 						</button>
 					)}
@@ -288,6 +290,7 @@ export const GridView = ({
 	mockSpeakingId = null,
 	inBreakout = null,
 }: Props) => {
+	const { t } = useTranslation()
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	// Show players from the current room only — real AND mock filtered by room
@@ -413,10 +416,10 @@ export const GridView = ({
 			<div className='flex-shrink-0 flex items-center gap-[12px] px-[12px] py-[5px]'
 				style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
 				<span className='text-[12px]' style={{ color: '#7a88b0' }}>
-					{mainPlayers.length} онлайн
+					{mainPlayers.length} {t('room.grid.online')}
 				</span>
 				<span className='text-[12px]' style={{ color: '#7a88b0' }}>
-					👁 {spectatorCount} глядачів
+					👁 {spectatorCount} {t('room.grid.spectators')}
 				</span>
 			</div>
 
@@ -426,7 +429,7 @@ export const GridView = ({
 					style={{ background: 'rgba(68,170,255,0.06)', borderBottom: '1px solid rgba(68,170,255,0.18)' }}>
 					<ScreenShare size={11} style={{ color: 'rgba(68,170,255,0.85)' }} />
 					<span className='text-[12px]' style={{ color: 'rgba(68,170,255,0.85)' }}>
-						Демонстрація екрану — перейдіть у режим «Спікер» для перегляду
+						{t('room.grid.screen_notification')}
 					</span>
 				</div>
 			)}
@@ -502,12 +505,12 @@ export const GridView = ({
 			{!isMobile && (
 				<div className='flex-shrink-0 flex items-center gap-[7px] px-[14px] py-[9px]'
 					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
-					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label='Мікрофон' />}
-					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label='Камера' />}
+					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={14}/> : <MicOff size={14}/>} label={t('room.grid.mic_label')} />}
+					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={14}/> : <VideoOff size={14}/>} label={t('room.grid.cam_label')} />}
 					{!isSpectator && onToggleScreen && (
-						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={14}/> : <ScreenShare size={14}/>} label='Екран' />
+						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={14}/> : <ScreenShare size={14}/>} label={t('room.grid.screen_label')} />
 					)}
-					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={14}/>} label='Вийти' variant='red' />
+					<CtrlBtn onClick={onLeave} icon={<PhoneOff size={14}/>} label={t('room.grid.leave_label')} variant='red' />
 				</div>
 			)}
 		</div>

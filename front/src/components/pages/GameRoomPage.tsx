@@ -40,8 +40,23 @@ import { BreakoutModal } from '../gameroom/BreakoutModal'
 import { ModPanel } from '../gameroom/ModPanel'
 import { PreJoinScreen } from '../gameroom/PreJoinScreen'
 import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
+import { useTranslation } from 'react-i18next'
 
 type RoomHook = ReturnType<typeof useGameRoom>
+
+function ErrorDisplay({ message }: { message: string }) {
+	const { t } = useTranslation()
+	return (
+		<div
+			className='w-screen h-screen flex items-center justify-center flex-col gap-3'
+			style={{ background: '#07080f' }}
+		>
+			<span style={{ color: '#ff3850', fontSize: '14px' }}>
+				{t('room.error_prefix')} {message}
+			</span>
+		</div>
+	)
+}
 
 class RoomErrorBoundary extends Component<
 	{ children: ReactNode },
@@ -53,16 +68,7 @@ class RoomErrorBoundary extends Component<
 	}
 	render() {
 		if (this.state.err) {
-			return (
-				<div
-					className='w-screen h-screen flex items-center justify-center flex-col gap-3'
-					style={{ background: '#07080f' }}
-				>
-					<span style={{ color: '#ff3850', fontSize: '14px' }}>
-						Помилка: {this.state.err}
-					</span>
-				</div>
-			)
+			return <ErrorDisplay message={this.state.err} />
 		}
 		return this.props.children
 	}
@@ -106,6 +112,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	room: RoomHook; gameCode: string
 	initMic: boolean; initCam: boolean
 }) {
+	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const {
 		state,
@@ -382,7 +389,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					className='text-[12px]'
 					style={{ color: 'rgba(100,140,220,0.3)' }}
 				>
-					Завантаження...
+					{t('room.loading')}
 				</span>
 			</div>
 		)
@@ -422,7 +429,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					style={{ background: 'rgba(255,56,80,0.12)', borderBottom: '1px solid rgba(255,56,80,0.25)' }}>
 					<span style={{ color: '#ff3850', fontSize: '11px' }}>●</span>
 					<span style={{ color: 'rgba(255,56,80,0.9)', fontSize: '12px', fontWeight: 600 }}>
-						Ведеться відеозапис цієї кімнати
+						{t('room.recording_active')}
 					</span>
 				</div>
 			)}
@@ -440,7 +447,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						className='text-[12px]'
 						style={{ color: 'rgba(15,255,200,0.5)' }}
 					>
-						Гравців: {mainPlayers.filter(p => !p.isGamemaster).length}
+						{t('room.player_count')}{mainPlayers.filter(p => !p.isGamemaster).length}
 					</span>
 					<button
 						onClick={startGame}
@@ -451,7 +458,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							color: '#0fffc8',
 						}}
 					>
-						▶ Почати гру
+						{t('room.start_game')}
 					</button>
 				</div>
 			)}
@@ -469,7 +476,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}
 					>
 						<span className='text-[12px] font-[500]' style={{ color: '#8892b8' }}>
-							Вид:
+							{t('room.view_label')}
 						</span>
 						{(['speaker', 'grid'] as const).map(v => (
 							<button
@@ -485,7 +492,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: view === v ? '#0fffc8' : '#9aabcc',
 								}}
 							>
-								{v === 'speaker' ? '▶ Спікер' : '⊞ Всі гравці'}
+								{v === 'speaker' ? t('room.view_speaker') : t('room.view_grid')}
 							</button>
 						))}
 
@@ -500,7 +507,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									onClick={leaveBreakout}
 									className='text-[10px] px-[6px] py-[1px] rounded-[4px] cursor-pointer transition-all hover:brightness-125'
 									style={{ background: 'rgba(255,95,160,0.08)', border: '1px solid rgba(255,95,160,0.25)', color: 'rgba(255,95,160,0.85)' }}>
-									← Вийти
+									{t('room.leave_breakout')}
 								</button>
 							</div>
 						)}
@@ -524,7 +531,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: 'rgba(68,170,255,0.5)',
 								}}
 							>
-								🖼 Картинка
+								{t('room.image_btn')}
 							</button>
 						)}
 
@@ -629,7 +636,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 				{!isMobile && (
 					<button
 						onClick={() => setPanelOpen(v => !v)}
-						title={panelOpen ? 'Згорнути чат' : 'Відкрити чат'}
+						title={panelOpen ? t('room.close_chat') : t('room.open_chat')}
 						className='flex-shrink-0 w-[28px] flex flex-col items-center justify-center gap-[5px] cursor-pointer transition-all hover:brightness-125'
 						style={{
 							background: unreadChat > 0 && !panelOpen ? 'rgba(255,56,80,0.06)' : '#0b0d1a',
@@ -701,19 +708,19 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					}}>
 					<MobileBarBtn
 						icon={<Mic size={22} />}
-						label='Медіа'
+						label={t('room.bar_media')}
 						active={mobilePanelOpen === 'media'}
 						onClick={() => setMobilePanelOpen(p => p === 'media' ? null : 'media')}
 					/>
 					<MobileBarBtn
 						icon={<Smile size={22} />}
-						label='Емодзі'
+						label={t('room.bar_emoji')}
 						active={mobilePanelOpen === 'emoji'}
 						onClick={() => setMobilePanelOpen(p => p === 'emoji' ? null : 'emoji')}
 					/>
 					<MobileBarBtn
 						icon={<MessageSquare size={22} />}
-						label='Чат'
+						label={t('room.bar_chat')}
 						active={mobilePanelOpen === 'chat'}
 						onClick={() => setMobilePanelOpen(p => p === 'chat' ? null : 'chat')}
 						badge={mobilePanelOpen !== 'chat' ? unreadChat : 0}
@@ -721,7 +728,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					{isGM && (
 						<MobileBarBtn
 							icon={<Settings size={22} />}
-							label='Панель'
+							label={t('room.bar_panel')}
 							active={mobilePanelOpen === 'settings'}
 							onClick={() => setMobilePanelOpen(p => p === 'settings' ? null : 'settings')}
 						/>
@@ -742,7 +749,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
 									style={micOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{micOn ? <Mic size={22} /> : <MicOff size={22} />}
-									<span className='text-[11px]'>Мікрофон</span>
+									<span className='text-[11px]'>{t('room.mic_label')}</span>
 								</button>
 							)}
 							{!isSpectator && (
@@ -750,7 +757,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
 									style={camOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{camOn ? <Video size={22} /> : <VideoOff size={22} />}
-									<span className='text-[11px]'>Камера</span>
+									<span className='text-[11px]'>{t('room.cam_label')}</span>
 								</button>
 							)}
 							{!isSpectator && (
@@ -758,14 +765,14 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
 									style={screenOn ? { background: 'rgba(68,170,255,0.08)', border: '1px solid rgba(68,170,255,0.3)', color: '#44aaff' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{screenOn ? <ScreenShareOff size={22} /> : <ScreenShare size={22} />}
-									<span className='text-[11px]'>Екран</span>
+									<span className='text-[11px]'>{t('room.screen_label')}</span>
 								</button>
 							)}
 							<button onClick={handleLeave}
 								className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
 								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
 								<PhoneOff size={22} />
-								<span className='text-[11px]'>Вийти</span>
+								<span className='text-[11px]'>{t('room.leave_label')}</span>
 							</button>
 						</div>
 					)}
@@ -845,7 +852,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						className='text-[13px] font-[600] mb-[6px]'
 						style={{ color: 'rgba(220,230,255,0.9)' }}
 					>
-						🚪 Запрошення в кімнату
+						{t('room.breakout_invite_title')}
 					</p>
 					<p
 						className='text-[12px] mb-[12px]'
@@ -863,7 +870,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 								color: 'rgba(100,140,220,0.5)',
 							}}
 						>
-							Відмова
+							{t('room.breakout_decline')}
 						</button>
 						<button
 							onClick={() => joinBreakout(breakoutInvite.roomId)}
@@ -874,7 +881,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 								color: '#0fffc8',
 							}}
 						>
-							Увійти
+							{t('room.breakout_join')}
 						</button>
 					</div>
 				</div>
@@ -942,10 +949,10 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							className='text-[15px] font-[700]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
-							📢 Оголошення
+							{t('room.announce_title')}
 						</h3>
 						<textarea
-							placeholder='Текст оголошення...'
+							placeholder={t('room.announce_placeholder')}
 							defaultValue={state.announcement ?? ''}
 							id='announce-input'
 							rows={3}
@@ -966,7 +973,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: 'rgba(100,140,220,0.5)',
 								}}
 							>
-								Скасувати
+								{t('room.cancel')}
 							</button>
 							<button
 								onClick={() => {
@@ -983,7 +990,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: '#c8a830',
 								}}
 							>
-								Опублікувати
+								{t('room.publish')}
 							</button>
 						</div>
 					</div>
@@ -1007,7 +1014,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							className='text-[15px] font-[700]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
-							🖼 Картинка для залу
+							{t('room.image_picker_title')}
 						</h3>
 						<div className='grid grid-cols-3 gap-[7px]'>
 							{[state.coverImage, ...state.images]
@@ -1049,7 +1056,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 										color: 'rgba(255,95,160,0.7)',
 									}}
 								>
-									Сховати картинку
+									{t('room.hide_image')}
 								</button>
 							)}
 							<button
@@ -1061,7 +1068,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: 'rgba(100,140,220,0.5)',
 								}}
 							>
-								Закрити
+								{t('room.close')}
 							</button>
 						</div>
 					</div>
@@ -1085,14 +1092,13 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							className='text-[15px] font-[700]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
-							Зупинити гру?
+							{t('room.stop_confirm_title')}
 						</h3>
 						<p
 							className='text-[13px]'
 							style={{ color: 'rgba(100,140,220,0.6)' }}
 						>
-							Гру буде завершено для всіх учасників. Нотатки буде надіслано на
-							вашу пошту.
+							{t('room.stop_confirm_msg')}
 						</p>
 						<div className='flex gap-[8px]'>
 							<button
@@ -1104,7 +1110,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: 'rgba(100,140,220,0.5)',
 								}}
 							>
-								Скасувати
+								{t('room.cancel')}
 							</button>
 							<button
 								onClick={async () => {
@@ -1136,7 +1142,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									color: '#ff3850',
 								}}
 							>
-								Зупинити
+								{t('room.stop_confirm_yes')}
 							</button>
 						</div>
 					</div>
@@ -1159,6 +1165,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 
 // ── Page wrapper with LiveKit provider ────────────────────────────────────────
 function GameRoomInner() {
+	const { t } = useTranslation()
 	const { code = '' } = useParams<{ code: string }>()
 	const { user, isLoading } = useAuth()
 	const room = useGameRoom(code)
@@ -1180,7 +1187,7 @@ function GameRoomInner() {
 				style={{ background: '#07080f' }}
 			>
 				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '13px' }}>
-					Завантаження...
+					{t('room.loading')}
 				</span>
 			</div>
 		)
@@ -1193,7 +1200,7 @@ function GameRoomInner() {
 				style={{ background: '#07080f' }}
 			>
 				<span style={{ color: 'rgba(100,140,220,0.6)', fontSize: '14px' }}>
-					Потрібна авторизація
+					{t('room.auth_required')}
 				</span>
 			</div>
 		)
@@ -1206,7 +1213,7 @@ function GameRoomInner() {
 				style={{ background: '#07080f' }}
 			>
 				<span className='text-[15px] font-[600]' style={{ color: '#ff3850' }}>
-					Кімнату не знайдено
+					{t('room.not_found')}
 				</span>
 				<span
 					className='text-[12px]'
@@ -1221,10 +1228,10 @@ function GameRoomInner() {
 	if (!activeLk) {
 		const msg =
 			connStatus === 'failed'
-				? 'Не вдалося підключитися до сервера'
+				? t('room.conn_failed')
 				: connStatus === 'connected'
-					? 'Отримання токена LiveKit...'
-					: 'Підключення до сервера...'
+					? t('room.getting_token')
+					: t('room.connecting_server')
 		return (
 			<div
 				className='w-screen h-screen flex items-center justify-center flex-col gap-[14px]'
@@ -1246,7 +1253,7 @@ function GameRoomInner() {
 					{msg}
 				</span>
 				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '11px' }}>
-					Код кімнати: {code}
+					{t('room.room_code')}{code}
 				</span>
 			</div>
 		)

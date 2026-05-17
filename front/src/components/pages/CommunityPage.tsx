@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
@@ -73,6 +74,7 @@ const CommentItem = ({
 	onStartReply, onSaveReply, onCancelReply, onReplyTextChange,
 }: CommentItemProps) => {
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 	const isOwn      = currentUserId === comment.authorId
 	const isEditing  = editingId === comment._id
 	const isReplying = replyingToId === comment._id
@@ -88,7 +90,7 @@ const CommentItem = ({
 							<span className='text-[14px] font-[600]' style={{ color: isDark ? 'rgba(215,232,255,0.97)' : 'var(--text-primary)' }}>{fullName}</span>
 							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.72)' : 'var(--text-muted)' }}>{fmtDate(comment.createdAt)}</span>
 							{comment.editedAt && (
-								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.65)' }}>· відредаговано</span>
+								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.65)' }}>{t('community.edited')}</span>
 							)}
 						</div>
 
@@ -114,8 +116,8 @@ const CommentItem = ({
 											? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.48)', color: 'rgba(120,200,255,0.95)' }
 											: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.3)', color: 'var(--accent)' }
 										}
-									>Зберегти</button>
-									<button onClick={onCancelEdit} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>Скасувати</button>
+									>{t('community.save')}</button>
+									<button onClick={onCancelEdit} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>{t('community.cancel')}</button>
 								</div>
 							</div>
 						) : (
@@ -142,17 +144,17 @@ const CommentItem = ({
 										style={{ color: isDark ? 'rgba(192,130,255,0.82)' : 'var(--text-secondary)' }}
 									>
 										<CornerDownRight size={13} strokeWidth={2} />
-										Відповісти
+										{t('community.reply')}
 									</button>
 								)}
 
 								{isOwn && (
 									<>
 										<button onClick={() => onStartEdit(comment._id, comment.text)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(68,170,255,0.88)' : 'var(--accent)' }}>
-											<Pencil size={12} strokeWidth={2} />Ред.
+											<Pencil size={12} strokeWidth={2} />{t('community.edit_short')}
 										</button>
 										<button onClick={() => onDelete(comment._id)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(255,95,160,0.88)' : 'rgba(180,50,50,0.9)' }}>
-											<Trash2 size={12} strokeWidth={2} />Вид.
+											<Trash2 size={12} strokeWidth={2} />{t('community.delete_short')}
 										</button>
 									</>
 								)}
@@ -167,7 +169,7 @@ const CommentItem = ({
 							value={replyText}
 							onChange={e => onReplyTextChange(e.target.value.slice(0, 500))}
 							rows={2} autoFocus
-							placeholder='Ваша відповідь...'
+							placeholder={t('community.reply_placeholder')}
 							className='w-full rounded-[9px] px-[11px] py-[9px] text-[14px] focus:outline-none resize-none transition-all'
 							style={{
 								background: isDark ? '#060e24' : 'var(--bg-input)',
@@ -179,8 +181,8 @@ const CommentItem = ({
 							<button onClick={() => onSaveReply(comment._id)} className='px-[12px] py-[5px] rounded-[8px] text-[13px] font-[600] cursor-pointer transition-all' style={isDark
 								? { background: 'rgba(68,170,255,0.18)', border: '1px solid rgba(68,170,255,0.45)', color: 'rgba(120,200,255,0.95)' }
 								: { background: 'rgba(192,83,58,0.1)', border: '1px solid rgba(192,83,58,0.35)', color: 'var(--accent)' }
-							}>Відповісти</button>
-							<button onClick={onCancelReply} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>Скасувати</button>
+							}>{t('community.reply')}</button>
+							<button onClick={onCancelReply} className='px-[10px] py-[5px] rounded-[8px] text-[13px] cursor-pointer' style={{ color: isDark ? 'rgba(170,190,240,0.75)' : 'var(--text-secondary)' }}>{t('community.cancel')}</button>
 						</div>
 					</div>
 				)}
@@ -222,6 +224,7 @@ const CommentSection = ({
 	onCommentCreate, onCommentUpdate, onCommentDelete, onCommentLike,
 }: CommentSectionProps) => {
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 	const [newText, setNewText]               = useState('')
 	const [submitting, setSubmitting]         = useState(false)
 	const [editingId, setEditingId]           = useState<string | null>(null)
@@ -246,7 +249,7 @@ const CommentSection = ({
 						value={newText}
 						onChange={e => setNewText(e.target.value.slice(0, 500))}
 						rows={2}
-						placeholder='Написати коментар...'
+						placeholder={t('community.comment_placeholder')}
 						className='w-full rounded-[10px] px-[13px] py-[10px] text-[14px] focus:outline-none resize-none transition-all'
 						style={{
 							background: isDark ? '#060e24' : 'var(--bg-input)',
@@ -266,7 +269,7 @@ const CommentSection = ({
 							}
 						>
 							<Send size={13} strokeWidth={2} />
-							{submitting ? '...' : 'Відправити'}
+							{submitting ? '...' : t('community.send')}
 						</button>
 					</div>
 				</div>
@@ -279,7 +282,7 @@ const CommentSection = ({
 			) : (
 				<div className='flex flex-col' style={{ gap: 0 }}>
 					{rootComments.length === 0 && !isLoggedIn && (
-						<p className='text-[14px] py-[10px]' style={{ color: isDark ? 'rgba(155,185,240,0.58)' : 'var(--text-muted)' }}>Коментарів поки немає</p>
+						<p className='text-[14px] py-[10px]' style={{ color: isDark ? 'rgba(155,185,240,0.58)' : 'var(--text-muted)' }}>{t('community.no_comments')}</p>
 					)}
 					{rootComments.map((c, i) => (
 						<div key={c._id} style={i > 0 ? { borderTop: `1px solid ${isDark ? 'rgba(68,170,255,0.07)' : 'var(--border-subtle)'}` } : {}}>
@@ -332,6 +335,7 @@ const PostCard = ({
 	onCommentCreate, onCommentUpdate, onCommentDelete, onCommentLike,
 }: PostCardProps) => {
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 	const isOwn    = currentUserId === post.authorId
 	const fullName = [post.authorName, post.authorSurname].filter(Boolean).join(' ')
 
@@ -352,7 +356,7 @@ const PostCard = ({
 							<span className='text-[15px] font-[600]' style={{ color: isDark ? 'rgba(225,238,255,0.98)' : 'var(--text-primary)' }}>{fullName}</span>
 							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.75)' : 'var(--text-muted)' }}>{fmtDate(post.createdAt)}</span>
 							{post.editedAt && (
-								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.72)' }}>· відредаговано</span>
+								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.72)' }}>{t('community.edited')}</span>
 							)}
 						</div>
 						{post.topic && (
@@ -380,7 +384,7 @@ const PostCard = ({
 							}
 						>
 							<Pencil size={12} strokeWidth={2} />
-							<span className='hidden sm:inline'>Ред.</span>
+							<span className='hidden sm:inline'>{t('community.edit_short')}</span>
 						</button>
 						<button
 							onClick={onDelete}
@@ -391,7 +395,7 @@ const PostCard = ({
 							}
 						>
 							<Trash2 size={12} strokeWidth={2} />
-							<span className='hidden sm:inline'>Вид.</span>
+							<span className='hidden sm:inline'>{t('community.delete_short')}</span>
 						</button>
 					</div>
 				)}
@@ -408,7 +412,7 @@ const PostCard = ({
 					onClick={() => isLoggedIn && onLike()}
 					className={`flex items-center gap-[6px] text-[14px] font-[500] transition-all ${isLoggedIn ? 'cursor-pointer hover:opacity-90' : 'cursor-default opacity-60'}`}
 					style={{ color: post.isLiked ? (isDark ? 'rgba(255,75,145,0.98)' : 'rgba(192,83,58,0.98)') : (isDark ? 'rgba(190,210,255,0.7)' : 'var(--text-muted)') }}
-					title={!isLoggedIn ? 'Увійдіть, щоб вподобати' : undefined}
+					title={!isLoggedIn ? t('community.like_login') : undefined}
 				>
 					<Heart size={16} strokeWidth={2} fill={post.isLiked ? 'currentColor' : 'none'} />
 					{post.likesCount > 0 && <span>{post.likesCount}</span>}
@@ -454,6 +458,7 @@ const PostModal = ({
 	authorName?: string; authorSurname?: string
 }) => {
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 	const [topic, setTopic]     = useState(initialTopic)
 	const [text, setText]       = useState(initialText)
 	const [loading, setLoading] = useState(false)
@@ -465,10 +470,10 @@ const PostModal = ({
 
 	const handle = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!text.trim()) { setError('Напишіть текст'); return }
+		if (!text.trim()) { setError(t('community.text_required')); return }
 		setLoading(true); setError('')
 		try { await onSubmit(topic.trim(), text.trim()); onClose() }
-		catch (err) { setError(err instanceof Error ? err.message : 'Помилка') }
+		catch (err) { setError(err instanceof Error ? err.message : t('community.error')) }
 		finally { setLoading(false) }
 	}
 
@@ -493,7 +498,7 @@ const PostModal = ({
 				<form onSubmit={handle} className='flex flex-col gap-[13px]'>
 					<input
 						type='text'
-						placeholder="Тема (необов'язково)"
+						placeholder={t('community.topic_placeholder')}
 						value={topic}
 						onChange={e => setTopic(e.target.value.slice(0, 100))}
 						className='w-full rounded-[11px] px-[15px] py-[11px] text-[15px] focus:outline-none transition-all'
@@ -501,7 +506,7 @@ const PostModal = ({
 					/>
 					<div className='flex flex-col gap-[5px]'>
 						<textarea
-							placeholder='Що хочете запитати або обговорити?'
+							placeholder={t('community.content_placeholder')}
 							value={text}
 							onChange={e => setText(e.target.value.slice(0, 1000))}
 							rows={5} autoFocus
@@ -517,12 +522,12 @@ const PostModal = ({
 						<button type='button' onClick={onClose} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[500] cursor-pointer transition-all' style={isDark
 							? { border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.7)' }
 							: { border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
-						}>Скасувати</button>
+						}>{t('community.cancel')}</button>
 						<button type='submit' disabled={loading || !text.trim()} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all disabled:opacity-40' style={isDark
 							? { background: 'rgba(68,170,255,0.2)', border: '1px solid rgba(68,170,255,0.55)', color: 'rgba(130,210,255,0.98)' }
 							: { background: 'rgba(192,83,58,0.15)', border: '1px solid rgba(192,83,58,0.45)', color: 'var(--accent)' }
 						}>
-							{loading ? '...' : 'Опублікувати'}
+							{loading ? '...' : t('community.publish')}
 						</button>
 					</div>
 				</form>
@@ -535,6 +540,7 @@ const PostModal = ({
 
 const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => {
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 	return (
 		<div className={`flex flex-col items-center gap-[18px] ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
 			<div className='relative flex items-center justify-center' style={{ width: 188, height: 188 }}>
@@ -598,7 +604,7 @@ const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: bool
 					</div>
 				</button>
 			</div>
-			<span className='text-[17px] font-[600]' style={{ color: isDark ? 'rgba(225,240,255,0.97)' : 'var(--text-primary)' }}>Створити запит</span>
+			<span className='text-[17px] font-[600]' style={{ color: isDark ? 'rgba(225,240,255,0.97)' : 'var(--text-primary)' }}>{t('community.create_post')}</span>
 		</div>
 	)
 }
@@ -608,6 +614,7 @@ const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: bool
 export const CommunityPage = () => {
 	const { user, token, isLoggedIn } = useAuth()
 	const { isDark } = useTheme()
+	const { t } = useTranslation()
 
 	const [posts, setPosts]               = useState<PostData[]>([])
 	const [total, setTotal]               = useState(0)
@@ -797,11 +804,11 @@ export const CommunityPage = () => {
 						}}
 					>
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
-						Спільнота
+						{t('community.badge')}
 					</span>
-					<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-center' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>Спільноти</h1>
+					<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-center' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>{t('community.title')}</h1>
 					<p className='text-[15px] text-center' style={{ color: isDark ? 'rgba(160,190,240,0.82)' : 'var(--text-secondary)' }}>
-						Запитуйте, обговорюйте, діліться думками
+						{t('community.subtitle')}
 					</p>
 				</div>
 
@@ -827,11 +834,11 @@ export const CommunityPage = () => {
 								)
 							}
 						>
-							{s === 'new' ? '✦ Нові' : '🔥 Популярні'}
+							{s === 'new' ? t('community.tab_new') : t('community.tab_popular')}
 						</button>
 					))}
 					<span className='ml-auto text-[13px]' style={{ color: isDark ? 'rgba(150,180,240,0.68)' : 'var(--text-muted)' }}>
-						{total > 0 && `${total} публікацій`}
+						{total > 0 && t('community.posts_count', { count: total })}
 					</span>
 				</div>
 
@@ -843,8 +850,8 @@ export const CommunityPage = () => {
 				) : posts.length === 0 ? (
 					<div className='flex flex-col items-center gap-[12px] py-[56px]' style={{ color: isDark ? 'rgba(155,185,240,0.62)' : 'var(--text-muted)' }}>
 						<MessageCircle size={42} strokeWidth={1.2} />
-						<p className='text-[16px] font-[500]'>Поки немає публікацій</p>
-						<p className='text-[14px]'>Будьте першим — натисніть на орб вище</p>
+						<p className='text-[16px] font-[500]'>{t('community.empty')}</p>
+						<p className='text-[14px]'>{t('community.empty_sub')}</p>
 					</div>
 				) : (
 					<div className='flex flex-col gap-[16px]'>
@@ -875,7 +882,7 @@ export const CommunityPage = () => {
 									: { border: '1px solid var(--border-medium)', color: 'var(--text-secondary)' }
 								}
 							>
-								{loadingMore ? 'Завантаження...' : 'Показати більше'}
+								{loadingMore ? t('community.loading') : t('community.show_more')}
 							</button>
 						)}
 					</div>
@@ -885,7 +892,7 @@ export const CommunityPage = () => {
 			{/* Create modal */}
 			{createOpen && token && (
 				<PostModal
-					title='Новий пост' token={token}
+					title={t('community.new_post')} token={token}
 					onClose={() => setCreateOpen(false)}
 					onSubmit={async (topic, text) => {
 						const post = await createPost(token, { topic, text })
@@ -897,7 +904,7 @@ export const CommunityPage = () => {
 			{/* Edit modal */}
 			{editPost && token && (
 				<PostModal
-					title='Редагувати пост' token={token}
+					title={t('community.edit_post')} token={token}
 					initialTopic={editPost.topic} initialText={editPost.text}
 					onClose={() => setEditPost(null)}
 					onSubmit={async (topic, text) => {
@@ -916,17 +923,17 @@ export const CommunityPage = () => {
 							: { background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)' }
 						}
 					>
-						<h3 className='text-[19px] font-[700]' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>Видалити пост?</h3>
-						<p className='text-[14px]' style={{ color: isDark ? 'rgba(190,210,255,0.78)' : 'var(--text-secondary)' }}>Цю дію неможливо скасувати. Всі коментарі також будуть видалені.</p>
+						<h3 className='text-[19px] font-[700]' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>{t('community.delete_confirm_title')}</h3>
+						<p className='text-[14px]' style={{ color: isDark ? 'rgba(190,210,255,0.78)' : 'var(--text-secondary)' }}>{t('community.delete_confirm_msg')}</p>
 						<div className='flex gap-[10px]'>
 							<button onClick={() => setDeleteConfirm(null)} className='flex-1 py-[11px] rounded-[11px] text-[15px] cursor-pointer transition-all' style={isDark
 								? { border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.72)' }
 								: { border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }
-							}>Скасувати</button>
+							}>{t('community.cancel')}</button>
 							<button onClick={() => handleDeletePost(deleteConfirm)} className='flex-1 py-[11px] rounded-[11px] text-[15px] font-[600] cursor-pointer transition-all' style={isDark
 								? { background: 'rgba(255,95,160,0.14)', border: '1px solid rgba(255,95,160,0.42)', color: 'rgba(255,120,170,0.98)' }
 								: { background: 'rgba(200,60,60,0.06)', border: '1px solid rgba(200,60,60,0.25)', color: 'rgba(180,50,50,0.9)' }
-							}>Видалити</button>
+							}>{t('community.delete')}</button>
 						</div>
 					</div>
 				</div>

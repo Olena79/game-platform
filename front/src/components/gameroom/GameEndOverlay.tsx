@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StarField } from './StarField'
 
 interface Props { onDone?: () => void }
 
 export const GameEndOverlay = ({ onDone }: Props) => {
+	const { t } = useTranslation()
 	const [phase, setPhase] = useState<'in' | 'show' | 'out'>('in')
 
 	useEffect(() => {
@@ -71,18 +73,18 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 							fontSize: 'clamp(36px, 10vw, 80px)',
 						}}
 					>
-						Вітаємо!
+						{t('room.end.title')}
 					</h1>
 					<p
 						className='font-[300] tracking-[1px] text-center'
 						style={{ color: 'rgba(180,220,255,0.65)', fontSize: 'clamp(13px, 4vw, 22px)' }}
 					>
-						Цю гру пройдено
+						{t('room.end.subtitle')}
 					</p>
 				</div>
 				<div className='mt-[4px] sm:mt-[8px] flex items-center gap-[8px] text-[13px]' style={{ color: 'rgba(15,255,200,0.4)' }}>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(15,255,200,0.28)' }} />
-					<span>Дякуємо за участь</span>
+					<span>{t('room.end.thanks')}</span>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(15,255,200,0.28)' }} />
 				</div>
 			</div>

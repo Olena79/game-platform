@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
 	onSet: (label: string, seconds: number) => void
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export const TimerModal = ({ onSet, onClose }: Props) => {
+	const { t } = useTranslation()
 	const [label, setLabel]   = useState('')
 	const [mins, setMins]     = useState(5)
 	const [secs, setSecs]     = useState(0)
@@ -18,10 +20,10 @@ export const TimerModal = ({ onSet, onClose }: Props) => {
 				className='w-[300px] rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 			>
-				<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>⏱️ Таймер</h3>
+				<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>{t('room.timer.title')}</h3>
 
 				<input
-					placeholder='Назва (наприклад: Раунд 1)'
+					placeholder={t('room.timer.name_placeholder')}
 					value={label}
 					onChange={e => setLabel(e.target.value.slice(0, 40))}
 					className='w-full rounded-[8px] px-[10px] py-[8px] text-[13px] focus:outline-none'
@@ -30,7 +32,7 @@ export const TimerModal = ({ onSet, onClose }: Props) => {
 
 				<div className='flex items-center gap-[10px]'>
 					<div className='flex flex-col items-center gap-[4px] flex-1'>
-						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>Хв</span>
+						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>{t('room.timer.minutes')}</span>
 						<input
 							type='number' min={0} max={99} value={mins}
 							onChange={e => setMins(Math.max(0, Number(e.target.value)))}
@@ -40,7 +42,7 @@ export const TimerModal = ({ onSet, onClose }: Props) => {
 					</div>
 					<span className='text-[22px] font-[300] pt-[16px]' style={{ color: 'rgba(100,140,220,0.4)' }}>:</span>
 					<div className='flex flex-col items-center gap-[4px] flex-1'>
-						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>Сек</span>
+						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>{t('room.timer.seconds')}</span>
 						<input
 							type='number' min={0} max={59} value={secs}
 							onChange={e => setSecs(Math.max(0, Math.min(59, Number(e.target.value))))}
@@ -54,14 +56,14 @@ export const TimerModal = ({ onSet, onClose }: Props) => {
 					<button onClick={onClose}
 						className='flex-1 py-[9px] rounded-[9px] text-[12px] cursor-pointer transition-all'
 						style={{ background: 'rgba(15,17,32,0.5)', border: '1px solid rgba(68,170,255,0.12)', color: 'rgba(100,140,220,0.5)' }}>
-						Скасувати
+						{t('room.timer.cancel')}
 					</button>
 					<button
-						onClick={() => { if (totalSecs > 0) { onSet(label || 'Таймер', totalSecs); onClose() } }}
+						onClick={() => { if (totalSecs > 0) { onSet(label || t('room.timer.default_label'), totalSecs); onClose() } }}
 						disabled={totalSecs <= 0}
 						className='flex-1 py-[9px] rounded-[9px] text-[12px] font-[600] cursor-pointer transition-all disabled:opacity-40'
 						style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
-						Встановити
+						{t('room.timer.set')}
 					</button>
 				</div>
 			</div>

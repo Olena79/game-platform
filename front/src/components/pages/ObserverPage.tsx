@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import {
 	LiveKitRoom as LKRoom,
@@ -12,6 +13,7 @@ import { useRecording } from '../../hooks/useRecording'
 import { ObserverView } from '../gameroom/ObserverView'
 
 function ObserverInner({ gameCode }: { gameCode: string }) {
+	const { t } = useTranslation()
 	const { user, token: authToken } = useAuth()
 	const {
 		state, lk, error, connStatus,
@@ -40,7 +42,7 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 	if (!user) {
 		return (
 			<div className='w-screen h-screen flex items-center justify-center' style={{ background: '#07080f' }}>
-				<span style={{ color: 'rgba(100,140,220,0.6)', fontSize: '14px' }}>Потрібна авторизація</span>
+				<span style={{ color: 'rgba(100,140,220,0.6)', fontSize: '14px' }}>{t('room.auth_required')}</span>
 			</div>
 		)
 	}
@@ -58,7 +60,7 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 			<div className='w-screen h-screen flex items-center justify-center flex-col gap-[14px]' style={{ background: '#07080f' }}>
 				<div className='w-[8px] h-[8px] rounded-full pulse-dot-anim' style={{ background: '#0fffc8' }} />
 				<span style={{ color: 'rgba(100,140,220,0.5)', fontSize: '13px' }}>
-					{connStatus === 'failed' ? 'Помилка підключення' : 'Підключення...'}
+					{connStatus === 'failed' ? t('room.conn_error') : t('room.connecting')}
 				</span>
 			</div>
 		)
@@ -96,13 +98,14 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 }
 
 export const ObserverPage = () => {
+	const { t } = useTranslation()
 	const { code = '' } = useParams<{ code: string }>()
 	const { isLoading } = useAuth()
 
 	if (isLoading) {
 		return (
 			<div className='w-screen h-screen flex items-center justify-center' style={{ background: '#07080f' }}>
-				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '13px' }}>Завантаження...</span>
+				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '13px' }}>{t('room.loading')}</span>
 			</div>
 		)
 	}

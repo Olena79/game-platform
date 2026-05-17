@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ArrowRight, Landmark } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { RoomPlayer } from './types'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props) => {
+	const { t } = useTranslation()
 	const [tab, setTab]         = useState<'player' | 'bank'>('player')
 	const [toUserId, setTo]     = useState('')
 	const [amount, setAmount]   = useState(1)
@@ -38,24 +40,24 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 			>
 				<div className='flex items-center justify-between'>
 					<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
-						Монети
+						{t('room.coin.title')}
 					</h3>
 					<span className='text-[13px] font-[600]' style={{ color: '#0fffc8' }}>
-						🪙 {me.coins} у вас
+						🪙 {me.coins} {t('room.coin.you_have')}
 					</span>
 				</div>
 
 				{/* Tabs */}
 				<div className='flex gap-[6px]'>
-					{(['player', 'bank'] as const).map(t => (
-						<button key={t} onClick={() => setTab(t)}
+					{(['player', 'bank'] as const).map(tb => (
+						<button key={tb} onClick={() => setTab(tb)}
 							className='flex-1 py-[7px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all'
 							style={{
-								background: tab === t ? 'rgba(15,255,200,0.1)' : 'rgba(15,17,32,0.5)',
-								border: tab === t ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,170,255,0.12)',
-								color: tab === t ? '#0fffc8' : 'rgba(100,140,220,0.5)',
+								background: tab === tb ? 'rgba(15,255,200,0.1)' : 'rgba(15,17,32,0.5)',
+								border: tab === tb ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,170,255,0.12)',
+								color: tab === tb ? '#0fffc8' : 'rgba(100,140,220,0.5)',
 							}}>
-							{t === 'player' ? '→ Гравцю' : '🏦 В банк'}
+							{tb === 'player' ? t('room.coin.to_player') : t('room.coin.to_bank')}
 						</button>
 					))}
 				</div>
@@ -67,7 +69,7 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 						className='w-full rounded-[8px] px-[10px] py-[8px] text-[13px] appearance-none focus:outline-none'
 						style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.85)' }}
 					>
-						<option value=''>— Оберіть гравця —</option>
+						<option value=''>{t('room.coin.select_player')}</option>
 						{others.map(p => (
 							<option key={p.userId} value={p.userId} style={{ background: '#060e24' }}>
 								{p.name}{p.role ? ` (${p.role})` : ''}
@@ -77,7 +79,7 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 				)}
 
 				<div className='flex items-center gap-[8px]'>
-					<span className='text-[12px]' style={{ color: 'rgba(100,140,220,0.5)' }}>Сума:</span>
+					<span className='text-[12px]' style={{ color: 'rgba(100,140,220,0.5)' }}>{t('room.coin.amount_label')}</span>
 					<input
 						type='number'
 						min={1}
@@ -98,23 +100,23 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 						className='w-full py-[10px] rounded-[10px] text-[13px] font-[600] cursor-pointer transition-all disabled:opacity-40'
 						style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}
 					>
-						Передати {amount} 🪙 {tab === 'bank' ? 'в банк' : `→ ${toPlayer?.name ?? ''}`}
+						{t('room.coin.transfer_btn')} {amount} 🪙 {tab === 'bank' ? 'в банк' : `→ ${toPlayer?.name ?? ''}`}
 					</button>
 				) : (
 					<div className='flex flex-col gap-[8px]'>
 						<p className='text-[12px] text-center' style={{ color: 'rgba(255,183,40,0.8)' }}>
-							Підтвердити передачу {amount} 🪙?
+							{t('room.coin.confirm_msg')} {amount} 🪙?
 						</p>
 						<div className='flex gap-[8px]'>
 							<button onClick={() => setConfirm(false)}
 								className='flex-1 py-[8px] rounded-[8px] text-[12px] cursor-pointer transition-all'
 								style={{ background: 'rgba(15,17,32,0.5)', border: '1px solid rgba(68,170,255,0.15)', color: 'rgba(100,140,220,0.6)' }}>
-								Скасувати
+								{t('room.coin.cancel')}
 							</button>
 							<button onClick={handleConfirm}
 								className='flex-1 py-[8px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all flex items-center justify-center gap-[5px]'
 								style={{ background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.35)', color: '#0fffc8' }}>
-								<ArrowRight size={13} /> Підтвердити
+								<ArrowRight size={13} /> {t('room.coin.confirm')}
 							</button>
 						</div>
 					</div>
@@ -123,7 +125,7 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 				<button onClick={onClose}
 					className='text-[11px] text-center cursor-pointer transition-colors'
 					style={{ color: 'rgba(100,140,220,0.4)' }}>
-					Закрити
+					{t('room.coin.close')}
 				</button>
 			</div>
 		</div>

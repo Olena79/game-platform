@@ -214,7 +214,7 @@ export const AuthPage = () => {
 				>
 					<button
 						onClick={() => navigate(-1)}
-						aria-label='Закрити'
+						aria-label={t('auth.close')}
 						className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer hover:bg-[rgba(255,255,255,0.06)]'
 						style={isDark
 							? { color: '#44aaff', border: '1px solid rgba(68,170,255,0.35)' }
@@ -304,7 +304,7 @@ export const AuthPage = () => {
 						<>
 							<div className='flex items-center gap-[12px] my-[18px]'>
 								<div className='flex-1 h-[1px]' style={{ background: isDark ? 'rgba(68,170,255,0.12)' : 'var(--border-subtle)' }} />
-								<span className='text-[12px]' style={{ color: isDark ? 'rgba(180,200,255,0.6)' : 'var(--text-muted)' }}>або</span>
+								<span className='text-[12px]' style={{ color: isDark ? 'rgba(180,200,255,0.6)' : 'var(--text-muted)' }}>{t('auth.or')}</span>
 								<div className='flex-1 h-[1px]' style={{ background: isDark ? 'rgba(68,170,255,0.12)' : 'var(--border-subtle)' }} />
 							</div>
 							<GoogleSignInButton

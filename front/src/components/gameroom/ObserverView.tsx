@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Send, ChevronRight, ChevronLeft } from 'lucide-react'
 import type { GameRoomState, ChatMessage } from './types'
 import { SpeakerView } from './SpeakerView'
@@ -29,6 +30,7 @@ export const ObserverView = ({
 	onPrepare, onStop,
 	startAnim, endAnim, onStartAnimDone, onEndAnimDone,
 }: Props) => {
+	const { t } = useTranslation()
 	const [chatOpen, setChatOpen] = useState(false)
 	const [chatInput, setChatInput] = useState('')
 	const chatEndRef = useRef<HTMLDivElement>(null)
@@ -38,9 +40,9 @@ export const ObserverView = ({
 	}, [messages.length])
 
 	const submit = () => {
-		const t = chatInput.trim()
-		if (!t) return
-		onSendChat(t)
+		const msg = chatInput.trim()
+		if (!msg) return
+		onSendChat(msg)
 		setChatInput('')
 	}
 
@@ -59,7 +61,7 @@ export const ObserverView = ({
 
 				{/* Status dot + label */}
 				<span style={{ color: isRecording ? '#ff3850' : 'rgba(74,80,112,0.7)', fontSize: '11px', letterSpacing: '0.04em' }}>
-					{isRecording ? '● Запис' : isUploading ? '↑ Завантаження' : isDone ? '✓ Збережено' : isPrepared ? '◎ Готовий' : isError ? '✕ Помилка' : '○ Спостерігач'}
+					{isRecording ? t('room.observer.rec_active') : isUploading ? t('room.observer.rec_uploading') : isDone ? t('room.observer.rec_saved') : isPrepared ? t('room.observer.rec_ready') : isError ? t('room.observer.rec_error') : t('room.observer.status')}
 				</span>
 
 				{/* Upload progress bar */}
@@ -76,7 +78,7 @@ export const ObserverView = ({
 				{isDone && shareLink && (
 					<a href={shareLink} target='_blank' rel='noreferrer'
 						className='text-[11px] underline' style={{ color: '#0fffc8' }}>
-						Переглянути →
+						{t('room.observer.view_link')}
 					</a>
 				)}
 
@@ -90,19 +92,19 @@ export const ObserverView = ({
 					<button onClick={onPrepare}
 						className='px-[12px] py-[4px] rounded-[6px] text-[11px] font-[600] cursor-pointer transition-all hover:brightness-125'
 						style={{ background: 'rgba(180,130,255,0.1)', border: '1px solid rgba(180,130,255,0.3)', color: '#c07fff' }}>
-						Підготувати запис
+						{t('room.observer.prepare')}
 					</button>
 				)}
 				{isPrepared && (
 					<span className='text-[11px] italic' style={{ color: 'rgba(200,168,48,0.7)' }}>
-						Очікую сигнал від ІМ...
+						{t('room.observer.waiting_gm')}
 					</span>
 				)}
 				{isRecording && (
 					<button onClick={onStop}
 						className='px-[12px] py-[4px] rounded-[6px] text-[11px] font-[600] cursor-pointer transition-all hover:brightness-125'
 						style={{ background: 'rgba(255,56,80,0.1)', border: '1px solid rgba(255,56,80,0.3)', color: '#ff3850' }}>
-						■ Зупинити запис
+						{t('room.observer.stop_rec')}
 					</button>
 				)}
 
@@ -147,7 +149,7 @@ export const ObserverView = ({
 						style={{ borderLeft: '1px solid #151824' }}>
 						<div className='flex-shrink-0 px-[12px] py-[8px]'
 							style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}>
-							<span className='text-[10px] uppercase tracking-[0.1em]' style={{ color: '#4a5070' }}>Чат</span>
+							<span className='text-[10px] uppercase tracking-[0.1em]' style={{ color: '#4a5070' }}>{t('room.observer.chat_title')}</span>
 						</div>
 						<div className='flex-1 overflow-y-auto px-[10px] py-[8px] flex flex-col gap-[6px]'
 							style={{ overscrollBehavior: 'contain' }}>
@@ -164,7 +166,7 @@ export const ObserverView = ({
 								value={chatInput}
 								onChange={e => setChatInput(e.target.value)}
 								onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-								placeholder='Повідомлення...'
+								placeholder={t('room.observer.msg_placeholder')}
 								className='flex-1 rounded-[8px] px-[10px] py-[6px] text-[12px] focus:outline-none'
 								style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.15)', color: 'rgba(180,200,255,0.85)' }}
 							/>
