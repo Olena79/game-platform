@@ -9,9 +9,9 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 	const [phase, setPhase] = useState<'in' | 'show' | 'out'>('in')
 
 	useEffect(() => {
-		const t1 = setTimeout(() => setPhase('show'), 600)
-		const t2 = setTimeout(() => setPhase('out'), 8000)
-		const t3 = setTimeout(() => onDone?.(), 9000)
+		const t1 = setTimeout(() => setPhase('show'), 300)
+		const t2 = setTimeout(() => setPhase('out'), 4000)
+		const t3 = setTimeout(() => onDone?.(), 4500)
 		return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
 	}, [])
 
@@ -21,7 +21,7 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 			style={{
 				background: '#030512',
 				opacity: phase === 'out' ? 0 : 1,
-				transition: 'opacity 1000ms ease',
+				transition: 'opacity 500ms ease',
 				pointerEvents: phase === 'out' ? 'none' : 'all',
 			}}
 		>
@@ -52,11 +52,11 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 				}}
 			/>
 
-			<div className='relative flex flex-col items-center gap-[12px] sm:gap-[18px] px-[20px]'
+			<div className='relative flex flex-col items-center gap-[8px] sm:gap-[16px] px-[12px] sm:px-[20px] w-full max-w-[440px]'
 				style={{
 					opacity: phase === 'show' ? 1 : 0,
 					transform: phase === 'show' ? 'translateY(0) scale(1)' : 'translateY(22px) scale(0.94)',
-					transition: 'opacity 700ms ease, transform 700ms ease',
+					transition: 'opacity 350ms ease, transform 350ms ease',
 				}}>
 				<span
 					className='text-[10px] uppercase font-[600] text-center'
@@ -70,19 +70,19 @@ export const GameEndOverlay = ({ onDone }: Props) => {
 						style={{
 							color: '#0fffc8',
 							textShadow: '0 0 40px rgba(15,255,200,0.5)',
-							fontSize: 'clamp(36px, 10vw, 80px)',
+							fontSize: 'clamp(26px, 8vw, 80px)',
 						}}
 					>
 						{t('room.end.title')}
 					</h1>
 					<p
 						className='font-[300] tracking-[1px] text-center'
-						style={{ color: 'rgba(180,220,255,0.65)', fontSize: 'clamp(13px, 4vw, 22px)' }}
+						style={{ color: 'rgba(180,220,255,0.65)', fontSize: 'clamp(11px, 3.5vw, 22px)' }}
 					>
 						{t('room.end.subtitle')}
 					</p>
 				</div>
-				<div className='mt-[4px] sm:mt-[8px] flex items-center gap-[8px] text-[13px]' style={{ color: 'rgba(15,255,200,0.4)' }}>
+				<div className='mt-[2px] sm:mt-[6px] flex items-center gap-[6px] sm:gap-[8px] text-[11px] sm:text-[13px]' style={{ color: 'rgba(15,255,200,0.4)' }}>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(15,255,200,0.28)' }} />
 					<span>{t('room.end.thanks')}</span>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(15,255,200,0.28)' }} />

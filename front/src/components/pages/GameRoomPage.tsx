@@ -79,6 +79,22 @@ const MOBILE_REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '�
 const ROOM_INACTIVE = 'rgba(200,215,255,0.9)'
 const ROOM_ACTIVE = '#0fffc8'
 
+// Audio constraints passed both to LiveKitRoom options and to every
+// setMicrophoneEnabled(true) call so old devices (e.g. Meizu M6 Note)
+// can't silently ignore echoCancellation from the room-level defaults.
+const AUDIO_CAPTURE_OPTS = {
+	echoCancellation: true,
+	noiseSuppression: true,
+	autoGainControl: true,
+}
+
+// webAudioMix routes all remote audio through a shared WebAudio AudioContext,
+// giving the browser's built-in AEC a consistent reference signal to cancel.
+const LK_ROOM_OPTS = {
+	audioCaptureDefaults: AUDIO_CAPTURE_OPTS,
+	webAudioMix: true,
+}
+
 function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 	icon: React.ReactNode; label: string; active: boolean; onClick: () => void; badge?: number
 }) {
@@ -331,7 +347,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		if (connectionState !== ConnectionState.Connected || isSpectator || autoMediaRef.current) return
 		autoMediaRef.current = true
 		if (initMic) {
-			localParticipant?.setMicrophoneEnabled(true).catch(() => setMicOn(false))
+			localParticipant?.setMicrophoneEnabled(true, AUDIO_CAPTURE_OPTS).catch(() => setMicOn(false))
 		}
 		if (initCam) {
 			localParticipant?.setCameraEnabled(true).catch(() => setCamOn(false))
@@ -345,7 +361,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		// muted externally (e.g. by GM's mute-all).
 		const enabled = !localParticipant.isMicrophoneEnabled
 		try {
-			await localParticipant.setMicrophoneEnabled(enabled)
+			await localParticipant.setMicrophoneEnabled(enabled, enabled ? AUDIO_CAPTURE_OPTS : undefined)
 			setMicOn(enabled)
 		} catch {
 			setMicOn(localParticipant.isMicrophoneEnabled)
@@ -705,24 +721,26 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						background: '#0d1228',
 						borderTop: '1px solid rgba(15,255,200,0.28)',
 						boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+						position: 'relative',
+						zIndex: 60,
 					}}>
 					<MobileBarBtn
 						icon={<Mic size={22} />}
 						label={t('room.bar_media')}
 						active={mobilePanelOpen === 'media'}
-						onClick={() => setMobilePanelOpen(p => p === 'media' ? null : 'media')}
+						onClick={() => setMobilePanelOpen(mobilePanelOpen === 'media' ? null : 'media')}
 					/>
 					<MobileBarBtn
 						icon={<Smile size={22} />}
 						label={t('room.bar_emoji')}
 						active={mobilePanelOpen === 'emoji'}
-						onClick={() => setMobilePanelOpen(p => p === 'emoji' ? null : 'emoji')}
+						onClick={() => setMobilePanelOpen(mobilePanelOpen === 'emoji' ? null : 'emoji')}
 					/>
 					<MobileBarBtn
 						icon={<MessageSquare size={22} />}
 						label={t('room.bar_chat')}
 						active={mobilePanelOpen === 'chat'}
-						onClick={() => setMobilePanelOpen(p => p === 'chat' ? null : 'chat')}
+						onClick={() => setMobilePanelOpen(mobilePanelOpen === 'chat' ? null : 'chat')}
 						badge={mobilePanelOpen !== 'chat' ? unreadChat : 0}
 					/>
 					{isGM && (
@@ -730,7 +748,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							icon={<Settings size={22} />}
 							label={t('room.bar_panel')}
 							active={mobilePanelOpen === 'settings'}
-							onClick={() => setMobilePanelOpen(p => p === 'settings' ? null : 'settings')}
+							onClick={() => setMobilePanelOpen(mobilePanelOpen === 'settings' ? null : 'settings')}
 						/>
 					)}
 				</div>
@@ -1284,6 +1302,7 @@ function GameRoomInner() {
 			connect={true}
 			audio={false}
 			video={false}
+			options={LK_ROOM_OPTS}
 			style={{ height: '100vh', background: '#07080f' }}
 		>
 			<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
