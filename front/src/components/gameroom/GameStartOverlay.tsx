@@ -10,8 +10,8 @@ export const GameStartOverlay = ({ onDone }: Props) => {
 
 	useEffect(() => {
 		const t1 = setTimeout(() => setPhase('show'), 300)
-		const t2 = setTimeout(() => setPhase('out'), 3800)
-		const t3 = setTimeout(() => onDone?.(), 4800)
+		const t2 = setTimeout(() => setPhase('out'), 1900)
+		const t3 = setTimeout(() => onDone?.(), 2400)
 		return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
 	}, [])
 
@@ -21,7 +21,7 @@ export const GameStartOverlay = ({ onDone }: Props) => {
 			style={{
 				background: '#030512',
 				opacity: phase === 'out' ? 0 : 1,
-				transition: 'opacity 1000ms ease',
+				transition: 'opacity 500ms ease',
 				pointerEvents: phase === 'out' ? 'none' : 'all',
 			}}
 		>
@@ -52,11 +52,11 @@ export const GameStartOverlay = ({ onDone }: Props) => {
 				}}
 			/>
 
-			<div className='relative flex flex-col items-center gap-[12px] sm:gap-[18px] px-[20px]'
+			<div className='relative flex flex-col items-center gap-[8px] sm:gap-[16px] px-[12px] sm:px-[20px] w-full max-w-[440px]'
 				style={{
 					opacity: phase === 'show' ? 1 : 0,
 					transform: phase === 'show' ? 'translateY(0) scale(1)' : 'translateY(22px) scale(0.94)',
-					transition: 'opacity 600ms ease, transform 600ms ease',
+					transition: 'opacity 300ms ease, transform 300ms ease',
 				}}>
 				<span
 					className='text-[10px] uppercase font-[600] text-center'
@@ -70,19 +70,19 @@ export const GameStartOverlay = ({ onDone }: Props) => {
 						style={{
 							color: '#c07fff',
 							textShadow: '0 0 40px rgba(180,100,255,0.55)',
-							fontSize: 'clamp(36px, 10vw, 68px)',
+							fontSize: 'clamp(26px, 8vw, 68px)',
 						}}
 					>
 						{t('room.start.title')}
 					</h1>
 					<p
 						className='font-[300] tracking-[1px] text-center'
-						style={{ color: 'rgba(180,200,255,0.6)', fontSize: 'clamp(13px, 4vw, 18px)' }}
+						style={{ color: 'rgba(180,200,255,0.6)', fontSize: 'clamp(11px, 3.5vw, 18px)' }}
 					>
 						{t('room.start.subtitle')}
 					</p>
 				</div>
-				<div className='mt-[4px] sm:mt-[8px] flex items-center gap-[8px] text-[13px]' style={{ color: 'rgba(180,130,255,0.38)' }}>
+				<div className='mt-[2px] sm:mt-[6px] flex items-center gap-[6px] sm:gap-[8px] text-[11px] sm:text-[13px]' style={{ color: 'rgba(180,130,255,0.38)' }}>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
 					<span>{t('room.start.luck')}</span>
 					<span className='w-[24px] sm:w-[32px] h-[1px]' style={{ background: 'rgba(180,130,255,0.28)' }} />
