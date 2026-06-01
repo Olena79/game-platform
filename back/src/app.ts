@@ -11,6 +11,7 @@ import authRoutes from './routes/auth'
 import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
 import recordingRoutes from './routes/recordings'
+import uploadRoutes from './routes/upload'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
@@ -82,7 +83,8 @@ app.get('/health', (_req, res) => res.status(200).send('OK'))
 
 app.use('/api/auth/login',    authLimiter)
 app.use('/api/auth/register', authLimiter)
-app.use('/api/auth', authRoutes)
+app.use('/api/auth',      authRoutes)
+app.use('/api/upload',    uploadRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/livekit', livekitRoutes)
 app.use('/api/recordings', recordingRoutes)

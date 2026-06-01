@@ -285,10 +285,10 @@ export const CreateGamePage = () => {
 
 	const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
-		if (!file) return
+		if (!file || !token) return
 		setCoverUploading(true)
 		try {
-			const url = await uploadToCloudinary(file)
+			const url = await uploadToCloudinary(file, token)
 			setCoverImage(url)
 		} catch { /* silent */ } finally {
 			setCoverUploading(false)
@@ -298,12 +298,12 @@ export const CreateGamePage = () => {
 
 	const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || [])
-		if (!files.length) return
+		if (!files.length || !token) return
 		const remaining = 10 - images.length
 		const toUpload  = files.slice(0, remaining)
 		setImgUploading(true)
 		try {
-			const urls = await Promise.all(toUpload.map(uploadToCloudinary))
+			const urls = await Promise.all(toUpload.map(f => uploadToCloudinary(f, token)))
 			setImages(prev => [...prev, ...urls].slice(0, 10))
 		} catch { /* silent */ } finally {
 			setImgUploading(false)
