@@ -159,7 +159,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
-						className='w-full h-full object-cover'
+						className='w-full h-full object-contain object-center'
 					/>
 				) : (
 					<div className='relative w-[57px] h-[57px] rounded-full flex items-center justify-center text-[20px] font-[700]'
