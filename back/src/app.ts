@@ -4,6 +4,7 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import jwt from 'jsonwebtoken'
+import rateLimit from 'express-rate-limit'
 import * as cron from 'node-cron'
 import { connectDB } from './config/db'
 import authRoutes from './routes/auth'
@@ -20,6 +21,20 @@ const app = express()
 const httpServer = createServer(app)
 // Use explicit equality so CORS is closed by default when NODE_ENV is unset or misspelled
 const isDev = process.env.NODE_ENV === 'development'
+
+// Trust the first proxy hop (Render, Heroku, Railway all inject X-Forwarded-For).
+// Without this, express-rate-limit sees the load-balancer IP and throttles everyone.
+app.set('trust proxy', 1)
+
+// ── Auth rate limiter ──────────────────────────────────────────────────────────
+// Applied only to /api/auth/login and /api/auth/register to prevent brute-force.
+const authLimiter = rateLimit({
+	windowMs:         15 * 60 * 1000, // 15 minutes
+	max:              100,             // requests per window per IP
+	standardHeaders:  true,           // return RateLimit-* headers (RFC 6585)
+	legacyHeaders:    false,
+	message:          { message: 'Too many requests from this IP, please try again in 15 minutes.' },
+})
 
 // JWT_SECRET is validated at startup inside authMiddleware.ts (throws if missing).
 // By the time this module runs, the import chain has already confirmed it is set.
@@ -65,6 +80,8 @@ app.use(express.json())
 app.get('/', (_req, res) => res.json({ status: 'ok', message: 'Games of Senses API' }))
 app.get('/health', (_req, res) => res.status(200).send('OK'))
 
+app.use('/api/auth/login',    authLimiter)
+app.use('/api/auth/register', authLimiter)
 app.use('/api/auth', authRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/livekit', livekitRoutes)
