@@ -215,8 +215,9 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 
 	const reaction = speakerPlayer ? playerReactions[speakerPlayer.userId] : undefined
 
+	// aspect-video on mobile so the speaker block doesn't stretch full viewport height
 	return (
-		<div className='flex-1 relative overflow-hidden min-h-0' style={{ background: '#000' }}>
+		<div className='aspect-video sm:aspect-auto sm:flex-1 relative overflow-hidden min-h-0 w-full' style={{ background: '#000' }}>
 			<div className='absolute inset-0 pointer-events-none'
 				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
 
@@ -224,8 +225,13 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 				<>
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
-						className='absolute inset-0 w-full h-full object-contain'
-						style={{ transform: localParticipant?.identity === speakerPlayer?.userId ? 'scaleX(-1)' : 'scaleX(1)' }}
+						className='absolute inset-0 w-full h-full object-cover'
+						style={{
+							objectPosition: 'center 30%',
+							maxWidth: '100%',
+							maxHeight: '100%',
+							transform: localParticipant?.identity === speakerPlayer?.userId ? 'scaleX(-1)' : 'scaleX(1)',
+						}}
 					/>
 					{reaction && (
 						<div key={reaction.key} style={{
