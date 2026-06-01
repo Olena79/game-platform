@@ -3,6 +3,15 @@ import sgMail from '@sendgrid/mail'
 
 const EMAIL_ENABLED = process.env.EMAIL_ENABLED !== 'false'
 
+function escHtml(s: string | undefined | null): string {
+	return String(s ?? '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
 	const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || ''
 	const from = { email: fromEmail, name: 'Games of Senses' }
@@ -110,15 +119,15 @@ function buildGameHtml(playerName: string, game: GameInfo, siteUrl: string): str
         ${logoHtml()}
 
         <p style="margin:0 0 20px;font-size:15px;color:rgba(180,200,255,0.75);line-height:1.6;">
-          Вітаємо, <strong style="color:#ffffff;">${playerName}</strong>!<br>
+          Вітаємо, <strong style="color:#ffffff;">${escHtml(playerName)}</strong>!<br>
           Вашу реєстрацію на гру підтверджено.
         </p>
 
         <p style="margin:0 0 4px;font-size:10px;color:rgba(100,140,220,0.45);text-transform:uppercase;letter-spacing:0.6px;">Назва гри</p>
-        <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${game.title}</p>
-        <p style="margin:0 0 20px;font-size:13px;color:rgba(100,140,220,0.5);">Ігромайстер — ${game.creatorName}</p>
+        <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${escHtml(game.title)}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:rgba(100,140,220,0.5);">Ігромайстер — ${escHtml(game.creatorName)}</p>
 
-        ${game.description ? `<p style="margin:0 0 20px;font-size:13px;color:rgba(180,200,255,0.55);line-height:1.6;border-left:2px solid rgba(68,170,255,0.25);padding-left:12px;">${game.description}</p>` : ''}
+        ${game.description ? `<p style="margin:0 0 20px;font-size:13px;color:rgba(180,200,255,0.55);line-height:1.6;border-left:2px solid rgba(68,170,255,0.25);padding-left:12px;">${escHtml(game.description)}</p>` : ''}
 
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
           ${statsRows.join('')}
@@ -206,13 +215,13 @@ export async function sendSpectatorRegistrationEmail(
         ${logoHtml()}
 
         <p style="margin:0 0 20px;font-size:15px;color:rgba(200,180,255,0.75);line-height:1.6;">
-          Вітаємо, <strong style="color:#ffffff;">${spectatorName}</strong>!<br>
+          Вітаємо, <strong style="color:#ffffff;">${escHtml(spectatorName)}</strong>!<br>
           Ви зареєстровані як <strong style="color:#c07fff;">глядач</strong> гри.
         </p>
 
         <p style="margin:0 0 4px;font-size:10px;color:rgba(180,130,255,0.45);text-transform:uppercase;letter-spacing:0.6px;">Назва гри</p>
-        <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${game.title}</p>
-        <p style="margin:0 0 20px;font-size:13px;color:rgba(180,130,255,0.5);">Ігромайстер — ${game.creatorName}</p>
+        <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${escHtml(game.title)}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:rgba(180,130,255,0.5);">Ігромайстер — ${escHtml(game.creatorName)}</p>
 
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
           ${dateRow}
@@ -302,10 +311,10 @@ export async function sendNotesEmail(
         ${logoHtml()}
 
         <p style="margin:0 0 6px;font-size:14px;color:rgba(180,200,255,0.7);line-height:1.6;">
-          Вітаємо, <strong style="color:#ffffff;">${gmName}</strong>!
+          Вітаємо, <strong style="color:#ffffff;">${escHtml(gmName)}</strong>!
         </p>
         <p style="margin:0 0 22px;font-size:13px;color:rgba(100,140,220,0.5);">
-          Нотатки завершеної гри <strong style="color:rgba(180,200,255,0.7);">«${gameTitle}»</strong> · Код: <span style="font-family:monospace;color:#0fffc8;">${gameCode}</span>
+          Нотатки завершеної гри <strong style="color:rgba(180,200,255,0.7);">«${escHtml(gameTitle)}»</strong> · Код: <span style="font-family:monospace;color:#0fffc8;">${escHtml(gameCode)}</span>
         </p>
 
         <table width="100%" cellpadding="0" cellspacing="0" border="0"

@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
+// Fail fast at startup — never fall back to a weak secret in any environment
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+	throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start safely.')
+}
+
 export interface AuthRequest extends Request {
 	userId?: string
 }
@@ -14,11 +20,12 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
 	const token = header.split(' ')[1]
 	try {
-		const decoded = jwt.verify(token, process.env.JWT_SECRET || 'changeme') as { id: string }
+		const decoded = jwt.verify(token, JWT_SECRET) as { id: string }
 		req.userId = decoded.id
 		next()
 	} catch {
-		res.status(401).json({ message: 'Invalid token' })
+		// Covers TokenExpiredError, JsonWebTokenError, NotBeforeError
+		res.status(401).json({ message: 'Invalid or expired token' })
 	}
 }
 
@@ -28,10 +35,10 @@ export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunctio
 	if (header?.startsWith('Bearer ')) {
 		const token = header.split(' ')[1]
 		try {
-			const decoded = jwt.verify(token, process.env.JWT_SECRET || 'changeme') as { id: string }
+			const decoded = jwt.verify(token, JWT_SECRET) as { id: string }
 			req.userId = decoded.id
 		} catch {
-			// Invalid token — treat as unauthenticated, continue
+			// Invalid/expired token — treat as unauthenticated, continue without blocking
 		}
 	}
 	next()

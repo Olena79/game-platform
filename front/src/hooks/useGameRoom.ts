@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client'
 import { useAuth } from '../context/AuthContext'
 import type { GameRoomState, ChatMessage } from '../components/gameroom/types'
 import { resolveGameCode } from '../actions/games'
+import { sfx } from '../utils/sounds'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 
@@ -76,7 +77,7 @@ export function useGameRoom(rawCode: string) {
 
 		const { gameCode, isSpectatorJoin } = resolved
 
-		const socket = io(API, { transports: ['websocket', 'polling'] })
+		const socket = io(API, { transports: ['websocket', 'polling'], auth: { token: authToken } })
 		socketRef.current = socket
 
 		socket.on('connect', async () => {
@@ -111,6 +112,7 @@ export function useGameRoom(rawCode: string) {
 
 		socket.on('gr:chat', (msg: ChatMessage) => {
 			const isPrivate = (msg.recipients?.length ?? 0) > 0
+			const isMyMsg   = msg.userId === user.id
 			if (isPrivate) {
 				const allParticipants = [msg.userId, ...(msg.recipients ?? [])]
 				const convKey = allParticipants.filter(id => id !== (user?.id ?? '')).sort().join('|')
@@ -119,11 +121,15 @@ export function useGameRoom(rawCode: string) {
 					[convKey]: [...(prev[convKey] ?? []).slice(-99), msg],
 				}))
 				setUnreadDMs(prev => ({ ...prev, [convKey]: (prev[convKey] ?? 0) + 1 }))
+				// Sound: DM received — only for recipient, never for spectators or sender
+				if (!isSpectatorJoin && !isMyMsg) sfx.dmMsg()
 			} else {
 				setState(prev => prev
 					? { ...prev, messages: [...prev.messages.slice(-99), msg] }
 					: prev)
 				setNewPublicMsgSignal(n => n + 1)
+				// Sound: public message — everyone in room except sender and spectators
+				if (!isSpectatorJoin && !isMyMsg) sfx.chatMsg()
 			}
 		})
 

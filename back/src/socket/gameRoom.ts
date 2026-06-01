@@ -105,20 +105,25 @@ export function registerGameRoom(io: Server) {
 		let curUser: string | null = null
 
 		// ── Join ────────────────────────────────────────────────────────────
-		socket.on('gr:join', async (d: { gameCode: string; userId: string; name: string; isSpectatorJoin?: boolean }) => {
+		// userId is taken exclusively from the JWT verified at handshake (socket.data.userId),
+		// NOT from the client payload. This prevents identity spoofing / IDOR.
+		socket.on('gr:join', async (d: { gameCode: string; name: string; isSpectatorJoin?: boolean }) => {
+			const userId = socket.data.userId as string | null
+			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
+
 			const state = await getOrLoadRoom(d.gameCode)
 			if (!state) { socket.emit('gr:error', 'Room not found'); return }
 
 			curCode = d.gameCode
-			curUser = d.userId
+			curUser = userId
 			socket.join(`gr-${d.gameCode}`)
 
 			// Track this socket for multi-tab / multi-connection deduplication
-			const uKey = `${d.gameCode}:${d.userId}`
+			const uKey = `${d.gameCode}:${userId}`
 			if (!userSockets.has(uKey)) userSockets.set(uKey, new Set())
 			userSockets.get(uKey)!.add(socket.id)
 
-			const isGamemaster = d.userId === state.gamemasterId
+			const isGamemaster = userId === state.gamemasterId
 
 			// Determine spectator status: the code type is authoritative.
 			// A registered player always keeps player status regardless of code used.
@@ -127,14 +132,14 @@ export function registerGameRoom(io: Server) {
 			if (!isGamemaster) {
 				try {
 					const game = await Game.findOne({ gameCode: d.gameCode })
-					const inPlayers = game?.registeredPlayers?.some(s => String(s.userId) === d.userId) ?? false
+					const inPlayers = game?.registeredPlayers?.some(s => String(s.userId) === userId) ?? false
 					isSpectator = !inPlayers && d.isSpectatorJoin === true
 				} catch { /* ignore */ }
 			}
 
-			const existing = state.players.find(p => p.userId === d.userId)
+			const existing = state.players.find(p => p.userId === userId)
 			if (existing) {
-				console.log(`[gr:join] reconnect userId=${d.userId} gameCode=${d.gameCode} socketId=${socket.id} prevSocketId=${existing.socketId}`)
+				console.log(`[gr:join] reconnect userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} prevSocketId=${existing.socketId}`)
 				existing.socketId = socket.id
 				existing.connected = true
 				// Fix: update role if user rejoined with a different code (spectator → player or vice versa)
@@ -150,10 +155,10 @@ export function registerGameRoom(io: Server) {
 					}
 				}
 			} else {
-				console.log(`[gr:join] new player userId=${d.userId} gameCode=${d.gameCode} socketId=${socket.id} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
+				console.log(`[gr:join] new player userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
 				const p: RoomPlayer = {
 					socketId: socket.id,
-					userId: d.userId,
+					userId,
 					name: d.name,
 					initials: initials(d.name),
 					role: '',
@@ -175,8 +180,8 @@ export function registerGameRoom(io: Server) {
 					gameId: state.gameId,
 					$or: [
 						{ recipients: { $size: 0 } },
-						{ senderId: d.userId },
-						{ recipients: d.userId },
+						{ senderId: userId },
+						{ recipients: userId },
 					],
 				}).sort({ createdAt: 1 }).limit(200).lean()
 
@@ -402,7 +407,9 @@ export function registerGameRoom(io: Server) {
 			if (br) {
 				// Timer scoped to the GM's current breakout room
 				if (d.action === 'set' && d.label && d.seconds) {
-					br.timer = { label: d.label, totalSeconds: d.seconds, endsAt: null, running: false }
+					const secs = Math.floor(Number(d.seconds))
+					if (!Number.isFinite(secs) || secs < 1 || secs > 86400) return
+					br.timer = { label: String(d.label).slice(0, 100), totalSeconds: secs, endsAt: null, running: false }
 				} else if (d.action === 'start' && br.timer) {
 					br.timer.running = true
 					br.timer.endsAt  = Date.now() + br.timer.totalSeconds * 1000
@@ -415,7 +422,9 @@ export function registerGameRoom(io: Server) {
 			} else {
 				// Timer scoped to the main room
 				if (d.action === 'set' && d.label && d.seconds) {
-					state.timer = { label: d.label, totalSeconds: d.seconds, endsAt: null, running: false }
+					const secs = Math.floor(Number(d.seconds))
+					if (!Number.isFinite(secs) || secs < 1 || secs > 86400) return
+					state.timer = { label: String(d.label).slice(0, 100), totalSeconds: secs, endsAt: null, running: false }
 				} else if (d.action === 'start' && state.timer) {
 					state.timer.running = true
 					state.timer.endsAt  = Date.now() + state.timer.totalSeconds * 1000
@@ -641,11 +650,14 @@ export function registerGameRoom(io: Server) {
 
 		// ── Observer connect ─────────────────────────────────────────────────────
 		// The observer is the GM's automated recording tool — not a person.
-		// Only the gamemaster is allowed to open an observer session.
-		socket.on('gr:observer-connect', async (d: { gameCode: string; userId?: string }) => {
+		// Identity comes from the verified JWT (socket.data.userId), not the client payload.
+		socket.on('gr:observer-connect', async (d: { gameCode: string }) => {
+			const userId = socket.data.userId as string | null
+			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
+
 			const state = await getOrLoadRoom(d.gameCode)
 			if (!state) { socket.emit('gr:error', 'Room not found'); return }
-			if (!d.userId || d.userId !== state.gamemasterId) {
+			if (userId !== state.gamemasterId) {
 				socket.emit('gr:error', 'Observer access denied')
 				return
 			}

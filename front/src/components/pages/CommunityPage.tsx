@@ -636,7 +636,12 @@ export const CommunityPage = () => {
 
 	// ── Socket ────────────────────────────────────────────────────────────────
 	useEffect(() => {
-		const socket = io(API, { transports: ['websocket', 'polling'] })
+		const socket = io(API, {
+			transports: ['websocket', 'polling'],
+			// Send JWT if the user is logged in; community feed is readable without auth,
+			// but an invalid token is rejected at handshake — don't send one if absent.
+			...(token ? { auth: { token } } : {}),
+		})
 		socketRef.current = socket
 		socket.emit('com:join')
 

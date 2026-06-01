@@ -8,13 +8,28 @@ import { sendRegistrationEmail, sendSpectatorRegistrationEmail, sendNotesEmail }
 
 const router = Router()
 
+// Strip full card number from any response that goes outside the owner context.
+// Returns hasGmCard (bool) and gmCardLast4 so the UI can show a "donate" button
+// without ever sending the raw PAN to the client.
+function publicGameView(game: { toObject(): Record<string, unknown> }) {
+	const obj = game.toObject()
+	const card = obj.gmCardNumber as string | undefined
+	delete obj.gmCardNumber
+	return {
+		...obj,
+		hasGmCard:   !!(card && card.length === 16),
+		gmCardLast4: card && card.length === 16 ? card.slice(-4) : '',
+	}
+}
+
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 async function generateUniqueCode(): Promise<string> {
-	while (true) {
+	for (let attempt = 0; attempt < 20; attempt++) {
 		const code = Array.from({ length: 6 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('')
 		const exists = await Game.findOne({ gameCode: code })
 		if (!exists) return code
 	}
+	throw new Error('Could not generate a unique code after 20 attempts')
 }
 
 // GET /api/games/resolve/:code — resolve any code (player or spectator) to gameCode
@@ -60,35 +75,60 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 	}
 })
 
-// GET /api/games/code/:code — get game by gameCode
+// GET /api/games/code/:code — get game by gameCode (public — card number stripped)
 router.get('/code/:code', async (req, res: Response): Promise<void> => {
 	try {
 		const game = await Game.findOne({ gameCode: req.params.code })
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(game)
+		res.json(publicGameView(game))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
 })
 
-// GET /api/games/:id — публічна карта гри
+// GET /api/games/:id — публічна карта гри (card number stripped)
 router.get('/:id', async (req, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(game)
+		res.json(publicGameView(game))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
 })
 
-// GET /api/games/:id/card — повний номер картки для кнопки "Донат" (потрібна авторизація)
-router.get('/:id/card', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/games/:id/payment-details
+// Returns the full card number for manual bank-transfer donations.
+// Access rules:
+//   - creator    → always (they own the card)
+//   - registered player / spectator → yes (they need the number to send money)
+//   - any other authenticated user  → 403
+//   - unauthenticated               → 401 (authMiddleware)
+router.get('/:id/payment-details', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const game = await Game.findById(req.params.id).select('gmCardNumber participationCost')
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
+		const game = await Game.findById(req.params.id)
+			.select('gmCardNumber participationCost creatorId registeredPlayers spectators')
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
+
+		const uid          = String(req.userId)
+		const isCreator    = String(game.creatorId) === uid
+		const isRegistered = game.registeredPlayers.some(p => String(p.userId) === uid)
+		const isSpectator  = game.spectators.some(p => String(p.userId) === uid)
+
+		if (!isCreator && !isRegistered && !isSpectator) {
+			res.status(403).json({ message: 'FORBIDDEN' })
+			return
+		}
+
+		const card    = game.gmCardNumber || ''
+		const hasCard = card.length === 16
+
 		res.json({
-			gmCardNumber:    game.gmCardNumber || '',
+			gmCardNumber:      card,                                               // full PAN — only reaches authorised participants
+			gmCardFormatted:   hasCard ? card.replace(/(\d{4})(?=\d)/g, '$1 ') : '', // "1234 5678 9012 3456"
+			hasGmCard:         hasCard,
 			participationCost: game.participationCost || 0,
 		})
 	} catch {
@@ -99,6 +139,7 @@ router.get('/:id/card', authMiddleware, async (req: AuthRequest, res: Response):
 // GET /api/games/:id/edit — перевірка прав + дані для редагування
 router.get('/:id/edit', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 		if (String(game.creatorId) !== String(req.userId)) {
@@ -157,7 +198,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 			defaultTimerSeconds: Number(defaultTimerSeconds) > 0 ? Number(defaultTimerSeconds) : null,
 		})
 
-		res.status(201).json(game)
+		// Never return the raw card in the HTTP response — client uses /card endpoint when needed
+		res.status(201).json(publicGameView(game))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
@@ -166,6 +208,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 // PUT /api/games/:id — оновити гру (тільки автор)
 router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 		if (String(game.creatorId) !== String(req.userId)) {
@@ -209,7 +252,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 		}
 
 		await game.save()
-		res.json(game)
+		// Never return the raw card in the HTTP response — client uses /card endpoint when needed
+		res.json(publicGameView(game))
 	} catch {
 		res.status(500).json({ message: 'Server error' })
 	}
@@ -218,6 +262,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 // DELETE /api/games/:id — видалити гру (тільки автор)
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 		if (String(game.creatorId) !== String(req.userId)) {
@@ -234,6 +279,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 // POST /api/games/:id/register — зареєструватися на гру
 router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const user = await User.findById(req.userId)
 		if (!user) { res.status(404).json({ message: 'User not found' }); return }
 
@@ -289,6 +335,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 // DELETE /api/games/:id/register — анулювати реєстрацію
 router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 
@@ -309,6 +356,7 @@ router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Res
 // POST /api/games/:id/register-spectator — зареєструватися глядачем
 router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const user = await User.findById(req.userId)
 		if (!user) { res.status(404).json({ message: 'User not found' }); return }
 
@@ -350,6 +398,7 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 // DELETE /api/games/:id/register-spectator — скасувати реєстрацію глядача
 router.delete('/:id/register-spectator', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
+		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
 

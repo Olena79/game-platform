@@ -3,6 +3,7 @@ import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
+import jwt from 'jsonwebtoken'
 import * as cron from 'node-cron'
 import { connectDB } from './config/db'
 import authRoutes from './routes/auth'
@@ -17,13 +18,41 @@ import { deleteFile } from './services/googleDrive'
 
 const app = express()
 const httpServer = createServer(app)
-const isDev = process.env.NODE_ENV !== 'production'
+// Use explicit equality so CORS is closed by default when NODE_ENV is unset or misspelled
+const isDev = process.env.NODE_ENV === 'development'
+
+// JWT_SECRET is validated at startup inside authMiddleware.ts (throws if missing).
+// By the time this module runs, the import chain has already confirmed it is set.
+const JWT_SECRET = process.env.JWT_SECRET!
 
 const io = new Server(httpServer, {
 	cors: {
 		origin: isDev ? true : process.env.CLIENT_URL || 'http://localhost:3000',
 		methods: ['GET', 'POST'],
 	},
+})
+
+// ── Socket.IO auth middleware (runs on every handshake) ────────────────────────
+// Strategy: optional token — lets unauthenticated browsers connect (needed for
+// the community feed which is publicly readable), but rejects connections that
+// send an explicitly invalid/expired token. Game room events enforce userId
+// separately via socket.data.userId (see gameRoom.ts / gr:join).
+io.use((socket, next) => {
+	const token = socket.handshake.auth?.token as string | undefined
+	if (!token) {
+		// No token — allow connection without an authenticated identity.
+		// gr:join will reject if socket.data.userId is not set.
+		socket.data.userId = null
+		return next()
+	}
+	try {
+		const decoded = jwt.verify(token, JWT_SECRET) as { id: string }
+		socket.data.userId = decoded.id
+		next()
+	} catch {
+		// Explicitly forged or expired token → reject the handshake immediately.
+		next(new Error('Authentication error'))
+	}
 })
 
 app.use(

@@ -35,8 +35,9 @@ function getUserInfoFromAccessToken(accessToken: string): Promise<GoogleUserInfo
 
 const router = Router()
 
+// JWT_SECRET is validated at startup inside authMiddleware.ts — safe to assert here
 const signToken = (id: string) =>
-	jwt.sign({ id }, process.env.JWT_SECRET || 'changeme', { expiresIn: '7d' })
+	jwt.sign({ id }, process.env.JWT_SECRET!, { expiresIn: '7d' })
 
 // POST /api/auth/register
 router.post('/register', async (req: Request, res: Response): Promise<void> => {

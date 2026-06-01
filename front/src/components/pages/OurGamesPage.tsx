@@ -17,21 +17,24 @@ function DonateModal({ gameId, cost, token, onClose }: {
 }) {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
-	const [cardNumber, setCardNumber] = useState<string | null>(null)
-	const [loading, setLoading] = useState(true)
-	const [copied, setCopied] = useState(false)
+	const [cardNumber, setCardNumber]     = useState<string>('')   // raw digits — for clipboard
+	const [cardFormatted, setCardFormatted] = useState<string>('')   // "1234 5678 9012 3456" — for display
+	const [loading, setLoading]           = useState(true)
+	const [copied, setCopied]             = useState(false)
 
 	useEffect(() => {
 		if (!token) { setLoading(false); return }
 		fetchGameCard(token, gameId)
-			.then(d => setCardNumber(d.gmCardNumber || ''))
-			.catch(() => setCardNumber(''))
+			.then(d => {
+				setCardNumber(d.gmCardNumber || '')
+				setCardFormatted(d.gmCardFormatted || '')
+			})
+			.catch(() => {
+				setCardNumber('')
+				setCardFormatted('')
+			})
 			.finally(() => setLoading(false))
 	}, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-	const formatted = cardNumber
-		? cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ')
-		: ''
 
 	const handleCopy = async () => {
 		if (!cardNumber) return
@@ -40,7 +43,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 			setCopied(true)
 			setTimeout(() => setCopied(false), 2500)
 		} catch {
-			// fallback: select text manually
+			// clipboard API unavailable — user can select & copy manually
 		}
 	}
 
@@ -93,7 +96,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 						<div className='flex items-center justify-center py-[20px]'>
 							<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim' />
 						</div>
-					) : cardNumber ? (
+					) : cardFormatted ? (
 						<>
 							<span className='text-[11px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.5)' : 'var(--text-muted)' }}>
 								{t('donate.card_label')}
@@ -114,7 +117,7 @@ function DonateModal({ gameId, cost, token, onClose }: {
 							>
 								<span className='text-[20px] font-[700] tracking-[3px] font-mono'
 									style={{ color: isDark ? (copied ? '#0fffc8' : 'rgba(200,218,255,0.95)') : 'var(--text-primary)' }}>
-									{formatted}
+									{cardFormatted}
 								</span>
 								<span className='flex items-center gap-[5px] flex-shrink-0 text-[12px] font-[600]'
 									style={{ color: isDark ? (copied ? '#0fffc8' : 'rgba(68,170,255,0.75)') : 'var(--accent)' }}>
@@ -692,7 +695,7 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	return (
 		<div className='flex flex-col gap-[8px]'>
 			{game.registeredPlayers.map((p, i) => (
-				<div key={i} className='flex items-center gap-[8px] text-[13px]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)' }}>
+				<div key={String(p.userId ?? i)} className='flex items-center gap-[8px] text-[13px]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)' }}>
 					<span
 						className='w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] flex-shrink-0'
 						style={isDark

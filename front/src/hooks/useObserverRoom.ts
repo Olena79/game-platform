@@ -23,14 +23,18 @@ export function useObserverRoom(gameCode: string) {
 	useEffect(() => {
 		if (!user || !authToken || !gameCode) return
 
+		let mounted = true
+		const ctrl = new AbortController()
+
 		fetch(`${API}/api/livekit/observer-token`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
 			body: JSON.stringify({ roomName: `mindflow-${gameCode}` }),
+			signal: ctrl.signal,
 		})
 			.then(r => r.json())
-			.then(d => setLk({ token: d.token, url: d.url, roomName: `mindflow-${gameCode}` }))
-			.catch(() => setError('Не вдалося отримати токен LiveKit'))
+			.then(d => { if (mounted) setLk({ token: d.token, url: d.url, roomName: `mindflow-${gameCode}` }) })
+			.catch(err => { if (mounted && err.name !== 'AbortError') setError('Не вдалося отримати токен LiveKit') })
 
 		const socket = io(API, {
 			transports: ['websocket', 'polling'],
@@ -39,8 +43,10 @@ export function useObserverRoom(gameCode: string) {
 		socketRef.current = socket
 
 		socket.on('connect', () => {
+			if (!mounted) return
 			setConnStatus('connected')
-			socket.emit('gr:observer-connect', { gameCode, userId: user.id })
+			// Identity is taken from the JWT verified at handshake — no need to send userId
+			socket.emit('gr:observer-connect', { gameCode })
 		})
 		socket.on('connect_error', () => setConnStatus('failed'))
 		socket.on('gr:state', (s: GameRoomState) => {
@@ -63,8 +69,11 @@ export function useObserverRoom(gameCode: string) {
 		socket.on('gr:end-anim', () => setEndAnim(true))
 
 		return () => {
+			mounted = false
+			ctrl.abort()
 			socket.disconnect()
 			socketRef.current = null
+			setConnStatus('connecting')
 		}
 	}, [gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 

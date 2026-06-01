@@ -126,10 +126,10 @@ export const likeGame = (
 export const fetchGameCard = (
 	token: string,
 	id: string,
-): Promise<{ gmCardNumber: string; participationCost: number }> =>
-	fetch(`${API}/api/games/${id}/card`, {
+): Promise<{ gmCardNumber: string; gmCardFormatted: string; hasGmCard: boolean; participationCost: number }> =>
+	fetch(`${API}/api/games/${id}/payment-details`, {
 		headers: { Authorization: `Bearer ${token}` },
-	}).then(handleResponse<{ gmCardNumber: string; participationCost: number }>)
+	}).then(handleResponse<{ gmCardNumber: string; gmCardFormatted: string; hasGmCard: boolean; participationCost: number }>)
 
 export const unlikeGame = (
 	token: string,

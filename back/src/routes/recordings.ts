@@ -33,6 +33,14 @@ router.put('/upload/:id', authMiddleware, async (req: AuthRequest, res: Response
 	try {
 		const recording = await Recording.findById(req.params.id)
 		if (!recording) { res.status(404).json({ message: 'Recording not found' }); return }
+
+		// Ownership check: only the GM who initiated the recording may upload to it
+		const uploader = await User.findById(req.userId).select('email')
+		if (!uploader || uploader.email !== recording.gmEmail) {
+			res.status(403).json({ message: 'FORBIDDEN' })
+			return
+		}
+
 		if (recording.status === 'completed') { res.json({ shareLink: recording.shareLink }); return }
 
 		const filename = `recording-${recording.gameCode}-${Date.now()}.webm`
@@ -59,7 +67,7 @@ router.put('/upload/:id', authMiddleware, async (req: AuthRequest, res: Response
 
 		res.json({ shareLink })
 	} catch (err) {
-		console.error('[recordings/upload]', err)
+		console.error('[recordings/upload]', err instanceof Error ? err.message : 'unknown error')
 		res.status(500).json({ message: 'Upload failed' })
 	}
 })
