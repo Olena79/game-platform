@@ -105,7 +105,7 @@ function PlayerTile({ player, size = 'strip' }: { player: RoomPlayer; size?: 'st
 			<div className='w-[34px] h-[34px] rounded-full overflow-hidden flex items-center justify-center flex-shrink-0'
 				style={{ background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e', border: speaking ? '1px solid rgba(15,255,200,0.3)' : 'none' }}>
 				{hasVideo && camPub
-					? <VideoTrack trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }} className='w-full h-full object-cover' />
+					? <VideoTrack trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }} className='w-full h-full object-cover' style={{ transform: localParticipant?.identity === player.userId ? 'scaleX(-1)' : 'scaleX(1)' }} />
 					: <span className='text-[11px] font-[700]' style={{ color: speaking ? '#0fffc8' : '#7a80a0' }}>{player.initials}</span>
 				}
 			</div>
@@ -216,7 +216,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 	const reaction = speakerPlayer ? playerReactions[speakerPlayer.userId] : undefined
 
 	return (
-		<div className='flex-1 relative overflow-hidden min-h-0'>
+		<div className='flex-1 relative overflow-hidden min-h-0' style={{ background: '#000' }}>
 			<div className='absolute inset-0 pointer-events-none'
 				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
 
@@ -225,6 +225,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='absolute inset-0 w-full h-full object-contain'
+						style={{ transform: localParticipant?.identity === speakerPlayer?.userId ? 'scaleX(-1)' : 'scaleX(1)' }}
 					/>
 					{reaction && (
 						<div key={reaction.key} style={{

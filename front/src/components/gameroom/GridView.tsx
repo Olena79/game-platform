@@ -155,18 +155,19 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 			</div>
 
 			{/* Camera area — fills remaining height */}
-			<div className='flex-1 min-h-0 flex items-center justify-center relative overflow-hidden' style={{ background: '#080912' }}>
+			<div className='flex-1 min-h-0 flex items-center justify-center relative overflow-hidden' style={{ background: '#000' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='w-full h-full object-contain object-center'
+						style={{ transform: (player.userId && player.userId === myId) ? 'scaleX(-1)' : 'scaleX(1)' }}
 					/>
 				) : (
 					<div className='relative w-[57px] h-[57px] rounded-full flex items-center justify-center text-[20px] font-[700]'
 						style={{
-							background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e',
-							color: speaking ? '#0fffc8' : '#7a80a0',
-							border: speaking ? '1px solid rgba(15,255,200,0.3)' : 'none',
+							background: speaking ? 'rgba(15,255,200,0.15)' : 'rgba(68,100,180,0.22)',
+							color: speaking ? '#0fffc8' : '#9aabb0',
+							border: speaking ? '1px solid rgba(15,255,200,0.3)' : '1px solid rgba(68,100,180,0.35)',
 						}}>
 						{player.initials}
 						{reaction && (

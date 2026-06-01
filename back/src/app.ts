@@ -38,8 +38,13 @@ const authLimiter = rateLimit({
 })
 
 // JWT_SECRET is validated at startup inside authMiddleware.ts (throws if missing).
-// By the time this module runs, the import chain has already confirmed it is set.
-const JWT_SECRET = process.env.JWT_SECRET!
+// Redundant guard here so this file stays safe even if the import chain ever changes.
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set.')
+
+if (!isDev && !process.env.CLIENT_URL) {
+	console.warn('[app] WARN: CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost.')
+}
 
 const io = new Server(httpServer, {
 	cors: {

@@ -11,6 +11,10 @@ cloudinary.config({
 	api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+	console.warn('[upload] WARN: Cloudinary env vars are not set — POST /api/upload will return 503.')
+}
+
 function isCloudinaryConfigured(): boolean {
 	return !!(
 		process.env.CLOUDINARY_CLOUD_NAME &&
@@ -52,7 +56,7 @@ router.post(
 		try {
 			const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
 				const stream = cloudinary.uploader.upload_stream(
-					{ folder: 'mindflow', resource_type: 'image' },
+					{ folder: 'mindflow', resource_type: 'image', timeout: 15000 },
 					(error, result) => {
 						if (error || !result) reject(error ?? new Error('Cloudinary upload failed'))
 						else resolve(result as { secure_url: string })
