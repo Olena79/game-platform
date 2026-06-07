@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const REACTION_BADGE_CSS = `
@@ -115,6 +115,8 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	const micPub = participant?.getTrackPublication(Track.Source.Microphone)
 	const micMuted = !micPub || micPub.isMuted
 	const isPlayer = !player.isGamemaster && !player.isSpectator
+		const dims = (camPub?.track as any)?.dimensions as { width: number; height: number } | undefined
+		const isPortrait = dims ? dims.height > dims.width : false
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)
@@ -146,7 +148,6 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				border: `1px solid ${borderColor}`,
 				boxShadow: (!isPlayer && speaking) ? '0 0 10px rgba(15,255,200,0.08)' : 'none',
 				transition: 'border-color 0.5s ease, box-shadow 0.5s ease',
-				height: '100%',
 			}}
 		>
 			{/* Mic icon */}
@@ -154,16 +155,14 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				{micMuted ? '🔇' : '🎤'}
 			</div>
 
-			{/* Camera area — fills remaining height */}
-			<div className='flex-1 min-h-0 relative overflow-hidden flex items-center justify-center' style={{ background: '#000' }}>
+			{/* Camera area */}
+			<div className='relative overflow-hidden flex items-center justify-center' style={{ background: '#000', width: '100%', aspectRatio: isPortrait ? '3/4' : '16/9' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='absolute inset-0 w-full h-full object-cover'
 						style={{
 							objectPosition: 'center 30%',
-							maxWidth: '100%',
-							maxHeight: '100%',
 							transform: (player.userId && player.userId === myId) ? 'scaleX(-1)' : 'scaleX(1)',
 						}}
 					/>
@@ -461,16 +460,15 @@ export const GridView = ({
 				style={{
 					display: 'grid',
 					gridTemplateColumns: `repeat(${cols}, 1fr)`,
-					gridTemplateRows: `repeat(${rows}, 1fr)`,
 					gap: '7px',
 					padding: '7px',
+					alignContent: 'center',
 				}}
 			>
 				{pagedPlayers.map((p, idx) => (
 					<div
 						key={p.userId}
 						style={{
-							height: '100%',
 							...(mobileLastSpan && idx === pagedPlayers.length - 1 ? { gridColumn: 'span 2' } : {}),
 						}}
 					>
