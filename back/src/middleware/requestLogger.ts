@@ -1,6 +1,11 @@
 import morgan from 'morgan'
 import logger from '../config/logger'
 
+// Custom Morgan token for timestamp
+morgan.token('timestamp', () => {
+	return new Date().toISOString()
+})
+
 // Custom Morgan token for user ID (will be extracted from JWT if available)
 morgan.token('user-id', (req: any) => {
 	return req.userId || 'anonymous'

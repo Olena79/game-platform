@@ -70,6 +70,9 @@ app.set('trust proxy', 1)
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set.')
 
+const clientUrl = isDev ? 'http://localhost:5173' : process.env.CLIENT_URL || 'http://localhost:3000'
+logger.info(`CORS configured for: ${clientUrl}`, { context: 'app:cors' })
+
 if (!isDev && !process.env.CLIENT_URL) {
 	logger.warn('CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost', {
 		context: 'app:startup',
@@ -78,7 +81,8 @@ if (!isDev && !process.env.CLIENT_URL) {
 
 const io = new Server(httpServer, {
 	cors: {
-		origin: isDev ? true : process.env.CLIENT_URL || 'http://localhost:3000',
+		origin: isDev ? true : clientUrl,
+		credentials: true,
 		methods: ['GET', 'POST'],
 	},
 })
@@ -108,7 +112,11 @@ io.use((socket, next) => {
 
 app.use(
 	cors({
-		origin: isDev ? true : process.env.CLIENT_URL || 'http://localhost:3000',
+		origin: isDev ? true : (process.env.CLIENT_URL || 'http://localhost:3000').split(',').map(url => url.trim()),
+		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+		maxAge: 86400,
 	}),
 )
 app.use(express.json())

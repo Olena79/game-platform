@@ -29,7 +29,7 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
 	return (
-		<div className='w-full'>
+		<div className='w-full flex justify-center'>
 			<GoogleLogin
 				onSuccess={credentialResponse => {
 					if (credentialResponse.credential) {
@@ -38,7 +38,6 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 				}}
 				onError={onError}
 				text='signin_with'
-				width='100%'
 			/>
 		</div>
 	)
