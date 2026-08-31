@@ -57,18 +57,25 @@ export function useGameRoom(rawCode: string) {
 	const fetchLKToken = useCallback(async (roomName: string): Promise<LKData | null> => {
 		if (!authToken || !user) return null
 		try {
+			const userName = [user.name, user.surname].filter(Boolean).join(' ') || user.name
+			const payload = { roomName, userName }
+			console.log('[LiveKit] Requesting token with payload:', payload)
 			const res = await fetch(`${API}/api/livekit/token`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-				body: JSON.stringify({
-					roomName,
-					userName: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
-				}),
+				body: JSON.stringify(payload),
 			})
-			if (!res.ok) return null
+			if (!res.ok) {
+				const error = await res.json().catch(() => ({}))
+				console.error('[LiveKit] Token request failed:', res.status, error)
+				return null
+			}
 			const d = await res.json()
 			return { token: d.token, url: d.url, roomName }
-		} catch { return null }
+		} catch (err) {
+			console.error('[LiveKit] Token fetch error:', err)
+			return null
+		}
 	}, [authToken, user])
 
 	// Step 2: connect socket once the code is resolved

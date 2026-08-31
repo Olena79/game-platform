@@ -18,6 +18,7 @@ const router = Router()
 router.post('/token', authMiddleware, validateBody(livekitTokenSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const { roomName, userName } = req.body
+		logger.info('[livekit/token] Request received', { roomName, userName, userId: req.userId })
 
 		const at = new AccessToken(
 			LIVEKIT_API_KEY,
@@ -33,9 +34,10 @@ router.post('/token', authMiddleware, validateBody(livekitTokenSchema), async (r
 		})
 
 		const token = await at.toJwt()
+		logger.info('[livekit/token] Token generated successfully', { roomName, userId: req.userId })
 		res.json({ token, url: LIVEKIT_URL })
 	} catch (err: any) {
-		logger.error('[livekit/token]', err)
+		logger.error('[livekit/token] Error:', { error: err.message, stack: err.stack })
 		res.status(500).json({ message: 'Token generation failed' })
 	}
 })
