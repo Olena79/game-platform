@@ -48,7 +48,8 @@ const loadingRooms = new Map<string, Promise<GameRoomState | null>>() // dedupli
 const breakoutTimers = new Map<string, ReturnType<typeof setTimeout>>() // `${gameCode}:${roomId}`
 const userSockets = new Map<string, Set<string>>() // `${gameCode}:${userId}` → active socket IDs
 
-function initials(name: string): string {
+function initials(name: string | undefined): string {
+	if (!name) return '??'
 	return name.split(' ').map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '??'
 }
 

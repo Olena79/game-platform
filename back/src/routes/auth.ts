@@ -71,7 +71,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		res.status(201).json({
 			accessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email },
+			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
 		})
 	} catch (err: any) {
 		logger.error('[register]', err)
@@ -100,7 +100,7 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
 		res.json({
 			accessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email },
+			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
 		})
 	} catch (err) {
 		logger.error('[login]', err)
@@ -139,7 +139,7 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 		res.json({
 			accessToken: jwtAccessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email },
+			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
 		})
 	} catch (err) {
 		logger.error('[google auth]', err)
