@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, X } from 'lucide-react'
-import { useGoogleLogin } from '@react-oauth/google'
+import { GoogleLogin, useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
@@ -21,55 +21,26 @@ const GoogleIcon = () => (
 
 interface GoogleSignInButtonProps {
 	loading: boolean
-	onSuccess: (accessToken: string) => void
+	onSuccess: (idToken: string) => void
 	onError: () => void
 }
 
 const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonProps) => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
-	const googleLogin = useGoogleLogin({
-		onSuccess: tokenResponse => onSuccess(tokenResponse.access_token),
-		onError,
-	})
 	return (
-		<button
-			type='button'
-			onClick={() => googleLogin()}
-			disabled={loading}
-			className='w-full flex items-center justify-center gap-[10px] py-[12px] rounded-[12px] text-[13px] font-[500] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
-			style={isDark
-				? {
-					color: 'rgba(220,230,255,0.8)',
-					border: '1px solid rgba(255,255,255,0.11)',
-					background: 'rgba(255,255,255,0.03)',
-				}
-				: {
-					color: 'var(--text-secondary)',
-					border: '1px solid rgba(192,83,58,0.25)',
-					background: 'rgba(192,83,58,0.04)',
-				}
-			}
-			onMouseEnter={e => {
-				if (isDark) {
-					e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
-					e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-				} else {
-					e.currentTarget.style.borderColor = 'rgba(192,83,58,0.4)'
-				}
-			}}
-			onMouseLeave={e => {
-				if (isDark) {
-					e.currentTarget.style.borderColor = 'rgba(255,255,255,0.11)'
-					e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-				} else {
-					e.currentTarget.style.borderColor = 'rgba(192,83,58,0.25)'
-				}
-			}}
-		>
-			<GoogleIcon />
-			{t('auth.btn_google')}
-		</button>
+		<div className='w-full'>
+			<GoogleLogin
+				onSuccess={credentialResponse => {
+					if (credentialResponse.credential) {
+						onSuccess(credentialResponse.credential)
+					}
+				}}
+				onError={onError}
+				text='signin_with'
+				width='100%'
+			/>
+		</div>
 	)
 }
 
