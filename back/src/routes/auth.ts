@@ -155,7 +155,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
 			res.status(404).json({ message: 'User not found' })
 			return
 		}
-		res.json({ id: user._id, email: user.email })
+		res.json({ id: user._id, email: user.email, name: user.name, surname: user.surname })
 	} catch (err) {
 		logger.error('[me]', err)
 		res.status(500).json({ message: 'Server error' })
