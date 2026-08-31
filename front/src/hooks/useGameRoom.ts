@@ -62,7 +62,7 @@ export function useGameRoom(rawCode: string) {
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
 				body: JSON.stringify({
 					roomName,
-					participantName: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
+					userName: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
 				}),
 			})
 			if (!res.ok) return null
