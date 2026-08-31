@@ -154,7 +154,7 @@ export const AuthPage = () => {
 			const res = isLogin
 				? await loginRequest(email, password)
 				: await registerRequest(name, surname, email, password)
-			login(res.token, res.user)
+			login(res.accessToken, res.refreshToken, res.user)
 
 			setModal({
 				open: true,
@@ -313,7 +313,7 @@ export const AuthPage = () => {
 									setLoading(true)
 									try {
 										const res = await googleAuthRequest(accessToken)
-										login(res.token, res.user)
+										login(res.accessToken, res.refreshToken, res.user)
 										setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
 									} catch (err) {
 										const msg = err instanceof Error ? err.message : 'Google auth failed'

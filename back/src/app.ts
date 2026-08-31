@@ -1,12 +1,40 @@
 import 'dotenv/config'
+import { initializeSentry } from './config/sentry'
+
+// Initialize Sentry FIRST, before any other code
+initializeSentry()
+
+// Add global error handlers for unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+	const logger = require('./config/logger').default
+	logger.error('Unhandled Rejection', {
+		reason: reason instanceof Error ? reason.message : String(reason),
+		stack: reason instanceof Error ? reason.stack : undefined,
+		promise: String(promise),
+	})
+})
+
+// Add handler for uncaught exceptions
+process.on('uncaughtException', (error) => {
+	const logger = require('./config/logger').default
+	logger.error('Uncaught Exception', {
+		message: error.message,
+		stack: error.stack,
+	})
+	// Exit gracefully to let process manager restart
+	process.exit(1)
+})
+
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import jwt from 'jsonwebtoken'
-import rateLimit from 'express-rate-limit'
 import * as cron from 'node-cron'
 import { connectDB } from './config/db'
+import logger from './config/logger'
+import { requestLogger } from './middleware/requestLogger'
+import { getSentryMiddleware } from './config/sentry'
 import authRoutes from './routes/auth'
 import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
@@ -17,6 +45,16 @@ import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
 import { deleteFile } from './services/googleDrive'
+import { sendGameStartReminders } from './services/gameReminders'
+import {
+	authLimiter,
+	gamesLimiter,
+	communityLimiter,
+	uploadLimiter,
+	livekitLimiter,
+	recordingsLimiter,
+	apiLimiter,
+} from './middleware/rateLimitMiddleware'
 
 const app = express()
 const httpServer = createServer(app)
@@ -27,23 +65,15 @@ const isDev = process.env.NODE_ENV === 'development'
 // Without this, express-rate-limit sees the load-balancer IP and throttles everyone.
 app.set('trust proxy', 1)
 
-// ── Auth rate limiter ──────────────────────────────────────────────────────────
-// Applied only to /api/auth/login and /api/auth/register to prevent brute-force.
-const authLimiter = rateLimit({
-	windowMs:         15 * 60 * 1000, // 15 minutes
-	max:              100,             // requests per window per IP
-	standardHeaders:  true,           // return RateLimit-* headers (RFC 6585)
-	legacyHeaders:    false,
-	message:          { message: 'Too many requests from this IP, please try again in 15 minutes.' },
-})
-
 // JWT_SECRET is validated at startup inside authMiddleware.ts (throws if missing).
 // Redundant guard here so this file stays safe even if the import chain ever changes.
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set.')
 
 if (!isDev && !process.env.CLIENT_URL) {
-	console.warn('[app] WARN: CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost.')
+	logger.warn('CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost', {
+		context: 'app:startup',
+	})
 }
 
 const io = new Server(httpServer, {
@@ -82,21 +112,25 @@ app.use(
 	}),
 )
 app.use(express.json())
+app.use(requestLogger)
 
 app.get('/', (_req, res) => res.json({ status: 'ok', message: 'Games of Senses API' }))
 app.get('/health', (_req, res) => res.status(200).send('OK'))
 
-app.use('/api/auth/login',    authLimiter)
-app.use('/api/auth/register', authLimiter)
-app.use('/api/auth',      authRoutes)
-app.use('/api/upload',    uploadRoutes)
-app.use('/api/games', gameRoutes)
-app.use('/api/livekit', livekitRoutes)
-app.use('/api/recordings', recordingRoutes)
-app.use('/api/community', makeCommunityRouter(io))
+// ── Rate limiting by API section ──────────────────────────────────────────────
+// Each endpoint is limited based on its resource cost and use frequency
+app.use('/api/auth',        authLimiter, authRoutes)
+app.use('/api/upload',      uploadLimiter, uploadRoutes)
+app.use('/api/games',       gamesLimiter, gameRoutes)
+app.use('/api/livekit',     livekitLimiter, livekitRoutes)
+app.use('/api/recordings',  recordingsLimiter, recordingRoutes)
+app.use('/api/community',   communityLimiter, makeCommunityRouter(io))
 
 registerGameRoom(io)
 registerCommunity(io)
+
+// ── Sentry error handler (must be after all other middleware and routes) ───────
+app.use(getSentryMiddleware()[1])
 
 // Delete expired recordings from Google Drive every 6 hours
 cron.schedule('0 */6 * * *', async () => {
@@ -110,9 +144,23 @@ cron.schedule('0 */6 * * *', async () => {
 			try { await deleteFile(rec.driveFileId) } catch { /* file may already be deleted */ }
 			await rec.deleteOne()
 		}
-		if (expired.length > 0) console.log(`[cron] Cleaned up ${expired.length} expired recording(s)`)
+		if (expired.length > 0) {
+			logger.info(`Cleaned up ${expired.length} expired recording(s)`, { task: 'cron:cleanup' })
+		}
 	} catch (err) {
-		console.error('[cron] Recording cleanup error:', err)
+		logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err })
+	}
+})
+
+// Send game start reminders every minute (for games starting in 30-35 min)
+cron.schedule('* * * * *', async () => {
+	try {
+		await sendGameStartReminders()
+	} catch (err) {
+		logger.error('[cron:reminders] Failed to send game start reminders', {
+			error: err instanceof Error ? err.message : String(err),
+			stack: err instanceof Error ? err.stack : undefined,
+		})
 	}
 })
 
@@ -120,11 +168,11 @@ const PORT = process.env.PORT || 5000
 
 connectDB()
 	.then(() => {
-		httpServer.listen(PORT, () =>
-			console.log(`Server running on http://localhost:${PORT}`),
-		)
+		httpServer.listen(PORT, () => {
+			logger.info(`Server running on http://localhost:${PORT}`, { context: 'server:startup', port: PORT })
+		})
 	})
 	.catch(err => {
-		console.error('MongoDB connection failed:', err)
+		logger.error('MongoDB connection failed', { context: 'database:connection', error: err })
 		process.exit(1)
 	})

@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-// Google OAuth — requires: npm install @react-oauth/google
-// Add VITE_GOOGLE_CLIENT_ID to front/.env
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { MobileBottomNav } from './components/layout/MobileBottomNav'
@@ -12,7 +11,6 @@ import { GamePage } from './components/pages/GamePage'
 import { CreateGamePage } from './components/pages/CreateGamePage'
 import { OurGamesPage } from './components/pages/OurGamesPage'
 import { CommunityPage } from './components/pages/CommunityPage'
-// import { AboutPage } from './components/pages/AboutPage'
 import { GameRoomPage } from './components/pages/GameRoomPage'
 import { ObserverPage } from './components/pages/ObserverPage'
 
@@ -88,16 +86,15 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 
 const App = () => {
 	const content = (
-		<Router>
-			<Routes>
-				{/* Full-screen observer window — must be before /room/:code */}
-				<Route path='/room/:code/observe' element={<ObserverPage />} />
-				{/* Full-screen game room — no header/footer */}
-				<Route path='/room/:code' element={<GameRoomPage />} />
-				{/* All other pages */}
-				<Route path='/*' element={<SiteLayout />} />
-			</Routes>
-		</Router>
+		<ErrorBoundary>
+			<Router>
+				<Routes>
+					<Route path='/room/:code/observe' element={<ObserverPage />} />
+					<Route path='/room/:code' element={<GameRoomPage />} />
+					<Route path='/*' element={<SiteLayout />} />
+				</Routes>
+			</Router>
+		</ErrorBoundary>
 	)
 	if (!GOOGLE_CLIENT_ID) return content
 	return (

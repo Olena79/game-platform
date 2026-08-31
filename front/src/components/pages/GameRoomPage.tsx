@@ -7,6 +7,7 @@ import React, {
 	Component,
 	ReactNode,
 } from 'react'
+import * as Sentry from '@sentry/react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
 	LiveKitRoom as LKRoom,
@@ -1148,7 +1149,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 												}),
 											})
 										} catch (err) {
-											console.error('[send-notes]', err)
+											Sentry.captureException(err, { tags: { operation: 'send-notes' } })
 										}
 									}
 									endGame()

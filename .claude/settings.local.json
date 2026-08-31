@@ -28,7 +28,22 @@
       "Bash(npm run *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\foksy\\\\Desktop\\\\work\\\\game-platform\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(ping *)"
+      "Bash(ping *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\foksy\\\\Desktop\\\\work\\\\game-platform\" -Recurse -Depth 3)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(npx ts-node *)",
+      "Bash(npm cache *)",
+      "Bash(nslookup _mongodb._tcp.cluster0.2ysvxzb.mongodb.net)",
+      "PowerShell(ipconfig /flushdns)",
+      "Bash(nslookup cluster0.2ysvxzb.mongodb.net)",
+      "Bash(ping -c 4 google.com)",
+      "PowerShell(Test-Connection -ComputerName google.com -Count 4)",
+      "PowerShell(Resolve-DnsName -Name cluster0.2ysvxzb.mongodb.net -Server 8.8.8.8)",
+      "PowerShell(Set-DnsClientServerAddress -InterfaceAlias \"Беспроводная сеть\" -ServerAddresses \\(\"8.8.8.8\",\"8.8.4.4\"\\))",
+      "PowerShell(Restart-Service -Name Dnscache -Force)",
+      "Bash(awk '{print $NF}')",
+      "Bash(awk -F: '{print $1}')"
     ]
   }
 }

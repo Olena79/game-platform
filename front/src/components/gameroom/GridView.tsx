@@ -115,8 +115,10 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	const micPub = participant?.getTrackPublication(Track.Source.Microphone)
 	const micMuted = !micPub || micPub.isMuted
 	const isPlayer = !player.isGamemaster && !player.isSpectator
-		const dims = (camPub?.track as any)?.dimensions as { width: number; height: number } | undefined
-		const isPortrait = dims ? dims.height > dims.width : false
+	const dims = (camPub?.track as any)?.dimensions as { width: number; height: number } | undefined
+	const isPortrait = dims ? dims.height > dims.width : false
+	// Adaptive object positioning: tighter framing for portrait to ensure full face is visible
+	const objectPos = isPortrait ? 'center 15%' : 'center 30%'
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)
@@ -162,7 +164,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='absolute inset-0 w-full h-full object-cover'
 						style={{
-							objectPosition: 'center 30%',
+							objectPosition: objectPos,
 							transform: (player.userId && player.userId === myId) ? 'scaleX(-1)' : 'scaleX(1)',
 						}}
 					/>

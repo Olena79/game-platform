@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import multer, { MulterError } from 'multer'
 import { v2 as cloudinary } from 'cloudinary'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
+import logger from '../config/logger'
 
 // Configure once at module load. Undefined values will cause uploads to
 // fail gracefully at request time (503) rather than crashing the server on start.
@@ -12,7 +13,7 @@ cloudinary.config({
 })
 
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-	console.warn('[upload] WARN: Cloudinary env vars are not set — POST /api/upload will return 503.')
+	logger.warn('[upload] WARN: Cloudinary env vars are not set — POST /api/upload will return 503.')
 }
 
 function isCloudinaryConfigured(): boolean {
@@ -67,7 +68,7 @@ router.post(
 
 			res.json({ url: result.secure_url })
 		} catch (err) {
-			console.error('[upload]', err instanceof Error ? err.message : 'unknown')
+			logger.error('[upload]', err instanceof Error ? err.message : 'unknown')
 			res.status(500).json({ message: 'Upload failed' })
 		}
 	},

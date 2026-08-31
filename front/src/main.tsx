@@ -1,5 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { initializeSentry } from './config/sentry'
+
+// Initialize Sentry FIRST, before anything else
+initializeSentry()
+
 import App from './App'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'

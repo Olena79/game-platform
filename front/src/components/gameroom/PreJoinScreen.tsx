@@ -92,7 +92,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 						muted
 						playsInline
 						className='absolute inset-0 w-full h-full object-cover'
-						style={{ display: camOn ? 'block' : 'none', transform: 'scaleX(-1)' }}
+						style={{ display: camOn ? 'block' : 'none', transform: 'scaleX(-1)', objectPosition: 'center 20%' }}
 					/>
 
 					{!camOn && (

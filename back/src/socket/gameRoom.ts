@@ -5,6 +5,41 @@ import {
 	RoomPlayer, GameRoomState, ChatMessage,
 	ActiveVote, BreakoutRoom, RoomTimer,
 } from './types'
+import { validateSocketEvent } from './eventValidation'
+import {
+	grChatSchema,
+	grTimerSchema,
+	grVoteCreateSchema,
+	grVoteCastSchema,
+	grVoteCloseSchema,
+	grVoteClearSchema,
+	grBreakoutCreateSchema,
+	grReactSchema,
+	grHandSchema,
+	grRoleSchema,
+	grStartSchema,
+	grEndSchema,
+	grCoinsTransferSchema,
+	grCoinsBankSchema,
+	grInfluenceSchema,
+	grMuteAllSchema,
+	grMutePlayerSchema,
+	grAnnounceSchema,
+	grBreakoutAssignSchema,
+	grBreakoutReturnSchema,
+	grImageShowSchema,
+	grRecordControlSchema,
+	grObserverConnectSchema,
+	grRecordStatusSchema,
+	grSpectatorVoteCreateSchema,
+	grSpectatorVoteCastSchema,
+	grSpectatorVoteCloseSchema,
+	grSpectatorVoteClearSchema,
+	grBreakoutJoinSchema,
+	grBreakoutLeaveSchema,
+	grBreakoutEndSchema,
+} from '../validation/schemas'
+import logger from '../config/logger'
 
 const rooms = new Map<string, GameRoomState>()
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -139,7 +174,7 @@ export function registerGameRoom(io: Server) {
 
 			const existing = state.players.find(p => p.userId === userId)
 			if (existing) {
-				console.log(`[gr:join] reconnect userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} prevSocketId=${existing.socketId}`)
+				logger.info(`[gr:join] reconnect userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} prevSocketId=${existing.socketId}`)
 				existing.socketId = socket.id
 				existing.connected = true
 				// Fix: update role if user rejoined with a different code (spectator → player or vice versa)
@@ -155,7 +190,7 @@ export function registerGameRoom(io: Server) {
 					}
 				}
 			} else {
-				console.log(`[gr:join] new player userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
+				logger.info(`[gr:join] new player userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
 				const p: RoomPlayer = {
 					socketId: socket.id,
 					userId,
@@ -200,7 +235,7 @@ export function registerGameRoom(io: Server) {
 		})
 
 		// ── Chat ────────────────────────────────────────────────────────────
-		socket.on('gr:chat', (d: { gameCode: string; text: string; recipients?: string[] }) => {
+		socket.on('gr:chat', validateSocketEvent(grChatSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const player = state.players.find(p => p.userId === curUser)
@@ -212,7 +247,7 @@ export function registerGameRoom(io: Server) {
 			// Spectators can only send public messages; filter out spectator recipients too
 			const recipientIds = (player.isSpectator || !d.recipients?.length)
 				? []
-				: d.recipients.filter(id => {
+				: d.recipients.filter((id: any) => {
 					if (id === curUser) return false
 					const target = state.players.find(p => p.userId === id)
 					return target && !target.isSpectator
@@ -221,7 +256,7 @@ export function registerGameRoom(io: Server) {
 			const isPrivate = recipientIds.length > 0
 			const spectatorChat = player.isSpectator && !isPrivate
 			const recipientNames = isPrivate
-				? recipientIds.map(id => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
+				? recipientIds.map((id: any) => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
 				: []
 
 			const msg: ChatMessage = {
@@ -242,7 +277,7 @@ export function registerGameRoom(io: Server) {
 			} else {
 				// Private: deliver only to sender + recipients (not stored in shared history)
 				socket.emit('gr:chat', msg)
-				recipientIds.forEach(recipientId => {
+				recipientIds.forEach((recipientId: any) => {
 					const target = state.players.find(p => p.userId === recipientId)
 					if (target?.socketId) io.to(target.socketId).emit('gr:chat', msg)
 				})
@@ -258,29 +293,29 @@ export function registerGameRoom(io: Server) {
 				recipientNames,
 				spectatorChat,
 			}).catch(() => { /* ignore */ })
-		})
+		}))
 
 		// ── Reactions ───────────────────────────────────────────────────────
-		socket.on('gr:react', (d: { gameCode: string; emoji: string }) => {
+		socket.on('gr:react', validateSocketEvent(grReactSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			if (d.emoji in state.reactions) state.reactions[d.emoji]++
 			emit(io, d.gameCode, 'gr:reactions', state.reactions)
 			emit(io, d.gameCode, 'gr:player-reacted', { userId: curUser, emoji: d.emoji })
-		})
+		}))
 
 		// ── Hand raise ──────────────────────────────────────────────────────
-		socket.on('gr:hand', (d: { gameCode: string; raised: boolean }) => {
+		socket.on('gr:hand', validateSocketEvent(grHandSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
 			if (!p || p.isSpectator) return
 			p.handRaised = d.raised
 			pushState(io, state)
-		})
+		}))
 
 		// ── Set role ────────────────────────────────────────────────────────
-		socket.on('gr:role', (d: { gameCode: string; targetUserId: string; role: string }) => {
+		socket.on('gr:role', validateSocketEvent(grRoleSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const requester = state.players.find(p => p.userId === curUser)
@@ -288,10 +323,10 @@ export function registerGameRoom(io: Server) {
 			if (d.targetUserId !== curUser && !requester.isGamemaster) return
 			const target = state.players.find(p => p.userId === d.targetUserId)
 			if (target && !target.isSpectator) { target.role = d.role.slice(0, 60); pushState(io, state) }
-		})
+		}))
 
 		// ── Start / End ─────────────────────────────────────────────────────
-		socket.on('gr:start', (d: { gameCode: string }) => {
+		socket.on('gr:start', validateSocketEvent(grStartSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 
@@ -316,9 +351,9 @@ export function registerGameRoom(io: Server) {
 			})
 
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:end', (d: { gameCode: string }) => {
+		socket.on('gr:end', validateSocketEvent(grEndSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			// Cancel all breakout auto-return timers for this game
@@ -335,10 +370,10 @@ export function registerGameRoom(io: Server) {
 			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
 			const t = setTimeout(() => rooms.delete(d.gameCode), 60_000)
 			endTimers.set(d.gameCode, t)
-		})
+		}))
 
 		// ── Coins: player → player ──────────────────────────────────────────
-		socket.on('gr:coins-transfer', (d: { gameCode: string; toUserId: string; amount: number }) => {
+		socket.on('gr:coins-transfer', validateSocketEvent(grCoinsTransferSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const from = state.players.find(p => p.userId === curUser)
@@ -347,10 +382,10 @@ export function registerGameRoom(io: Server) {
 			from.coins -= d.amount
 			to.coins   += d.amount
 			pushState(io, state)
-		})
+		}))
 
 		// ── Coins: player → bank ────────────────────────────────────────────
-		socket.on('gr:coins-bank', (d: { gameCode: string; amount: number }) => {
+		socket.on('gr:coins-bank', validateSocketEvent(grCoinsBankSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
@@ -358,46 +393,42 @@ export function registerGameRoom(io: Server) {
 			p.coins -= d.amount
 			state.bankCoins += d.amount
 			pushState(io, state)
-		})
+		}))
 
 		// ── Influence (GM only) ─────────────────────────────────────────────
-		socket.on('gr:influence', (d: { gameCode: string; targetUserId: string; delta: number }) => {
+		socket.on('gr:influence', validateSocketEvent(grInfluenceSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const target = state.players.find(p => p.userId === d.targetUserId)
 			if (target) { target.influence = Math.max(0, target.influence + d.delta); pushState(io, state) }
-		})
+		}))
 
 		// ── Mute all (GM only — sets a flag, audio handled by LiveKit) ──────
-		socket.on('gr:mute-all', (d: { gameCode: string }) => {
+		socket.on('gr:mute-all', validateSocketEvent(grMuteAllSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			emit(io, d.gameCode, 'gr:mute-all', {})
-		})
+		}))
 
 		// ── Mute player (GM only — mutes a single player's mic via LiveKit) ─
-		socket.on('gr:mute-player', (d: { gameCode: string; targetUserId: string }) => {
+		socket.on('gr:mute-player', validateSocketEvent(grMutePlayerSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const uKey = `${d.gameCode}:${d.targetUserId}`
 			const sockets = userSockets.get(uKey)
 			if (sockets) sockets.forEach(sid => io.to(sid).emit('gr:mute-player', {}))
-		})
+		}))
 
 		// ── Announcement ────────────────────────────────────────────────────
-		socket.on('gr:announce', (d: { gameCode: string; text: string | null }) => {
+		socket.on('gr:announce', validateSocketEvent(grAnnounceSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			state.announcement = d.text ? d.text.slice(0, 500) : null
 			pushState(io, state)
-		})
+		}))
 
 		// ── Timer ───────────────────────────────────────────────────────────
-		socket.on('gr:timer', (d: {
-			gameCode: string
-			action: 'set' | 'start' | 'stop' | 'clear'
-			label?: string; seconds?: number
-		}) => {
+		socket.on('gr:timer', validateSocketEvent(grTimerSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const gmPlayer = state.players.find(p => p.userId === curUser)
@@ -436,28 +467,25 @@ export function registerGameRoom(io: Server) {
 				}
 			}
 			pushState(io, state)
-		})
+		}))
 
 		// ── Voting (players only) ───────────────────────────────────────────
-		socket.on('gr:vote-create', (d: {
-			gameCode: string; question: string; options: string[]
-			isAnonymous: boolean; multipleChoice: boolean
-		}) => {
+		socket.on('gr:vote-create', validateSocketEvent(grVoteCreateSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const vote: ActiveVote = {
 				id: uid(),
 				question: d.question.slice(0, 300),
-				options: d.options.map((t, i) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
+				options: d.options.map((t: any, i: any) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
 				isAnonymous: d.isAnonymous,
 				multipleChoice: d.multipleChoice,
 				closed: false,
 			}
 			state.activeVote = vote
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:vote-cast', (d: { gameCode: string; optionIds: string[] }) => {
+		socket.on('gr:vote-cast', validateSocketEvent(grVoteCastSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !state.activeVote || state.activeVote.closed) return
 			const player = state.players.find(p => p.userId === curUser)
@@ -465,37 +493,34 @@ export function registerGameRoom(io: Server) {
 			const vote = state.activeVote
 			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
 			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
-			toVote.forEach(oid => {
+			toVote.forEach((oid: any) => {
 				const o = vote.options.find(o => o.id === oid)
 				if (o && curUser) o.voterIds.push(curUser)
 			})
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:vote-close', (d: { gameCode: string }) => {
+		socket.on('gr:vote-close', validateSocketEvent(grVoteCloseSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			if (state.activeVote) { state.activeVote.closed = true; pushState(io, state) }
-		})
+		}))
 
-		socket.on('gr:vote-clear', (d: { gameCode: string }) => {
+		socket.on('gr:vote-clear', validateSocketEvent(grVoteClearSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			state.activeVote = null
 			pushState(io, state)
-		})
+		}))
 
 		// ── Spectator voting ────────────────────────────────────────────────
-		socket.on('gr:spectator-vote-create', (d: {
-			gameCode: string; question: string; options: string[]
-			isAnonymous: boolean; multipleChoice: boolean
-		}) => {
+		socket.on('gr:spectator-vote-create', validateSocketEvent(grSpectatorVoteCreateSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const vote: ActiveVote = {
 				id: uid(),
 				question: d.question.slice(0, 300),
-				options: d.options.map((t, i) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
+				options: d.options.map((t: string, i: number) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
 				isAnonymous: d.isAnonymous,
 				multipleChoice: d.multipleChoice,
 				closed: false,
@@ -503,9 +528,9 @@ export function registerGameRoom(io: Server) {
 			}
 			state.spectatorVote = vote
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:spectator-vote-cast', (d: { gameCode: string; optionIds: string[] }) => {
+		socket.on('gr:spectator-vote-cast', validateSocketEvent(grSpectatorVoteCastSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !state.spectatorVote || state.spectatorVote.closed) return
 			const player = state.players.find(p => p.userId === curUser)
@@ -513,30 +538,28 @@ export function registerGameRoom(io: Server) {
 			const vote = state.spectatorVote
 			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
 			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
-			toVote.forEach(oid => {
+			toVote.forEach((oid: string) => {
 				const o = vote.options.find(o => o.id === oid)
 				if (o && curUser) o.voterIds.push(curUser)
 			})
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:spectator-vote-close', (d: { gameCode: string }) => {
+		socket.on('gr:spectator-vote-close', validateSocketEvent(grSpectatorVoteCloseSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			if (state.spectatorVote) { state.spectatorVote.closed = true; pushState(io, state) }
-		})
+		}))
 
-		socket.on('gr:spectator-vote-clear', (d: { gameCode: string }) => {
+		socket.on('gr:spectator-vote-clear', validateSocketEvent(grSpectatorVoteClearSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			state.spectatorVote = null
 			pushState(io, state)
-		})
+		}))
 
 		// ── Breakout rooms ──────────────────────────────────────────────────
-		socket.on('gr:breakout-create', (d: {
-			gameCode: string; name: string; imageUrl: string; timerSeconds: number | null
-		}) => {
+		socket.on('gr:breakout-create', validateSocketEvent(grBreakoutCreateSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			if (state.breakoutRooms.length >= 5) { socket.emit('gr:error', 'Max 5 breakout rooms'); return }
@@ -550,14 +573,14 @@ export function registerGameRoom(io: Server) {
 			}
 			state.breakoutRooms.push(br)
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:breakout-invite', (d: { gameCode: string; roomId: string; playerIds: string[] }) => {
+		socket.on('gr:breakout-invite', validateSocketEvent(grBreakoutAssignSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
-			d.playerIds.forEach(playerId => {
+			d.playerIds.forEach((playerId: string) => {
 				const target = state!.players.find(p => p.userId === playerId)
 				if (target?.socketId) {
 					io.to(target.socketId).emit('gr:breakout-invited', {
@@ -565,9 +588,9 @@ export function registerGameRoom(io: Server) {
 					})
 				}
 			})
-		})
+		}))
 
-		socket.on('gr:breakout-join', (d: { gameCode: string; roomId: string }) => {
+		socket.on('gr:breakout-join', validateSocketEvent(grBreakoutJoinSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
@@ -587,7 +610,7 @@ export function registerGameRoom(io: Server) {
 					if (!s) return
 					const r = s.breakoutRooms.find(r => r.id === d.roomId)
 					if (!r) return
-					console.log(`[breakout-timer] expired roomId=${d.roomId} gameCode=${d.gameCode} returning ${r.playerIds.length} players`)
+					logger.info(`[breakout-timer] expired roomId=${d.roomId} gameCode=${d.gameCode} returning ${r.playerIds.length} players`)
 					r.playerIds.forEach(playerId => {
 						const pl = s.players.find(p => p.userId === playerId)
 						if (pl) {
@@ -602,18 +625,18 @@ export function registerGameRoom(io: Server) {
 				breakoutTimers.set(tKey, tid)
 			}
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:breakout-leave', (d: { gameCode: string }) => {
+		socket.on('gr:breakout-leave', validateSocketEvent(grBreakoutLeaveSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser) return
 			state.breakoutRooms.forEach(r => { r.playerIds = r.playerIds.filter(id => id !== curUser) })
 			const p = state.players.find(p => p.userId === curUser)
 			if (p) p.breakoutRoomId = null
 			pushState(io, state)
-		})
+		}))
 
-		socket.on('gr:breakout-end', (d: { gameCode: string; roomId: string }) => {
+		socket.on('gr:breakout-end', validateSocketEvent(grBreakoutEndSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			// Cancel any running auto-return timer for this room
@@ -631,10 +654,10 @@ export function registerGameRoom(io: Server) {
 			})
 			state.breakoutRooms = state.breakoutRooms.filter(r => r.id !== d.roomId)
 			pushState(io, state)
-		})
+		}))
 
 		// ── Show image ──────────────────────────────────────────────────────
-		socket.on('gr:image-show', (d: { gameCode: string; imageUrl: string | null }) => {
+		socket.on('gr:image-show', validateSocketEvent(grImageShowSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const gmPlayer = state.players.find(p => p.userId === curUser)
@@ -646,12 +669,12 @@ export function registerGameRoom(io: Server) {
 				state.shownImageUrl = d.imageUrl
 			}
 			pushState(io, state)
-		})
+		}))
 
 		// ── Observer connect ─────────────────────────────────────────────────────
 		// The observer is the GM's automated recording tool — not a person.
 		// Identity comes from the verified JWT (socket.data.userId), not the client payload.
-		socket.on('gr:observer-connect', async (d: { gameCode: string }) => {
+		socket.on('gr:observer-connect', validateSocketEvent(grObserverConnectSchema, async (d: any) => {
 			const userId = socket.data.userId as string | null
 			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
 
@@ -687,18 +710,18 @@ export function registerGameRoom(io: Server) {
 				}))
 				socket.emit('gr:chat-history', history)
 			} catch { /* non-critical */ }
-		})
+		}))
 
 		// ── Recording control (GM → observer) ───────────────────────────────────
-		socket.on('gr:record-control', (d: { gameCode: string; action: 'start' | 'stop' }) => {
+		socket.on('gr:record-control', validateSocketEvent(grRecordControlSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
 			const obsSocketId = observerSockets.get(d.gameCode)
 			if (obsSocketId) io.to(obsSocketId).emit('gr:record-signal', { action: d.action })
-		})
+		}))
 
 		// ── Recording status (observer → GM + room broadcast) ────────────────────
-		socket.on('gr:record-status', (d: { gameCode: string; status: string }) => {
+		socket.on('gr:record-status', validateSocketEvent(grRecordStatusSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || observerSockets.get(d.gameCode) !== socket.id) return
 			const gm = state.players.find(p => p.isGamemaster && p.connected)
@@ -708,7 +731,7 @@ export function registerGameRoom(io: Server) {
 			if (d.status === 'done' || d.status === 'error' || d.status === 'idle') {
 				emit(io, d.gameCode, 'gr:recording-notify', { active: false })
 			}
-		})
+		}))
 
 		// ── Disconnect ──────────────────────────────────────────────────────
 		socket.on('disconnect', () => {
@@ -735,7 +758,7 @@ export function registerGameRoom(io: Server) {
 					userSockets.delete(uKey)
 					const p = state.players.find(p => p.userId === curUser)
 					if (p) { p.connected = false; p.socketId = '' }
-					console.log(`[disconnect] userId=${curUser} gameCode=${curCode} fully disconnected`)
+					logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} fully disconnected`)
 					pushState(io, state)
 				} else {
 					// User still has another tab open — keep them connected,
@@ -743,14 +766,14 @@ export function registerGameRoom(io: Server) {
 					const p = state.players.find(p => p.userId === curUser)
 					if (p && p.socketId === socket.id) {
 						p.socketId = [...sockets][sockets.size - 1]
-						console.log(`[disconnect] userId=${curUser} gameCode=${curCode} tab closed, ${sockets.size} connection(s) remain, socketId→${p.socketId}`)
+						logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} tab closed, ${sockets.size} connection(s) remain, socketId→${p.socketId}`)
 					}
 				}
 			} else {
 				// No tracking entry (join predates this fix) — fall back to marking disconnected
 				const p = state.players.find(p => p.userId === curUser)
 				if (p) { p.connected = false; p.socketId = '' }
-				console.log(`[disconnect] userId=${curUser} gameCode=${curCode} disconnected (no tracking)`)
+				logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} disconnected (no tracking)`)
 				pushState(io, state)
 			}
 		})

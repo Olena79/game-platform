@@ -22,6 +22,7 @@ export interface IGame extends Document {
 	participationCost: number
 	gmCardNumber: string
 	scheduledAt?: Date
+	reminderSent?: boolean
 	coverImage: string
 	images: string[]
 	defaultTimerSeconds: number | null
@@ -60,6 +61,7 @@ const GameSchema = new Schema<IGame>(
 		participationCost:  { type: Number, default: 0, min: 0 },
 		gmCardNumber:       { type: String, default: '' },   // digits only, max 19 (16 + 3 spaces stripped on save)
 		scheduledAt:        { type: Date },
+		reminderSent:       { type: Boolean, default: false },
 		coverImage:         { type: String, default: '' },
 		images:             { type: [String], default: [] },
 		defaultTimerSeconds: { type: Number, default: null },

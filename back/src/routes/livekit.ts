@@ -1,6 +1,9 @@
+import logger from '../config/logger'
 import { Router, Response } from 'express'
 import { AccessToken } from 'livekit-server-sdk'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
+import { validateBody } from '../middleware/validationMiddleware'
+import { livekitTokenSchema } from '../validation/schemas'
 
 const LIVEKIT_API_KEY    = process.env.LIVEKIT_API_KEY
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET
@@ -12,18 +15,14 @@ if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
 
 const router = Router()
 
-router.post('/token', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/token', authMiddleware, validateBody(livekitTokenSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const { roomName, participantName } = req.body
-		if (!roomName || !participantName) {
-			res.status(400).json({ message: 'Missing roomName or participantName' })
-			return
-		}
+		const { roomName, userName } = req.body
 
 		const at = new AccessToken(
 			LIVEKIT_API_KEY,
 			LIVEKIT_API_SECRET,
-			{ identity: String(req.userId), name: participantName },
+			{ identity: String(req.userId), name: userName },
 		)
 
 		at.addGrant({
@@ -35,15 +34,15 @@ router.post('/token', authMiddleware, async (req: AuthRequest, res: Response): P
 
 		const token = await at.toJwt()
 		res.json({ token, url: LIVEKIT_URL })
-	} catch {
+	} catch (err: any) {
+		logger.error('[livekit/token]', err)
 		res.status(500).json({ message: 'Token generation failed' })
 	}
 })
 
-router.post('/observer-token', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/observer-token', authMiddleware, validateBody(livekitTokenSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const { roomName } = req.body
-		if (!roomName) { res.status(400).json({ message: 'Missing roomName' }); return }
 
 		const at = new AccessToken(
 			LIVEKIT_API_KEY,
@@ -54,7 +53,8 @@ router.post('/observer-token', authMiddleware, async (req: AuthRequest, res: Res
 
 		const token = await at.toJwt()
 		res.json({ token, url: LIVEKIT_URL })
-	} catch {
+	} catch (err: any) {
+		logger.error('[livekit/observer-token]', err)
 		res.status(500).json({ message: 'Token generation failed' })
 	}
 })

@@ -1,16 +1,24 @@
+import logger from '../config/logger'
 import { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { Recording } from '../models/Recording'
 import { User } from '../models/User'
 import { uploadStreamToDrive, makeFilePublic } from '../services/googleDrive'
 import { sendRecordingEmail } from '../services/email'
+import { validateBody, validateParams } from '../middleware/validationMiddleware'
+import { recordingIdSchema } from '../validation/schemas'
+import { z } from 'zod'
+
+const initiateRecordingSchema = z.object({
+	gameCode: z.string().min(1, 'Game code is required'),
+	gameTitle: z.string().optional(),
+})
 
 const router = Router()
 
-router.post('/initiate', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/initiate', authMiddleware, validateBody(initiateRecordingSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const { gameCode, gameTitle } = req.body
-		if (!gameCode) { res.status(400).json({ message: 'gameCode required' }); return }
 
 		const user = await User.findById(req.userId)
 		if (!user) { res.status(401).json({ message: 'Unauthorized' }); return }
@@ -23,18 +31,17 @@ router.post('/initiate', authMiddleware, async (req: AuthRequest, res: Response)
 			expiresAt,
 		})
 		res.json({ recordingId: String(recording._id) })
-	} catch (err) {
-		console.error('[recordings/initiate]', err)
+	} catch (err: any) {
+		logger.error('[recordings/initiate]', err)
 		res.status(500).json({ message: 'Failed to initiate recording' })
 	}
 })
 
-router.put('/upload/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/upload/:id', authMiddleware, validateParams(recordingIdSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const recording = await Recording.findById(req.params.id)
 		if (!recording) { res.status(404).json({ message: 'Recording not found' }); return }
 
-		// Ownership check: only the GM who initiated the recording may upload to it
 		const uploader = await User.findById(req.userId).select('email')
 		if (!uploader || uploader.email !== recording.gmEmail) {
 			res.status(403).json({ message: 'FORBIDDEN' })
@@ -66,13 +73,13 @@ router.put('/upload/:id', authMiddleware, async (req: AuthRequest, res: Response
 		])
 
 		res.json({ shareLink })
-	} catch (err) {
-		console.error('[recordings/upload]', err instanceof Error ? err.message : 'unknown error')
+	} catch (err: any) {
+		logger.error('[recordings/upload]', err instanceof Error ? err.message : 'unknown error')
 		res.status(500).json({ message: 'Upload failed' })
 	}
 })
 
-router.get('/:id', async (req, res): Promise<void> => {
+router.get('/:id', validateParams(recordingIdSchema), async (req, res): Promise<void> => {
 	try {
 		const recording = await Recording.findById(req.params.id).select('shareLink status expiresAt gameTitle gameCode')
 		if (!recording) { res.status(404).json({ message: 'Not found' }); return }
@@ -84,7 +91,8 @@ router.get('/:id', async (req, res): Promise<void> => {
 			gameCode: recording.gameCode,
 			expiresAt: recording.expiresAt,
 		})
-	} catch {
+	} catch (err: any) {
+		logger.error('[recordings/:id GET]', err)
 		res.status(500).json({ message: 'Error' })
 	}
 })
