@@ -1189,6 +1189,7 @@ function GameRoomInner() {
 	const { user, isLoading } = useAuth()
 	const room = useGameRoom(code)
 	const { lk, lkBreakout, inBreakout, error, connStatus } = room
+	const containerRef = useRef<HTMLDivElement>(null)
 
 	const activeLk = inBreakout ? lkBreakout : lk
 
@@ -1198,6 +1199,33 @@ function GameRoomInner() {
 	const [preJoinDone, setPreJoinDone] = useState(false)
 	const [initMic, setInitMic] = useState(false)
 	const [initCam, setInitCam] = useState(false)
+
+	// Request fullscreen on mobile for better UX
+	useEffect(() => {
+		const isMobile = /iPhone|iPad|Android|webOS|BlackBerry|Windows Phone/i.test(navigator.userAgent)
+		if (!isMobile || !containerRef.current) return
+
+		const requestFullscreen = async () => {
+			try {
+				const elem = containerRef.current as any
+				if (elem.requestFullscreen) {
+					await elem.requestFullscreen({ navigationUI: 'hide' })
+				} else if (elem.webkitRequestFullscreen) {
+					await elem.webkitRequestFullscreen()
+				}
+			} catch (err) {
+				console.warn('[fullscreen] Request failed:', err)
+			}
+		}
+
+		// Try to enter fullscreen on user interaction
+		const handleClick = () => {
+			requestFullscreen()
+			document.removeEventListener('click', handleClick)
+		}
+		document.addEventListener('click', handleClick)
+		return () => document.removeEventListener('click', handleClick)
+	}, [])
 
 	if (isLoading) {
 		return (
@@ -1296,18 +1324,20 @@ function GameRoomInner() {
 	}
 
 	return (
-		<LiveKitRoom
-			key={activeLk.roomName}
-			token={activeLk.token}
-			serverUrl={activeLk.url}
-			connect={true}
-			audio={false}
-			video={false}
-			options={LK_ROOM_OPTS}
-			style={{ height: '100vh', background: '#07080f' }}
-		>
-			<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
-		</LiveKitRoom>
+		<div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+			<LiveKitRoom
+				key={activeLk.roomName}
+				token={activeLk.token}
+				serverUrl={activeLk.url}
+				connect={true}
+				audio={false}
+				video={false}
+				options={LK_ROOM_OPTS}
+				style={{ height: '100vh', background: '#07080f' }}
+			>
+				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
+			</LiveKitRoom>
+		</div>
 	)
 }
 
