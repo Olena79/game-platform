@@ -44,13 +44,20 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 			})
 			logger.info('[email.sendEmail] Transporter created, sending email...')
-			await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
-			logger.info('[email] SMTP email sent', { to, subject })
+			const result = await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
+			logger.info('[email] SMTP email sent successfully', { to, subject, result })
 		} else {
 			logger.warn('[email] No email provider configured (SENDGRID_API_KEY or SMTP_USER/SMTP_PASS missing)', { to })
 		}
-	} catch (err) {
-		logger.error('[email] Failed to send email', { to, subject, error: err instanceof Error ? err.message : String(err) })
+	} catch (err: any) {
+		logger.error('[email] CRITICAL: Failed to send email', {
+			to,
+			subject,
+			errorMessage: err?.message || String(err),
+			errorCode: err?.code,
+			errorResponse: err?.response || err?.responseCode,
+			fullError: String(err)
+		})
 		throw err
 	}
 }
