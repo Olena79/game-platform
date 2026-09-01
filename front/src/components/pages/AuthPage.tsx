@@ -50,12 +50,12 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 				style={isDark
 					? {
 						background: 'rgba(68,170,255,0.12)',
-						border: '1px solid rgba(68,170,255,0.35)',
+						border: '1px solid #c35436',
 						color: 'rgba(100,180,255,0.9)',
 					}
 					: {
 						background: 'rgba(0,0,0,0.02)',
-						border: '1px solid var(--border-subtle)',
+						border: '1px solid #c35436',
 						color: 'var(--text)',
 					}
 				}

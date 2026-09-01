@@ -211,6 +211,8 @@
 		"err_phone_exists": "Цей номер телефону вже зареєстрований",
 		"err_credentials": "Невірний email або пароль",
 		"btn_google": "Продовжити з Google",
+		"google_signin": "Продовжити з Google",
+		"loading": "Завантаження...",
 		"close": "Закрити",
 		"or": "або"
 	},

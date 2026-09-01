@@ -211,6 +211,8 @@
 		"err_phone_exists": "This phone number is already registered",
 		"err_credentials": "Invalid email or password",
 		"btn_google": "Continue with Google",
+		"google_signin": "Continue with Google",
+		"loading": "Loading...",
 		"close": "Close",
 		"or": "or"
 	},
