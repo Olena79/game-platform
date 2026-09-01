@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, X } from 'lucide-react'
-import { GoogleLogin, useGoogleLogin } from '@react-oauth/google'
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
@@ -28,21 +28,48 @@ interface GoogleSignInButtonProps {
 const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonProps) => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
+	const googleLoginRef = useRef<HTMLDivElement>(null)
+
+	const handleGoogleSuccess = (credentialResponse: CredentialResponse) => {
+		if (credentialResponse.credential) {
+			onSuccess(credentialResponse.credential)
+		}
+	}
+
+	const triggerGoogleLogin = () => {
+		const button = googleLoginRef.current?.querySelector('div[role="button"]') as HTMLDivElement
+		if (button) button.click()
+	}
 
 	return (
-		<div className='w-full' style={{ isolation: 'isolate' }}>
-			<GoogleLogin
-				onSuccess={credentialResponse => {
-					if (credentialResponse.credential) {
-						onSuccess(credentialResponse.credential)
+		<>
+			<button
+				onClick={triggerGoogleLogin}
+				disabled={loading}
+				className='w-full h-[44px] rounded-[8px] flex items-center justify-center gap-[8px] font-[500] text-[14px] transition-all cursor-pointer'
+				style={isDark
+					? {
+						background: 'rgba(68,170,255,0.12)',
+						border: '1px solid rgba(68,170,255,0.35)',
+						color: 'rgba(100,180,255,0.9)',
 					}
-				}}
-				onError={onError}
-				text='signin_with'
-				size='large'
-				theme='outline'
-			/>
-		</div>
+					: {
+						background: 'rgba(0,0,0,0.02)',
+						border: '1px solid var(--border-subtle)',
+						color: 'var(--text)',
+					}
+				}
+			>
+				<GoogleIcon />
+				{loading ? t('auth.loading') : t('auth.google_signin')}
+			</button>
+			<div ref={googleLoginRef} style={{ display: 'none' }}>
+				<GoogleLogin
+					onSuccess={handleGoogleSuccess}
+					onError={onError}
+				/>
+			</div>
+		</>
 	)
 }
 
