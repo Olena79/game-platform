@@ -18,6 +18,29 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 	logger.info('[email.sendEmail] EMAIL_ENABLED =', { EMAIL_ENABLED })
 
 	try {
+		// Telegram mode for testing
+		if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+			logger.info('[email.sendEmail] Using Telegram (test mode)')
+			const message = `📧 *${subject}*\n\nTo: ${to}\n\n(HTML content omitted in Telegram mode)`
+			const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					chat_id: process.env.TELEGRAM_CHAT_ID,
+					text: message,
+					parse_mode: 'Markdown',
+				}),
+			})
+
+			if (!response.ok) {
+				const error = await response.json()
+				throw new Error(`Telegram API error: ${JSON.stringify(error)}`)
+			}
+
+			logger.info('[email] Telegram notification sent', { to, subject })
+			return
+		}
+
 		logger.info('[email.sendEmail] Checking email providers', {
 			hasSendgridKey: !!process.env.SENDGRID_API_KEY,
 			hasBrevoApiKey: !!process.env.BREVO_API_KEY,

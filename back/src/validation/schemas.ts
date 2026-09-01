@@ -251,6 +251,13 @@ export const gameCodeSchema = z.object({
 	code: z.string().min(1).max(10, 'Invalid game code'),
 })
 
+// ────── Telegram Schemas ──────────────────────────────────────
+
+export const telegramLinkSchema = z.object({
+	userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+	telegramChatId: z.string().min(1, 'Telegram chat ID is required'),
+})
+
 // ────── Utility Types ────────────────────────────────────────────────────
 
 export type RegisterRequest = z.infer<typeof registerSchema>

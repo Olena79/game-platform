@@ -40,12 +40,14 @@ import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
 import recordingRoutes from './routes/recordings'
 import uploadRoutes from './routes/upload'
+import telegramRoutes from './routes/telegram'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
 import { deleteFile } from './services/googleDrive'
 import { sendGameStartReminders } from './services/gameReminders'
+import { startTelegramPolling } from './services/telegramBot'
 import {
 	authLimiter,
 	gamesLimiter,
@@ -128,6 +130,7 @@ app.get('/health', (_req, res) => res.status(200).send('OK'))
 // ── Rate limiting by API section ──────────────────────────────────────────────
 // Each endpoint is limited based on its resource cost and use frequency
 app.use('/api/auth',        authLimiter, authRoutes)
+app.use('/api/telegram',    telegramRoutes)
 app.use('/api/upload',      uploadLimiter, uploadRoutes)
 app.use('/api/games',       gamesLimiter, gameRoutes)
 app.use('/api/livekit',     livekitLimiter, livekitRoutes)
@@ -176,6 +179,9 @@ const PORT = process.env.PORT || 5000
 
 connectDB()
 	.then(() => {
+		// Start Telegram bot polling
+		startTelegramPolling()
+
 		httpServer.listen(PORT, () => {
 			logger.info(`Server running on http://localhost:${PORT}`, { context: 'server:startup', port: PORT })
 		})

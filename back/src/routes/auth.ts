@@ -75,7 +75,13 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		res.status(201).json({
 			accessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
+			user: {
+				id: user._id,
+				email: user.email,
+				name: user.name,
+				surname: user.surname,
+				telegramConnected: !!user.telegramChatId,
+			},
 		})
 	} catch (err: any) {
 		logger.error('[register]', err)
@@ -104,7 +110,13 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
 		res.json({
 			accessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
+			user: {
+				id: user._id,
+				email: user.email,
+				name: user.name,
+				surname: user.surname,
+				telegramConnected: !!user.telegramChatId,
+			},
 		})
 	} catch (err) {
 		logger.error('[login]', err)
@@ -143,7 +155,13 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 		res.json({
 			accessToken: jwtAccessToken,
 			refreshToken,
-			user: { id: user._id, email: user.email, name: user.name, surname: user.surname },
+			user: {
+				id: user._id,
+				email: user.email,
+				name: user.name,
+				surname: user.surname,
+				telegramConnected: !!user.telegramChatId,
+			},
 		})
 	} catch (err) {
 		logger.error('[google auth]', err)
@@ -159,7 +177,13 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
 			res.status(404).json({ message: 'User not found' })
 			return
 		}
-		res.json({ id: user._id, email: user.email, name: user.name, surname: user.surname })
+		res.json({
+			id: user._id,
+			email: user.email,
+			name: user.name,
+			surname: user.surname,
+			telegramConnected: !!user.telegramChatId,
+		})
 	} catch (err) {
 		logger.error('[me]', err)
 		res.status(500).json({ message: 'Server error' })

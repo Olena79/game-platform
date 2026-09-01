@@ -163,6 +163,7 @@ export const OurGamesPage = () => {
 	const [modal, setModal] = useState<{
 		open: boolean; title: string; message: string; variant: 'success' | 'error'
 		gameCode?: string
+		telegramConnected?: boolean
 	}>({ open: false, title: '', message: '', variant: 'error' })
 
 	const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; gameId: string | null }>({
@@ -327,6 +328,7 @@ export const OurGamesPage = () => {
 				message: t('our_games.success_register_msg'),
 				variant: 'success',
 				gameCode: res.gameCode,
+				telegramConnected: user?.telegramConnected ?? false,
 			})
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
@@ -619,19 +621,35 @@ export const OurGamesPage = () => {
 				variant={modal.variant}
 			>
 				{modal.variant === 'success' && modal.gameCode && (
-					<div className='flex items-center gap-[10px] mt-[4px]'>
-						<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,215,255,0.8)' : 'var(--text-muted)' }}>
-							{t('our_games.game_code_label')}
-						</span>
-						<span
-							className='text-[22px] font-[800] tracking-[4px] font-mono'
-							style={isDark
-								? { color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.4)' }
-								: { color: 'var(--accent)' }
-							}
-						>
-							{modal.gameCode}
-						</span>
+					<div className='flex flex-col gap-[14px] mt-[14px]'>
+						{/* Code display */}
+						<div className='flex items-center gap-[10px]'>
+							<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,215,255,0.8)' : 'var(--text-muted)' }}>
+								{t('our_games.game_code_label')}
+							</span>
+							<span
+								className='text-[22px] font-[800] tracking-[4px] font-mono'
+								style={isDark
+									? { color: '#0fffc8', textShadow: '0 0 16px rgba(15,255,200,0.4)' }
+									: { color: 'var(--accent)' }
+								}
+							>
+								{modal.gameCode}
+							</span>
+						</div>
+
+						{/* Warning if no Telegram */}
+						{!modal.telegramConnected && (
+							<div
+								className='rounded-[8px] p-[12px] border-l-4 text-[12px] leading-[1.4]'
+								style={isDark
+									? { background: 'rgba(255,120,80,0.08)', borderColor: '#ff7850', color: 'rgba(255,150,100,0.9)' }
+									: { background: 'rgba(255,120,80,0.05)', borderColor: '#ff7850', color: '#c35436' }
+								}
+							>
+								⚠️ {t('our_games.no_telegram_warning', 'Вы не подключены к Telegram. Скопируйте код игры выше — он больше не будет доступен. Свяжитесь с игромастером, если потеряете код.')}
+							</div>
+						)}
 					</div>
 				)}
 			</Modal>

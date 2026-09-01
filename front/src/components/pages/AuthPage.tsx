@@ -9,6 +9,7 @@ import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/
 import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
 import { Modal } from '../minicomponents/Modal'
+import { RegistrationSuccessModal } from '../modals/RegistrationSuccessModal'
 
 const GoogleIcon = () => (
 	<svg width="17" height="17" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -110,6 +111,11 @@ export const AuthPage = () => {
 		success: boolean
 	}>({ open: false, title: '', message: '', variant: 'success', success: false })
 
+	const [registrationModal, setRegistrationModal] = useState<{
+		open: boolean
+		userId: string
+	}>({ open: false, userId: '' })
+
 	const closeModal = () => {
 		if (modal.success) {
 			setModal(m => ({ ...m, open: false }))
@@ -156,13 +162,21 @@ export const AuthPage = () => {
 				: await registerRequest(name, surname, email, password)
 			login(res.accessToken, res.refreshToken, res.user)
 
-			setModal({
-				open: true,
-				title: isLogin ? t('auth.modal_success_login_title') : t('auth.modal_success_register_title'),
-				message: isLogin ? t('auth.modal_success_login_msg') : t('auth.modal_success_register_msg'),
-				variant: 'success',
-				success: true,
-			})
+			if (isLogin) {
+				setModal({
+					open: true,
+					title: t('auth.modal_success_login_title'),
+					message: t('auth.modal_success_login_msg'),
+					variant: 'success',
+					success: true,
+				})
+			} else {
+				// Show registration modal with Telegram option
+				setRegistrationModal({
+					open: true,
+					userId: res.user.id,
+				})
+			}
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
 			setModal({
@@ -336,6 +350,16 @@ export const AuthPage = () => {
 				message={modal.message}
 				variant={modal.variant}
 				closeLabel={t('auth.modal_close')}
+			/>
+
+			<RegistrationSuccessModal
+				isOpen={registrationModal.open}
+				telegramBotUsername={import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'}
+				userId={registrationModal.userId}
+				onClose={() => {
+					setRegistrationModal({ open: false, userId: '' })
+					navigate('/')
+				}}
 			/>
 		</div>
 	)

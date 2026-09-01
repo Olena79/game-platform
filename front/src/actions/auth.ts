@@ -5,6 +5,7 @@ export interface AuthUser {
 	name: string
 	surname?: string
 	email: string
+	telegramConnected?: boolean
 }
 
 export interface AuthResponse {
@@ -49,3 +50,15 @@ export const googleAuthRequest = (idToken: string): Promise<AuthResponse> =>
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ token: idToken }),
 	}).then(handleResponse<AuthResponse>)
+
+export const linkTelegramRequest = (userId: string, telegramChatId: string) =>
+	fetch(`${API}/api/telegram/link`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ userId, telegramChatId }),
+	}).then(handleResponse<AuthResponse>)
+
+export const getTelegramStatusRequest = (token: string): Promise<{ telegramConnected: boolean }> =>
+	fetch(`${API}/api/telegram/status`, {
+		headers: { Authorization: `Bearer ${token}` },
+	}).then(handleResponse<{ telegramConnected: boolean }>)
