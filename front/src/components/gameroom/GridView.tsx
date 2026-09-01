@@ -82,16 +82,11 @@ function computeGrid(n: number, w: number, h: number) {
 	return { cols: bestCols, rows: Math.ceil(n / bestCols) }
 }
 
-// Mobile grid: portrait-friendly 2-column layout; odd counts have last tile spanning both columns
+// Mobile grid: use standard desktop grid (16:9 ratio optimization works well on mobile too)
 function computeMobileGrid(n: number, w: number, h: number) {
-	if (n <= 1) return { cols: 1, rows: 1, lastSpan: false }
-	if (n === 2) {
-		// Portrait: stack top/bottom; landscape: side-by-side
-		return h > w
-			? { cols: 1, rows: 2, lastSpan: false }
-			: { cols: 2, rows: 1, lastSpan: false }
-	}
-	return { cols: 2, rows: Math.ceil(n / 2), lastSpan: n % 2 !== 0 }
+	// Mobile: use same optimal grid as desktop (16:9 preference)
+	// This ensures consistent video sizes whether desktop or mobile
+	return computeGrid(n, w, h)
 }
 
 function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking }: {
@@ -363,7 +358,7 @@ export const GridView = ({
 		return () => obs.disconnect()
 	}, [])
 	const { cols, rows, lastSpan: mobileLastSpan = false } = isMobile
-		? computeMobileGrid(pagedPlayers.length, containerSize.w, containerSize.h)
+		? { ...computeMobileGrid(pagedPlayers.length, containerSize.w, containerSize.h), lastSpan: false }
 		: { ...computeGrid(pagedPlayers.length, containerSize.w, containerSize.h), lastSpan: false }
 
 	const handRaisedRef = useRef(handRaised)
