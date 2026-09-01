@@ -17,17 +17,26 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 	const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || ''
 	const from = { email: fromEmail, name: 'Games of Senses' }
 
-	if (process.env.SENDGRID_API_KEY) {
-		sgMail.setApiKey(process.env.SENDGRID_API_KEY)
-		await sgMail.send({ from, to, subject, html })
-	} else {
-		const transporter = nodemailer.createTransport({
-			host:   process.env.SMTP_HOST || 'smtp.gmail.com',
-			port:   Number(process.env.SMTP_PORT) || 587,
-			secure: false,
-			auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-		})
-		await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
+	try {
+		if (process.env.SENDGRID_API_KEY) {
+			sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+			await sgMail.send({ from, to, subject, html })
+			logger.info('[email] SendGrid email sent', { to, subject })
+		} else if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+			const transporter = nodemailer.createTransport({
+				host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+				port:   Number(process.env.SMTP_PORT) || 587,
+				secure: false,
+				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+			})
+			await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
+			logger.info('[email] SMTP email sent', { to, subject })
+		} else {
+			logger.warn('[email] No email provider configured (SENDGRID_API_KEY or SMTP_USER/SMTP_PASS missing)', { to })
+		}
+	} catch (err) {
+		logger.error('[email] Failed to send email', { to, subject, error: err instanceof Error ? err.message : String(err) })
+		throw err
 	}
 }
 

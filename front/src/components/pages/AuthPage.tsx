@@ -36,8 +36,17 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 					overflow: hidden;
 					border-radius: 8px;
 				}
+				/* Hide default Google button styling during load */
+				.google-signin-wrapper > div > div {
+					display: none !important;
+				}
+				.google-signin-wrapper > div:has(button) > div {
+					display: none !important;
+				}
+				/* Style the actual button */
 				.google-signin-wrapper > div {
 					width: 100% !important;
+					display: block !important;
 				}
 				.google-signin-wrapper button,
 				.google-signin-wrapper [role="button"] {
@@ -60,6 +69,7 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 					gap: 12px !important;
 					padding: 0 16px !important;
 					border-radius: 8px !important;
+					background-color: transparent !important;
 				}
 				.google-signin-wrapper button:hover,
 				.google-signin-wrapper [role="button"]:hover {
@@ -68,12 +78,15 @@ const GoogleSignInButton = ({ loading, onSuccess, onError }: GoogleSignInButtonP
 						? '0 0 30px rgba(66,133,244,0.25), inset 0 0 20px rgba(255,255,255,0.03)'
 						: '0 4px 16px rgba(66,133,244,0.15)'} !important;
 				}
-				.google-signin-wrapper img {
+				.google-signin-wrapper img,
+				.google-signin-wrapper svg {
 					width: 18px !important;
 					height: 18px !important;
+					margin: 0 !important;
 				}
 				.google-signin-wrapper span {
 					color: ${isDark ? '#e0e8ff' : '#1a1f2e'} !important;
+					font-size: 14px !important;
 				}
 			`}</style>
 			<GoogleLogin
