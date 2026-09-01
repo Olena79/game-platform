@@ -62,8 +62,10 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 
 		const hashed = await bcrypt.hash(password, 10)
 		const user = await User.create({ email, password: hashed, name, surname, googleId: null })
+		logger.info('[register] User created', { userId: user._id, email, name, surname })
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
 
+		logger.info('[register] About to send welcome email', { email, name })
 		sendWelcomeEmail(email, name || 'User').catch(err =>
 			logger.error('[register] Welcome email error', { error: err?.response?.body || err.message }),
 		)

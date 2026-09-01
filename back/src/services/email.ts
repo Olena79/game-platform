@@ -14,21 +14,36 @@ function escHtml(s: string | undefined | null): string {
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+	logger.info('[email.sendEmail] Called', { to, subject })
+	logger.info('[email.sendEmail] EMAIL_ENABLED =', { EMAIL_ENABLED })
+
 	const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || ''
 	const from = { email: fromEmail, name: 'Games of Senses' }
 
 	try {
+		logger.info('[email.sendEmail] Checking email providers', {
+			hasSendgridKey: !!process.env.SENDGRID_API_KEY,
+			hasSmtpUser: !!process.env.SMTP_USER,
+			hasSmtpPass: !!process.env.SMTP_PASS,
+			smtpHost: process.env.SMTP_HOST,
+			smtpPort: process.env.SMTP_PORT,
+			fromEmail
+		})
+
 		if (process.env.SENDGRID_API_KEY) {
+			logger.info('[email.sendEmail] Using SendGrid')
 			sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 			await sgMail.send({ from, to, subject, html })
 			logger.info('[email] SendGrid email sent', { to, subject })
 		} else if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+			logger.info('[email.sendEmail] Using SMTP Brevo')
 			const transporter = nodemailer.createTransport({
 				host:   process.env.SMTP_HOST || 'smtp.gmail.com',
 				port:   Number(process.env.SMTP_PORT) || 587,
 				secure: false,
 				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 			})
+			logger.info('[email.sendEmail] Transporter created, sending email...')
 			await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
 			logger.info('[email] SMTP email sent', { to, subject })
 		} else {
@@ -356,8 +371,9 @@ export async function sendNotesEmail(
 }
 
 export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
+	logger.info('[sendWelcomeEmail] Called', { to, name, EMAIL_ENABLED })
 	if (!EMAIL_ENABLED) {
-		logger.info(`[email] Welcome email skipped for ${to} (EMAIL_ENABLED=false)`)
+		logger.warn(`[sendWelcomeEmail] Skipped (EMAIL_ENABLED=false)`, { to })
 		return
 	}
 
