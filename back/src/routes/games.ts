@@ -264,7 +264,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 
 		const gmUser = await User.findById(game.creatorId)
 
-		sendRegistrationEmail(user.email, user.email, {
+		sendRegistrationEmail(user.email, user.name || user.email, {
 			title:              game.title,
 			creatorName:        game.creatorName,
 			description:        game.description || '',
@@ -344,7 +344,7 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 
 		const gmUser = await User.findById(game.creatorId)
 
-		sendSpectatorRegistrationEmail(user.email, user.email, {
+		sendSpectatorRegistrationEmail(user.email, user.name || user.email, {
 			title:         game.title,
 			creatorName:   game.creatorName,
 			spectatorCode: game.spectatorCode,
