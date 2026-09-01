@@ -40,8 +40,8 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({
+					sender: { email: fromEmail, name: 'Games of Senses' },
 					to: [{ email: to }],
-					from: { email: fromEmail, name: 'Games of Senses' },
 					subject,
 					htmlContent: html,
 				}),
