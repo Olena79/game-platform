@@ -27,9 +27,14 @@ let lastUpdateId = 0
 
 async function getUpdates(): Promise<TelegramUpdate[]> {
 	try {
+		const controller = new AbortController()
+		const timeout = setTimeout(() => controller.abort(), 35000)
+
 		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`, {
-			timeout: 35000,
+			signal: controller.signal,
 		})
+		clearTimeout(timeout)
+
 		const data = await response.json()
 		if (!data.ok) {
 			logger.error('[telegram] getUpdates failed', { error: data.description })
