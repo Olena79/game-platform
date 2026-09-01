@@ -23,7 +23,15 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 
 	const startCam = async () => {
 		try {
-			const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+			const s = await navigator.mediaDevices.getUserMedia({
+				video: {
+					facingMode: 'user',
+					aspectRatio: { ideal: 16 / 9 },
+					width: { ideal: 1280 },
+					height: { ideal: 720 },
+				},
+				audio: false,
+			})
 			stopStream()
 			streamRef.current = s
 			if (videoRef.current) videoRef.current.srcObject = s
@@ -92,7 +100,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 						muted
 						playsInline
 						className='absolute inset-0 w-full h-full object-cover'
-						style={{ display: camOn ? 'block' : 'none', transform: 'scaleX(-1)', objectPosition: 'center 20%' }}
+						style={{ display: camOn ? 'block' : 'none', transform: 'scaleX(-1)', objectPosition: 'center 35%' }}
 					/>
 
 					{!camOn && (

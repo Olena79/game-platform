@@ -118,7 +118,8 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	const dims = (camPub?.track as any)?.dimensions as { width: number; height: number } | undefined
 	const isPortrait = dims ? dims.height > dims.width : false
 	// Adaptive object positioning: tighter framing for portrait to ensure full face is visible
-	const objectPos = isPortrait ? 'center 15%' : 'center 30%'
+	// Portrait (mobile): shift down to capture face/chest. Landscape: neutral center
+	const objectPos = isPortrait ? 'center 35%' : 'center center'
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)

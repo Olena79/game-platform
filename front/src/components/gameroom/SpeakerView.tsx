@@ -229,7 +229,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
 						className='absolute inset-0 w-full h-full object-cover'
 						style={{
-							objectPosition: isPortrait ? 'center 15%' : 'center 30%',
+							objectPosition: isPortrait ? 'center 35%' : 'center center',
 							transform: localParticipant?.identity === speakerPlayer?.userId ? 'scaleX(-1)' : 'scaleX(1)',
 						}}
 					/>

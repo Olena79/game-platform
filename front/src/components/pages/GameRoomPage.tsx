@@ -91,8 +91,15 @@ const AUDIO_CAPTURE_OPTS = {
 
 // webAudioMix routes all remote audio through a shared WebAudio AudioContext,
 // giving the browser's built-in AEC a consistent reference signal to cancel.
+const VIDEO_CAPTURE_OPTS = {
+	facingMode: 'user',
+	aspectRatio: { ideal: 16 / 9 },
+	width: { ideal: 1280 },
+	height: { ideal: 720 },
+}
 const LK_ROOM_OPTS = {
 	audioCaptureDefaults: AUDIO_CAPTURE_OPTS,
+	videoCaptureDefaults: VIDEO_CAPTURE_OPTS,
 	webAudioMix: true,
 }
 
