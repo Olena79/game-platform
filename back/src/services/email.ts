@@ -20,10 +20,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 	try {
 		logger.info('[email.sendEmail] Checking email providers', {
 			hasSendgridKey: !!process.env.SENDGRID_API_KEY,
-			hasSmtpUser: !!process.env.SMTP_USER,
-			hasSmtpPass: !!process.env.SMTP_PASS,
-			smtpHost: process.env.SMTP_HOST,
-			smtpPort: process.env.SMTP_PORT,
+			hasBrevoApiKey: !!process.env.BREVO_API_KEY,
 		})
 
 		if (process.env.SENDGRID_API_KEY) {
@@ -33,33 +30,37 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 			sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 			await sgMail.send({ from, to, subject, html })
 			logger.info('[email] SendGrid email sent', { to, subject })
-		} else if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-			logger.info('[email.sendEmail] Using SMTP Brevo')
-			const transporter = nodemailer.createTransport({
-				host:   process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-				port:   Number(process.env.SMTP_PORT) || 587,
-				secure: false,
-				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-				connectionTimeout: 10000,
-				socketTimeout: 10000,
+		} else if (process.env.BREVO_API_KEY) {
+			logger.info('[email.sendEmail] Using Brevo Web API')
+			const fromEmail = 'noreply@gamesclubsenses.com'
+			const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+				method: 'POST',
+				headers: {
+					'api-key': process.env.BREVO_API_KEY,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					to: [{ email: to }],
+					from: { email: fromEmail, name: 'Games of Senses' },
+					subject,
+					htmlContent: html,
+				}),
 			})
-			logger.info('[email.sendEmail] Transporter created, sending email...')
 
-			const fromEmail = process.env.SMTP_USER || ''
-			const sendPromise = transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
-			const timeoutPromise = new Promise((_, reject) =>
-				setTimeout(() => reject(new Error('Email send timeout (10s)')), 10000)
-			)
-
-			try {
-				const result = await Promise.race([sendPromise, timeoutPromise])
-				logger.info('[email] SMTP email sent successfully', { to, subject, sentAt: new Date().toISOString() })
-			} catch (timeoutErr) {
-				logger.error('[email] Email send timed out or failed', { to, subject, error: String(timeoutErr) })
-				throw timeoutErr
+			if (!response.ok) {
+				const errorData = await response.json()
+				logger.error('[email] Brevo API error', {
+					status: response.status,
+					statusText: response.statusText,
+					errorData,
+				})
+				throw new Error(`Brevo API error: ${response.status} ${JSON.stringify(errorData)}`)
 			}
+
+			const result = await response.json()
+			logger.info('[email] Brevo Web API email sent successfully', { to, subject, messageId: result.messageId })
 		} else {
-			logger.warn('[email] No email provider configured (SENDGRID_API_KEY or SMTP_USER/SMTP_PASS missing)', { to })
+			logger.warn('[email] No email provider configured (SENDGRID_API_KEY or BREVO_API_KEY missing)', { to })
 		}
 	} catch (err: any) {
 		logger.error('[email] CRITICAL: Failed to send email', {
@@ -67,7 +68,6 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 			subject,
 			errorMessage: err?.message || String(err),
 			errorCode: err?.code,
-			errorResponse: err?.response || err?.responseCode,
 			fullError: String(err),
 			timestamp: new Date().toISOString()
 		})
