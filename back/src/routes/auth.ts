@@ -52,7 +52,7 @@ const router = Router()
 // POST /api/auth/register
 router.post('/register', validateBody(registerSchema), async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { email, password } = req.body
+		const { email, password, name, surname } = req.body
 
 		const emailExists = await User.findOne({ email })
 		if (emailExists) {
@@ -61,10 +61,10 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		}
 
 		const hashed = await bcrypt.hash(password, 10)
-		const user = await User.create({ email, password: hashed, googleId: null })
+		const user = await User.create({ email, password: hashed, name, surname, googleId: null })
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
 
-		sendWelcomeEmail(email, 'User').catch(err =>
+		sendWelcomeEmail(email, name || 'User').catch(err =>
 			logger.error('[register] Welcome email error', { error: err?.response?.body || err.message }),
 		)
 
