@@ -1,7 +1,7 @@
-import { Schema, model, Document } from 'mongoose'
+﻿import { Schema, model, Document } from 'mongoose'
 
 export interface IRefreshToken extends Document {
-	userId: Schema.Types.ObjectId
+	userId: string
 	token: string
 	expiresAt: Date
 	createdAt: Date
@@ -9,14 +9,25 @@ export interface IRefreshToken extends Document {
 
 const refreshTokenSchema = new Schema<IRefreshToken>(
 	{
-		userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-		token: { type: String, required: true, unique: true, index: true },
-		expiresAt: { type: Date, required: true, index: true },
+		userId: {
+			type: String,
+			required: true,
+			index: true,
+		},
+		token: {
+			type: String,
+			required: true,
+			unique: true,
+			index: true,
+		},
+		expiresAt: {
+			type: Date,
+			required: true,
+			index: true,
+			expires: 0,
+		},
 	},
-	{ timestamps: true }
+	{ timestamps: { createdAt: true, updatedAt: false } },
 )
-
-// Auto-delete expired tokens (MongoDB TTL index)
-refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export const RefreshToken = model<IRefreshToken>('RefreshToken', refreshTokenSchema)

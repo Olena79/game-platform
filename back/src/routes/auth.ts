@@ -61,7 +61,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		}
 
 		const hashed = await bcrypt.hash(password, 10)
-		const user = await User.create({ email, password: hashed })
+		const user = await User.create({ email, password: hashed, googleId: null })
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
 
 		sendWelcomeEmail(email, 'User').catch(err =>

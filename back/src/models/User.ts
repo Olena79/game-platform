@@ -16,11 +16,12 @@ const UserSchema = new Schema<IUser>(
 		surname:  { type: String, default: '', trim: true },
 		email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
 		password: { type: String, default: '' },
-		googleId: { type: String, default: '', sparse: true, trim: true },
+		googleId: { type: String, default: null, sparse: true, trim: true },
 	},
 	{ timestamps: true }
 )
 
-UserSchema.index({ googleId: 1 }, { unique: true, sparse: true }) // Sparse handles empty strings, allows only one empty
+// Index for Google OAuth lookups (sparse allows multiple null values)
+UserSchema.index({ googleId: 1 }, { sparse: true })
 
 export const User = mongoose.model<IUser>('User', UserSchema)
