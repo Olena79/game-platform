@@ -17,9 +17,6 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 	logger.info('[email.sendEmail] Called', { to, subject })
 	logger.info('[email.sendEmail] EMAIL_ENABLED =', { EMAIL_ENABLED })
 
-	const fromEmail = process.env.SENDGRID_FROM || process.env.SMTP_USER || ''
-	const from = { email: fromEmail, name: 'Games of Senses' }
-
 	try {
 		logger.info('[email.sendEmail] Checking email providers', {
 			hasSendgridKey: !!process.env.SENDGRID_API_KEY,
@@ -27,26 +24,28 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 			hasSmtpPass: !!process.env.SMTP_PASS,
 			smtpHost: process.env.SMTP_HOST,
 			smtpPort: process.env.SMTP_PORT,
-			fromEmail
 		})
 
 		if (process.env.SENDGRID_API_KEY) {
 			logger.info('[email.sendEmail] Using SendGrid')
+			const fromEmail = process.env.SENDGRID_FROM || ''
+			const from = { email: fromEmail, name: 'Games of Senses' }
 			sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 			await sgMail.send({ from, to, subject, html })
 			logger.info('[email] SendGrid email sent', { to, subject })
 		} else if (process.env.SMTP_USER && process.env.SMTP_PASS) {
 			logger.info('[email.sendEmail] Using SMTP Brevo')
 			const transporter = nodemailer.createTransport({
-				host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+				host:   process.env.SMTP_HOST || 'smtp-relay.brevo.com',
 				port:   Number(process.env.SMTP_PORT) || 587,
 				secure: false,
 				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-				connectionTimeout: 5000,
-				socketTimeout: 5000,
+				connectionTimeout: 10000,
+				socketTimeout: 10000,
 			})
 			logger.info('[email.sendEmail] Transporter created, sending email...')
 
+			const fromEmail = process.env.SMTP_USER || ''
 			const sendPromise = transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
 			const timeoutPromise = new Promise((_, reject) =>
 				setTimeout(() => reject(new Error('Email send timeout (10s)')), 10000)
