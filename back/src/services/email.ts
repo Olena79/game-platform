@@ -42,10 +42,23 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 				port:   Number(process.env.SMTP_PORT) || 587,
 				secure: false,
 				auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+				connectionTimeout: 5000,
+				socketTimeout: 5000,
 			})
 			logger.info('[email.sendEmail] Transporter created, sending email...')
-			const result = await transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
-			logger.info('[email] SMTP email sent successfully', { to, subject, result })
+
+			const sendPromise = transporter.sendMail({ from: `"Games of Senses" <${fromEmail}>`, to, subject, html })
+			const timeoutPromise = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Email send timeout (10s)')), 10000)
+			)
+
+			try {
+				const result = await Promise.race([sendPromise, timeoutPromise])
+				logger.info('[email] SMTP email sent successfully', { to, subject, sentAt: new Date().toISOString() })
+			} catch (timeoutErr) {
+				logger.error('[email] Email send timed out or failed', { to, subject, error: String(timeoutErr) })
+				throw timeoutErr
+			}
 		} else {
 			logger.warn('[email] No email provider configured (SENDGRID_API_KEY or SMTP_USER/SMTP_PASS missing)', { to })
 		}
@@ -56,7 +69,8 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 			errorMessage: err?.message || String(err),
 			errorCode: err?.code,
 			errorResponse: err?.response || err?.responseCode,
-			fullError: String(err)
+			fullError: String(err),
+			timestamp: new Date().toISOString()
 		})
 		throw err
 	}
@@ -386,7 +400,8 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
 
 	const siteUrl = process.env.CLIENT_URL || 'http://localhost:3000'
 
-	const html = `<!DOCTYPE html>
+	try {
+		const html = `<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Ласкаво просимо — Games of Senses</title>
@@ -447,7 +462,17 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
 </body>
 </html>`
 
-	await sendEmail(to, '👾 Ласкаво просимо до Games of Senses!', html)
+		await sendEmail(to, '👾 Ласкаво просимо до Games of Senses!', html)
+		logger.info('[sendWelcomeEmail] Success', { to, name })
+	} catch (err: any) {
+		logger.error('[sendWelcomeEmail] Failed', {
+			to,
+			name,
+			errorMessage: err?.message || String(err),
+			timestamp: new Date().toISOString()
+		})
+		throw err
+	}
 }
 
 export async function sendGameStartReminder(
