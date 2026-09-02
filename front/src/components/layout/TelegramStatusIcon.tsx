@@ -37,7 +37,6 @@ export const TelegramStatusIcon = ({ size = 38 }: TelegramStatusIconProps) => {
 					width: `${size}px`,
 					height: `${size}px`,
 					opacity: isConnected ? 1 : 0.7,
-					pointerEvents: isConnected ? 'auto' : 'pointer',
 				}}
 				title={isConnected ? 'Telegram підключено' : 'Підключити Telegram'}
 			>
