@@ -13,6 +13,8 @@ import { OurGamesPage } from './components/pages/OurGamesPage'
 import { CommunityPage } from './components/pages/CommunityPage'
 import { GameRoomPage } from './components/pages/GameRoomPage'
 import { ObserverPage } from './components/pages/ObserverPage'
+import { PrivacyPolicyPage } from './components/pages/PrivacyPolicyPage'
+import { TermsOfServicePage } from './components/pages/TermsOfServicePage'
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
@@ -74,6 +76,8 @@ const SiteLayout = () => (
 				<Route path='/create-game' element={<CreateGamePage />} />
 				<Route path='/create-game/:id' element={<CreateGamePage />} />
 				<Route path='/community' element={<CommunityPage />} />
+				<Route path='/privacy-policy' element={<PrivacyPolicyPage />} />
+				<Route path='/terms-of-service' element={<TermsOfServicePage />} />
 				{/* <Route path='/about' element={<AboutPage />} /> */}
 			</Routes>
 		</main>

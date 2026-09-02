@@ -78,7 +78,7 @@ const messages = {
 			`Привіт, <b>${firstName}</b>! 👋\n\n` +
 			`Тепер ви будете отримувати коди ігр прямо в цей чат. ` +
 			`Це зручніше, ніж перевіряти email.\n\n` +
-			`<a href="${API_URL}">Повернутися на сайт</a>`,
+			`<a href="${API_URL}/">Повернутися на сайт</a>`,
 		invalidLink: '❌ Некоректне посилання. Спожалуйста, використовуйте посилання з сайту Games of Senses.',
 		helpMessage: 'Я просто сповіщу вас про коди ігр. 🎮\n\nІнші команди поки недоступні.',
 		noDirectLink: `👋 Привіт! Схоже, ви відкрили бота напряму.\n\nСпожалуйста, <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">перейдіть за посиланням на сайті</a>, щоб підключити Telegram.`,
@@ -90,7 +90,7 @@ const messages = {
 			`Hi, <b>${firstName}</b>! 👋\n\n` +
 			`Now you will receive game codes directly in this chat. ` +
 			`It's more convenient than checking email.\n\n` +
-			`<a href="${API_URL}">Back to website</a>`,
+			`<a href="${API_URL}/">Back to website</a>`,
 		invalidLink: '❌ Invalid link. Please use the link from the Games of Senses website.',
 		helpMessage: 'I just notify you about game codes. 🎮\n\nOther commands are not available yet.',
 		noDirectLink: `👋 Hi! It looks like you opened the bot directly.\n\nPlease <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">follow the link on the website</a> to connect Telegram.`,

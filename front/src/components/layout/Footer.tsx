@@ -29,15 +29,34 @@ export const Footer = () => {
 
 	return (
 		<footer
-			className='px-[20px] md:px-[32px] lg:px-[48px] py-[28px] md:py-[36px] border-t flex flex-col md:flex-row justify-center md:justify-between items-center gap-[10px] md:gap-0 relative z-10 transition-colors duration-[250ms]'
+			className='px-[20px] md:px-[32px] lg:px-[48px] py-[28px] md:py-[36px] border-t flex flex-col md:flex-row justify-center md:justify-between items-center gap-[16px] md:gap-0 relative z-10 transition-colors duration-[250ms]'
 			style={{ borderTopColor: 'var(--footer-border)' }}
 		>
 			<Link to='/' className='no-underline flex items-center'>
 				<FooterLogo isDark={isDark} />
 			</Link>
-			<p className='text-[12px] text-center md:text-left' style={{ color: 'var(--footer-text)' }}>
-				{t('footer.copy')}
-			</p>
+			<div className='flex flex-col md:flex-row items-center gap-[16px] md:gap-[24px]'>
+				<p className='text-[12px] text-center md:text-left' style={{ color: 'var(--footer-text)' }}>
+					{t('footer.copy')}
+				</p>
+				<div className='flex gap-[16px]'>
+					<Link
+						to='/privacy-policy'
+						className='text-[12px] no-underline transition-colors hover:opacity-80'
+						style={{ color: isDark ? 'rgba(180,200,255,0.7)' : 'var(--text-muted)' }}
+					>
+						{t('nav.privacy_policy')}
+					</Link>
+					<span style={{ color: isDark ? 'rgba(180,200,255,0.3)' : 'var(--border-subtle)' }}>•</span>
+					<Link
+						to='/terms-of-service'
+						className='text-[12px] no-underline transition-colors hover:opacity-80'
+						style={{ color: isDark ? 'rgba(180,200,255,0.7)' : 'var(--text-muted)' }}
+					>
+						{t('nav.terms_of_service')}
+					</Link>
+				</div>
+			</div>
 		</footer>
 	)
 }
