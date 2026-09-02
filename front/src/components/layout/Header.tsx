@@ -229,7 +229,7 @@ export const Header = () => {
 					</Link>
 				</div>
 
-				{/* Mobile: language + theme toggles */}
+				{/* Mobile: language + theme toggles + telegram */}
 				<div className='md:hidden flex items-center gap-[12px]'>
 					<button
 						className='flex items-center gap-[6px] transition-colors cursor-pointer'
@@ -252,6 +252,7 @@ export const Header = () => {
 					>
 						{isDark ? <Sun size={12} strokeWidth={2} /> : <Moon size={12} strokeWidth={2} />}
 					</button>
+					{isLoggedIn && <TelegramStatusIcon size={28} />}
 				</div>
 			</div>
 

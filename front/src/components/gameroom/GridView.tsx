@@ -89,7 +89,7 @@ function computeMobileGrid(n: number, w: number, h: number) {
 	return computeGrid(n, w, h)
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking, isMobile }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
@@ -97,6 +97,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
 	isMockSpeaking?: boolean
+	isMobile?: boolean
 }) {
 	const { t } = useTranslation()
 	const participants = useParticipants()
@@ -161,7 +162,9 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 						className='absolute inset-0 w-full h-full object-cover'
 						style={{
 							objectPosition: objectPos,
-							transform: (player.userId && player.userId === myId) ? 'scaleX(-1)' : 'scaleX(1)',
+							transform: (player.userId && player.userId === myId)
+								? (isMobile ? 'scaleX(-1) scale(1.3)' : 'scaleX(-1)')
+								: (isMobile ? 'scale(1.3)' : 'scaleX(1)'),
 						}}
 					/>
 				) : (
@@ -480,6 +483,7 @@ export const GridView = ({
 							reaction={playerReactions[p.userId]}
 							gameStarted={state.status === 'started'}
 							isMockSpeaking={mockSpeakingId === p.userId}
+							isMobile={isMobile}
 						/>
 					</div>
 				))}
