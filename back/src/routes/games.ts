@@ -5,18 +5,9 @@ import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
-import { sendRegistrationEmail, sendSpectatorRegistrationEmail, sendNotesEmail, sendGMRegistrationNotification } from '../services/email'
 import { sendGameCodeToTelegram, sendGameReminderToTelegram } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema } from '../validation/schemas'
-import { z } from 'zod'
-
-const sendNotesSchema = z.object({
-	notes: z.string().min(1, 'Notes are required').max(2000),
-	gameTitle: z.string().optional(),
-	gameCode: z.string().optional(),
-})
-
 const router = Router()
 
 // Strip full card number from any response that goes outside the owner context.
@@ -265,13 +256,6 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 
 		const gmUser = await User.findById(game.creatorId)
 
-		sendRegistrationEmail(user.email, user.name || user.email, {
-			title:              game.title,
-			creatorName:        game.creatorName,
-			description:        game.description || '',
-			gameCode:           game.gameCode,
-		} as any).catch(err => logger.error('[register email]', err))
-
 		// Send Telegram notification if user has Telegram connected
 		if (user.telegramChatId) {
 			sendGameCodeToTelegram(
@@ -283,19 +267,6 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			).catch(err => logger.error('[telegram game code]', err))
 		}
 
-		if (gmUser) {
-			sendGMRegistrationNotification(
-				gmUser.email,
-				gmUser.name || gmUser.email,
-				user.name || user.email,
-				'player',
-				{
-					title: game.title,
-					description: game.description || '',
-					gameCode: game.gameCode,
-				},
-			).catch(err => logger.error('[gm registration notification]', err))
-		}
 
 		res.json({ gameCode: game.gameCode, registeredPlayers: game.registeredPlayers })
 	} catch (err: any) {
@@ -356,12 +327,6 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 
 		const gmUser = await User.findById(game.creatorId)
 
-		sendSpectatorRegistrationEmail(user.email, user.name || user.email, {
-			title:         game.title,
-			creatorName:   game.creatorName,
-			spectatorCode: game.spectatorCode,
-		} as any).catch(err => logger.error('[spectator email]', err))
-
 		// Send Telegram notification if user has Telegram connected
 		if (user.telegramChatId) {
 			sendGameCodeToTelegram(
@@ -371,20 +336,6 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 				'spectator',
 				user.language || 'uk'
 			).catch(err => logger.error('[telegram spectator code]', err))
-		}
-
-		if (gmUser) {
-			sendGMRegistrationNotification(
-				gmUser.email,
-				gmUser.name || gmUser.email,
-				user.name || user.email,
-				'spectator',
-				{
-					title: game.title,
-					description: game.description || '',
-					gameCode: game.gameCode,
-				},
-			).catch(err => logger.error('[gm registration notification]', err))
 		}
 
 		res.json({ spectators: game.spectators, spectatorCode: game.spectatorCode })
@@ -461,27 +412,6 @@ router.delete('/:id/like', authMiddleware, async (req: AuthRequest, res: Respons
 		res.json({ likesCount: updated!.likesCount, isLiked: false })
 	} catch (err: any) {
 		logger.error('[games/:id/like DELETE]', err)
-		res.status(500).json({ message: 'Server error' })
-	}
-})
-
-// POST /api/games/send-notes — send GM notes by email after game ends
-router.post('/send-notes', authMiddleware, validateBody(sendNotesSchema), async (req: AuthRequest, res: Response): Promise<void> => {
-	try {
-		const { notes, gameTitle, gameCode } = req.body
-		const user = await User.findById(req.userId)
-		if (!user) { res.status(404).json({ message: 'User not found' }); return }
-
-		await sendNotesEmail(
-			user.email,
-			user.email,
-			gameTitle || 'Untitled',
-			gameCode || '',
-			notes.trim(),
-		)
-		res.json({ ok: true })
-	} catch (err) {
-		logger.error('[send-notes]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })

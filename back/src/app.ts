@@ -46,7 +46,6 @@ import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
 import { deleteFile } from './services/googleDrive'
-import { sendGameStartReminders } from './services/gameReminders'
 import { startTelegramPolling, stopTelegramPolling } from './services/telegramBot'
 import {
 	authLimiter,
@@ -163,17 +162,6 @@ cron.schedule('0 */6 * * *', async () => {
 	}
 })
 
-// Send game start reminders every minute (for games starting in 30-35 min)
-cron.schedule('* * * * *', async () => {
-	try {
-		await sendGameStartReminders()
-	} catch (err) {
-		logger.error('[cron:reminders] Failed to send game start reminders', {
-			error: err instanceof Error ? err.message : String(err),
-			stack: err instanceof Error ? err.stack : undefined,
-		})
-	}
-})
 
 const PORT = process.env.PORT || 5000
 

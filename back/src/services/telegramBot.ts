@@ -25,6 +25,7 @@ interface TelegramUser {
 
 let lastUpdateId = 0
 let pollingActive = false
+let pollInterval: ReturnType<typeof setInterval> | null = null
 
 async function getUpdates(): Promise<TelegramUpdate[]> {
 	try {
@@ -197,22 +198,17 @@ export async function startTelegramPolling(): Promise<void> {
 	}
 
 	// Poll every 1 second
-	const pollInterval = setInterval(poll, 1000)
+	pollInterval = setInterval(poll, 1000)
 	logger.info('[telegram] Polling loop started')
-
-	// Return cleanup function for graceful shutdown
-	return () => {
-		pollingActive = false
-		clearInterval(pollInterval)
-		logger.info('[telegram] Polling loop stopped')
-	} as any
 }
 
 export function stopTelegramPolling(): void {
-	if (pollingActive) {
-		pollingActive = false
-		logger.info('[telegram] Telegram polling marked for shutdown')
+	pollingActive = false
+	if (pollInterval) {
+		clearInterval(pollInterval)
+		pollInterval = null
 	}
+	logger.info('[telegram] Telegram polling stopped')
 }
 
 const gameNotificationMessages = {

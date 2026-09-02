@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs'
 import { OAuth2Client } from 'google-auth-library'
 import { User } from '../models/User'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
-import { sendWelcomeEmail } from '../services/email'
 import { validateBody } from '../middleware/validationMiddleware'
 import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema } from '../validation/schemas'
 import {
@@ -68,10 +67,6 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		logger.info('[register] User created', { userId: user._id, email, name, surname, language: user.language, userObject: JSON.stringify({ id: user._id, email: user.email, name: user.name, surname: user.surname }) })
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
 
-		logger.info('[register] About to send welcome email', { email, name })
-		sendWelcomeEmail(email, name || 'User').catch(err =>
-			logger.error('[register] Welcome email error', { error: err?.response?.body || err.message }),
-		)
 
 		res.status(201).json({
 			accessToken,
@@ -142,9 +137,6 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 				surname: info.family_name || '',
 				password: '',
 			})
-			sendWelcomeEmail(info.email, info.given_name || 'User').catch(err =>
-				logger.error('[google auth] Welcome email error', { error: err?.response?.body || err.message }),
-			)
 		} else if (!user.googleId) {
 			user.googleId = info.sub
 			if (!user.name) user.name = info.given_name || info.name

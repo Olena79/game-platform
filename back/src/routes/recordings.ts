@@ -4,7 +4,6 @@ import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { Recording } from '../models/Recording'
 import { User } from '../models/User'
 import { uploadStreamToDrive, makeFilePublic } from '../services/googleDrive'
-import { sendRecordingEmail } from '../services/email'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { recordingIdSchema } from '../validation/schemas'
 import { z } from 'zod'
@@ -60,17 +59,6 @@ router.put('/upload/:id', authMiddleware, validateParams(recordingIdSchema), asy
 			shareLink,
 			status: 'completed',
 		})
-
-		const platformEmail = process.env.SENDGRID_FROM || ''
-
-		await Promise.allSettled([
-			recording.gmEmail
-				? sendRecordingEmail(recording.gmEmail, recording.gameTitle, recording.gameCode, shareLink)
-				: Promise.resolve(),
-			platformEmail && platformEmail !== recording.gmEmail
-				? sendRecordingEmail(platformEmail, recording.gameTitle, recording.gameCode, shareLink)
-				: Promise.resolve(),
-		])
 
 		res.json({ shareLink })
 	} catch (err: any) {
