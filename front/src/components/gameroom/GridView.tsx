@@ -115,7 +115,8 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	const isPortrait = dims ? dims.height > dims.width : false
 	// Adaptive object positioning: tighter framing for portrait to ensure full face is visible
 	// Portrait (mobile): shift down to capture face/chest. Landscape: neutral center
-	const objectPos = isPortrait ? 'center 35%' : 'center center'
+	// Mobile: tighter crop to show face+shoulders; Desktop: fuller view
+	const objectPos = isMobile && isPortrait ? 'center 40%' : (isPortrait ? 'center 35%' : 'center center')
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)
@@ -163,8 +164,8 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 						style={{
 							objectPosition: objectPos,
 							transform: (player.userId && player.userId === myId)
-								? (isMobile ? 'scaleX(-1) scale(1.3)' : 'scaleX(-1)')
-								: (isMobile ? 'scale(1.3)' : 'scaleX(1)'),
+								? 'scaleX(-1)'
+								: 'none',
 						}}
 					/>
 				) : (
