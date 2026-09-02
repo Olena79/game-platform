@@ -24,6 +24,7 @@ interface TelegramUser {
 }
 
 let lastUpdateId = 0
+let pollingActive = false
 
 async function getUpdates(): Promise<TelegramUpdate[]> {
 	try {
@@ -161,6 +162,11 @@ export async function startTelegramPolling(): Promise<void> {
 		return
 	}
 
+	if (pollingActive) {
+		logger.warn('[telegram] Polling already active, skipping restart')
+		return
+	}
+
 	logger.info('[telegram] Starting polling...', { botUsername: BOT_USERNAME })
 
 	// Test bot connectivity
@@ -178,8 +184,11 @@ export async function startTelegramPolling(): Promise<void> {
 		return
 	}
 
+	pollingActive = true
+
 	// Start polling loop
 	const poll = async () => {
+		if (!pollingActive) return
 		const updates = await getUpdates()
 		for (const update of updates) {
 			lastUpdateId = update.update_id
@@ -188,8 +197,22 @@ export async function startTelegramPolling(): Promise<void> {
 	}
 
 	// Poll every 1 second
-	setInterval(poll, 1000)
+	const pollInterval = setInterval(poll, 1000)
 	logger.info('[telegram] Polling loop started')
+
+	// Return cleanup function for graceful shutdown
+	return () => {
+		pollingActive = false
+		clearInterval(pollInterval)
+		logger.info('[telegram] Polling loop stopped')
+	} as any
+}
+
+export function stopTelegramPolling(): void {
+	if (pollingActive) {
+		pollingActive = false
+		logger.info('[telegram] Telegram polling marked for shutdown')
+	}
 }
 
 const gameNotificationMessages = {

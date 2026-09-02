@@ -47,7 +47,7 @@ import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
 import { deleteFile } from './services/googleDrive'
 import { sendGameStartReminders } from './services/gameReminders'
-import { startTelegramPolling } from './services/telegramBot'
+import { startTelegramPolling, stopTelegramPolling } from './services/telegramBot'
 import {
 	authLimiter,
 	gamesLimiter,
@@ -190,3 +190,23 @@ connectDB()
 		logger.error('MongoDB connection failed', { context: 'database:connection', error: err })
 		process.exit(1)
 	})
+
+// Graceful shutdown handlers — stop Telegram polling before exit
+const handleShutdown = (signal: string) => {
+	logger.info(`Received ${signal}, shutting down gracefully...`, { context: 'shutdown' })
+	stopTelegramPolling()
+
+	httpServer.close(() => {
+		logger.info('Server closed', { context: 'shutdown' })
+		process.exit(0)
+	})
+
+	// Force exit after 10 seconds if graceful shutdown hangs
+	setTimeout(() => {
+		logger.error('Graceful shutdown timeout exceeded, forcing exit', { context: 'shutdown' })
+		process.exit(1)
+	}, 10000)
+}
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'))
+process.on('SIGINT', () => handleShutdown('SIGINT'))
