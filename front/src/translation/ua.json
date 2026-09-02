@@ -223,7 +223,8 @@
     "btn_telegram_register": "Зареєструватися в Telegram",
     "btn_skip": "Пізніше",
     "telegram_connected_label": "Telegram підключено",
-    "telegram_connect_label": "Підключити Telegram"
+    "telegram_connect_label": "Підключити Telegram",
+    "telegram_open_bot": "Telegram підключено — відкрити бот"
   },
   "community": {
     "badge": "Спільнота",

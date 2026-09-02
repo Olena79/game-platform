@@ -223,7 +223,8 @@
     "btn_telegram_register": "Register in Telegram",
     "btn_skip": "Later",
     "telegram_connected_label": "Telegram connected",
-    "telegram_connect_label": "Connect Telegram"
+    "telegram_connect_label": "Connect Telegram",
+    "telegram_open_bot": "Telegram connected — open bot"
   },
   "community": {
     "badge": "Community",

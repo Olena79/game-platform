@@ -208,8 +208,6 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 	const speaking = lkSpeaking || (isMockSpeaking ?? false)
 	const camPub = participant?.getTrackPublication(Track.Source.Camera)
 	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
-	const dims = hasVideo ? ((camPub?.track as any)?.dimensions as { width: number; height: number } | undefined) : undefined
-	const isPortrait = dims ? dims.height > dims.width : false
 
 	if (!speakerPlayer || state.status === 'lobby') {
 		return <CoverImageBlock state={state} />
@@ -227,9 +225,8 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 				<>
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
-						className='absolute inset-0 w-full h-full object-cover'
+						className='absolute inset-0 w-full h-full object-contain'
 						style={{
-							objectPosition: isPortrait ? 'center 35%' : 'center center',
 							transform: localParticipant?.identity === speakerPlayer?.userId ? 'scaleX(-1)' : 'scaleX(1)',
 						}}
 					/>

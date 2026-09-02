@@ -252,7 +252,7 @@ export const Header = () => {
 					>
 						{isDark ? <Sun size={12} strokeWidth={2} /> : <Moon size={12} strokeWidth={2} />}
 					</button>
-					{isLoggedIn && <TelegramStatusIcon size={28} />}
+					{isLoggedIn && <TelegramStatusIcon size={32} />}
 				</div>
 			</div>
 

@@ -89,7 +89,7 @@ function computeMobileGrid(n: number, w: number, h: number) {
 	return computeGrid(n, w, h)
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking, isMobile }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
@@ -97,7 +97,6 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
 	isMockSpeaking?: boolean
-	isMobile?: boolean
 }) {
 	const { t } = useTranslation()
 	const participants = useParticipants()
@@ -111,12 +110,6 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	const micPub = participant?.getTrackPublication(Track.Source.Microphone)
 	const micMuted = !micPub || micPub.isMuted
 	const isPlayer = !player.isGamemaster && !player.isSpectator
-	const dims = (camPub?.track as any)?.dimensions as { width: number; height: number } | undefined
-	const isPortrait = dims ? dims.height > dims.width : false
-	// Adaptive object positioning: tighter framing for portrait to ensure full face is visible
-	// Portrait (mobile): shift down to capture face/chest. Landscape: neutral center
-	// Mobile: tighter crop to show face+shoulders; Desktop: fuller view
-	const objectPos = isMobile && isPortrait ? 'center 40%' : (isPortrait ? 'center 35%' : 'center center')
 
 	const [editRole, setEditRole] = useState(false)
 	const [roleInput, setRoleInput] = useState(player.role)
@@ -156,16 +149,13 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 			</div>
 
 			{/* Camera area */}
-			<div className='relative overflow-hidden flex items-center justify-center' style={{ background: '#000', width: '100%', aspectRatio: isPortrait ? '3/4' : '16/9' }}>
+			<div className='relative overflow-hidden flex items-center justify-center' style={{ background: '#000', width: '100%', aspectRatio: '16/9' }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
-						className='absolute inset-0 w-full h-full object-cover'
+						className='absolute inset-0 w-full h-full object-contain'
 						style={{
-							objectPosition: objectPos,
-							transform: (player.userId && player.userId === myId)
-								? 'scaleX(-1)'
-								: 'none',
+							transform: player.userId === myId ? 'scaleX(-1)' : 'none',
 						}}
 					/>
 				) : (
@@ -484,7 +474,6 @@ export const GridView = ({
 							reaction={playerReactions[p.userId]}
 							gameStarted={state.status === 'started'}
 							isMockSpeaking={mockSpeakingId === p.userId}
-							isMobile={isMobile}
 						/>
 					</div>
 				))}
