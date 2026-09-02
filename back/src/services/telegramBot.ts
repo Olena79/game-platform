@@ -23,29 +23,63 @@ interface TelegramUser {
 	username?: string
 }
 
+const POLL_TIMEOUT_S = 30
+const CONFLICT_BACKOFF_MS = 5000
+const ERROR_BACKOFF_MS = 3000
+const CONFLICT_LOG_INTERVAL_MS = 60000
+
 let lastUpdateId = 0
 let pollingActive = false
-let pollInterval: ReturnType<typeof setInterval> | null = null
+let activeController: AbortController | null = null
+let lastConflictLogAt = 0
 
-async function getUpdates(): Promise<TelegramUpdate[]> {
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Telegram serves one getUpdates connection per token. A 409 means someone else
+// holds it — an old deploy still draining, or a second process sharing the token.
+// It resolves on its own, so log it once a minute instead of once per attempt.
+function logConflict(description: string): void {
+	const now = Date.now()
+	if (now - lastConflictLogAt < CONFLICT_LOG_INTERVAL_MS) return
+	lastConflictLogAt = now
+	logger.warn('[telegram] getUpdates conflict — another poller holds this bot token, backing off', { error: description })
+}
+
+interface PollResult {
+	updates: TelegramUpdate[]
+	backoffMs: number
+}
+
+async function getUpdates(): Promise<PollResult> {
+	const controller = new AbortController()
+	activeController = controller
+	// Guard against a long-poll that never returns; Telegram closes at POLL_TIMEOUT_S.
+	const timeout = setTimeout(() => controller.abort(), (POLL_TIMEOUT_S + 5) * 1000)
+
 	try {
-		const controller = new AbortController()
-		const timeout = setTimeout(() => controller.abort(), 35000)
-
-		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`, {
-			signal: controller.signal,
-		})
-		clearTimeout(timeout)
-
+		const response = await fetch(
+			`${TELEGRAM_API}${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=${POLL_TIMEOUT_S}`,
+			{ signal: controller.signal },
+		)
 		const data = await response.json()
+
 		if (!data.ok) {
+			if (data.error_code === 409) {
+				logConflict(data.description)
+				return { updates: [], backoffMs: CONFLICT_BACKOFF_MS }
+			}
 			logger.error('[telegram] getUpdates failed', { error: data.description })
-			return []
+			return { updates: [], backoffMs: ERROR_BACKOFF_MS }
 		}
-		return data.result || []
+		return { updates: data.result || [], backoffMs: 0 }
 	} catch (err) {
+		// An abort during shutdown is expected, not an error worth reporting.
+		if (!pollingActive) return { updates: [], backoffMs: 0 }
 		logger.error('[telegram] getUpdates error', { error: err instanceof Error ? err.message : String(err) })
-		return []
+		return { updates: [], backoffMs: ERROR_BACKOFF_MS }
+	} finally {
+		clearTimeout(timeout)
+		if (activeController === controller) activeController = null
 	}
 }
 
@@ -186,28 +220,46 @@ export async function startTelegramPolling(): Promise<void> {
 	}
 
 	pollingActive = true
-
-	// Start polling loop
-	const poll = async () => {
-		if (!pollingActive) return
-		const updates = await getUpdates()
-		for (const update of updates) {
-			lastUpdateId = update.update_id
-			await handleUpdate(update)
-		}
-	}
-
-	// Poll every 1 second
-	pollInterval = setInterval(poll, 1000)
+	pollLoop().catch(err => {
+		pollingActive = false
+		logger.error('[telegram] Polling loop crashed', { error: err instanceof Error ? err.message : String(err) })
+	})
 	logger.info('[telegram] Polling loop started')
 }
 
-export function stopTelegramPolling(): void {
-	pollingActive = false
-	if (pollInterval) {
-		clearInterval(pollInterval)
-		pollInterval = null
+// Sequential loop — exactly one getUpdates in flight at a time. getUpdates
+// long-polls for up to POLL_TIMEOUT_S, so a fixed interval would stack
+// overlapping requests and Telegram would kill each previous one with a 409.
+async function pollLoop(): Promise<void> {
+	while (pollingActive) {
+		const { updates, backoffMs } = await getUpdates()
+		if (!pollingActive) break
+
+		for (const update of updates) {
+			lastUpdateId = update.update_id
+			try {
+				await handleUpdate(update)
+			} catch (err) {
+				// A single bad update must not take the loop down.
+				logger.error('[telegram] handleUpdate error', {
+					updateId: update.update_id,
+					error: err instanceof Error ? err.message : String(err),
+				})
+			}
+		}
+
+		if (backoffMs > 0) await sleep(backoffMs)
 	}
+	logger.info('[telegram] Polling loop exited')
+}
+
+export function stopTelegramPolling(): void {
+	if (!pollingActive) return
+	pollingActive = false
+	// Release the long-poll connection immediately, otherwise a redeploy spends
+	// up to POLL_TIMEOUT_S with the incoming process losing 409s to this one.
+	activeController?.abort()
+	activeController = null
 	logger.info('[telegram] Telegram polling stopped')
 }
 
