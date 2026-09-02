@@ -6,6 +6,7 @@ import { GameLike } from '../models/GameLike'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendRegistrationEmail, sendSpectatorRegistrationEmail, sendNotesEmail, sendGMRegistrationNotification } from '../services/email'
+import { sendGameCodeToTelegram, sendGameReminderToTelegram } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema } from '../validation/schemas'
 import { z } from 'zod'
@@ -271,6 +272,17 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			gameCode:           game.gameCode,
 		} as any).catch(err => logger.error('[register email]', err))
 
+		// Send Telegram notification if user has Telegram connected
+		if (user.telegramChatId) {
+			sendGameCodeToTelegram(
+				user.telegramChatId,
+				game.gameCode,
+				game.title,
+				'player',
+				user.language || 'uk'
+			).catch(err => logger.error('[telegram game code]', err))
+		}
+
 		if (gmUser) {
 			sendGMRegistrationNotification(
 				gmUser.email,
@@ -349,6 +361,17 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 			creatorName:   game.creatorName,
 			spectatorCode: game.spectatorCode,
 		} as any).catch(err => logger.error('[spectator email]', err))
+
+		// Send Telegram notification if user has Telegram connected
+		if (user.telegramChatId) {
+			sendGameCodeToTelegram(
+				user.telegramChatId,
+				game.spectatorCode,
+				game.title,
+				'spectator',
+				user.language || 'uk'
+			).catch(err => logger.error('[telegram spectator code]', err))
+		}
 
 		if (gmUser) {
 			sendGMRegistrationNotification(

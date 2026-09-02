@@ -54,7 +54,8 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 	try {
 		logger.info('[register] Request body received', { body: JSON.stringify(req.body) })
 		const { email, password, name, surname } = req.body
-		logger.info('[register] Destructured values', { email, password: '***', name, surname })
+		const language = req.headers['accept-language']?.split(',')[0]?.split('-')[0]?.toLowerCase() || 'uk'
+		logger.info('[register] Destructured values', { email, password: '***', name, surname, language })
 
 		const emailExists = await User.findOne({ email })
 		if (emailExists) {
@@ -63,8 +64,8 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		}
 
 		const hashed = await bcrypt.hash(password, 10)
-		const user = await User.create({ email, password: hashed, name, surname, googleId: null })
-		logger.info('[register] User created', { userId: user._id, email, name, surname, userObject: JSON.stringify({ id: user._id, email: user.email, name: user.name, surname: user.surname }) })
+		const user = await User.create({ email, password: hashed, name, surname, googleId: null, language: ['uk', 'en'].includes(language) ? language : 'uk' })
+		logger.info('[register] User created', { userId: user._id, email, name, surname, language: user.language, userObject: JSON.stringify({ id: user._id, email: user.email, name: user.name, surname: user.surname }) })
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
 
 		logger.info('[register] About to send welcome email', { email, name })

@@ -25,6 +25,7 @@ const LogoSvg = ({ isDark }: { isDark: boolean }) => (
 import { Globe, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Modal } from '../minicomponents/Modal'
+import { TelegramStatusIcon } from './TelegramStatusIcon'
 
 // Not logged in — crimson/pink neon (dark) or terracotta (light)
 const UserIconDefault = ({ isDark }: { isDark: boolean }) => (
@@ -177,6 +178,7 @@ export const Header = () => {
 
 				{/* Desktop right */}
 				<div className='hidden md:flex items-center gap-[10px]'>
+					{isLoggedIn && <TelegramStatusIcon size={38} />}
 					{isLoggedIn ? (
 						<div ref={dropdownRef} className='relative'>
 							<button

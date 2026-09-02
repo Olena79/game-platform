@@ -70,6 +70,33 @@ async function sendMessage(chatId: number, text: string): Promise<boolean> {
 	}
 }
 
+const messages = {
+	uk: {
+		userNotFound: '❌ Користувача не знайдено. Спочатку зареєструйтесь на сайті.',
+		success: (firstName: string) =>
+			`✅ <b>Успішно підключено до Telegram!</b>\n\n` +
+			`Привіт, <b>${firstName}</b>! 👋\n\n` +
+			`Тепер ви будете отримувати коди ігр прямо в цей чат. ` +
+			`Це зручніше, ніж перевіряти email.\n\n` +
+			`<a href="${API_URL}">Повернутися на сайт</a>`,
+		invalidLink: '❌ Некоректне посилання. Спожалуйста, використовуйте посилання з сайту Games of Senses.',
+		helpMessage: 'Я просто сповіщу вас про коди ігр. 🎮\n\nІнші команди поки недоступні.',
+		noDirectLink: `👋 Привіт! Схоже, ви відкрили бота напряму.\n\nСпожалуйста, <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">перейдіть за посиланням на сайті</a>, щоб підключити Telegram.`,
+	},
+	en: {
+		userNotFound: '❌ User not found. Please register on the website first.',
+		success: (firstName: string) =>
+			`✅ <b>Successfully connected to Telegram!</b>\n\n` +
+			`Hi, <b>${firstName}</b>! 👋\n\n` +
+			`Now you will receive game codes directly in this chat. ` +
+			`It's more convenient than checking email.\n\n` +
+			`<a href="${API_URL}">Back to website</a>`,
+		invalidLink: '❌ Invalid link. Please use the link from the Games of Senses website.',
+		helpMessage: 'I just notify you about game codes. 🎮\n\nOther commands are not available yet.',
+		noDirectLink: `👋 Hi! It looks like you opened the bot directly.\n\nPlease <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">follow the link on the website</a> to connect Telegram.`,
+	},
+}
+
 async function handleStartCommand(userId: string, chatId: number, firstName: string): Promise<void> {
 	try {
 		// Try to find user by ID and update telegram_chat_id
@@ -80,23 +107,22 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		)
 
 		if (!user) {
-			await sendMessage(chatId, '❌ Пользователь не найден. Пожалуйста, сначала зарегистрируйтесь на сайте.')
+			const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
+			await sendMessage(chatId, messages[lang].userNotFound)
 			logger.warn('[telegram] Start command for non-existent user', { userId, chatId })
 			return
 		}
 
-		// Success message
-		const successMsg = `✅ <b>Успешно подключено к Telegram!</b>\n\n` +
-			`Привет, <b>${firstName}</b>! 👋\n\n` +
-			`Теперь вы будете получать коды игр прямо в этот чат. ` +
-			`Это удобнее, чем проверять email.\n\n` +
-			`<a href="${API_URL}">Вернуться на сайт</a>`
+		// Use user's language
+		const userLang = (user.language || 'uk') as 'uk' | 'en'
+		const successMsg = messages[userLang].success(firstName)
 
 		await sendMessage(chatId, successMsg)
-		logger.info('[telegram] User linked successfully', { userId, chatId, firstName })
+		logger.info('[telegram] User linked successfully', { userId, chatId, firstName, language: userLang })
 	} catch (err) {
+		const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 		logger.error('[telegram] handleStartCommand error', { userId, chatId, error: err instanceof Error ? err.message : String(err) })
-		await sendMessage(chatId, '⚠️ Произошла ошибка. Пожалуйста, попробуйте позже.')
+		await sendMessage(chatId, `⚠️ ${lang === 'uk' ? 'Сталась помилка. Спробуйте пізніше.' : 'An error occurred. Please try again later.'}`)
 	}
 }
 
@@ -106,6 +132,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 	const { chat, from, text } = update.message
 	const chatId = chat.id
 	const firstName = from.first_name
+	const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 
 	// Parse /start command with parameter: /start USER_ID
 	if (text.startsWith('/start')) {
@@ -113,20 +140,20 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 		const userId = parts[1] || ''
 
 		if (!userId) {
-			await sendMessage(chatId, `👋 Привет! Похоже, вы открыли бота напрямую.\n\nПожалуйста, <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">перейдите по ссылке на сайте</a>, чтобы подключить Telegram.`)
+			await sendMessage(chatId, messages[lang].noDirectLink)
 			return
 		}
 
 		// Validate userId format (MongoDB ObjectId)
 		if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
-			await sendMessage(chatId, '❌ Некорректная ссылка. Пожалуйста, используйте ссылку с сайта Games of Senses.')
+			await sendMessage(chatId, messages[lang].invalidLink)
 			return
 		}
 
 		await handleStartCommand(userId, chatId, firstName)
 	} else {
 		// Any other message
-		await sendMessage(chatId, `Я просто уведомляю вас о кодах игр. 🎮\n\nДругие команды пока недоступны.`)
+		await sendMessage(chatId, messages[lang].helpMessage)
 	}
 }
 
@@ -167,32 +194,53 @@ export async function startTelegramPolling(): Promise<void> {
 	logger.info('[telegram] Polling loop started')
 }
 
-/**
- * Send game code to user via Telegram
- */
+const gameNotificationMessages = {
+	uk: {
+		playerCode: (code: string, name: string) => `🎮 <b>Код гри:</b> <code>${code}</code>\n\n<b>${name}</b>\n👤 Роль: Гравець`,
+		spectatorCode: (code: string, name: string) => `👁️ <b>Код глядача:</b> <code>${code}</code>\n\n<b>${name}</b>`,
+		reminder: (name: string, minutesUntil: number, timeStr: string) =>
+			`⏰ <b>Нагадування!</b>\n\n<b>${name}</b> починається через ${minutesUntil} хвилин\n⏱️ ${timeStr}`,
+	},
+	en: {
+		playerCode: (code: string, name: string) => `🎮 <b>Game code:</b> <code>${code}</code>\n\n<b>${name}</b>\n👤 Role: Player`,
+		spectatorCode: (code: string, name: string) => `👁️ <b>Spectator code:</b> <code>${code}</code>\n\n<b>${name}</b>`,
+		reminder: (name: string, minutesUntil: number, timeStr: string) =>
+			`⏰ <b>Reminder!</b>\n\n<b>${name}</b> starts in ${minutesUntil} minutes\n⏱️ ${timeStr}`,
+	},
+}
+
 export async function sendGameCodeToTelegram(
 	telegramChatId: string,
 	gameCode: string,
 	gameName: string,
+	role: 'player' | 'spectator' = 'player',
+	language: string = 'uk',
 ): Promise<boolean> {
 	if (!BOT_TOKEN || !telegramChatId) return false
 
-	const message = `🎮 <b>Код вашей игры:</b>\n\n<code>${gameCode}</code>\n\n<b>${gameName}</b>`
+	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
+	const msgs = gameNotificationMessages[lang]
+	const message = role === 'spectator'
+		? msgs.spectatorCode(gameCode, gameName)
+		: msgs.playerCode(gameCode, gameName)
+
 	const chatId = parseInt(telegramChatId, 10)
 	return sendMessage(chatId, message)
 }
 
-/**
- * Send reminder notification to user
- */
 export async function sendGameReminderToTelegram(
 	telegramChatId: string,
 	gameName: string,
 	minutesUntil: number,
+	gameTime: string,
+	language: string = 'uk',
 ): Promise<boolean> {
 	if (!BOT_TOKEN || !telegramChatId) return false
 
-	const message = `⏰ <b>Напоминание!</b>\n\nИгра <b>${gameName}</b> начнётся через <b>${minutesUntil} минут</b>. 🎮`
+	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
+	const msgs = gameNotificationMessages[lang]
+	const message = msgs.reminder(gameName, minutesUntil, gameTime)
+
 	const chatId = parseInt(telegramChatId, 10)
 	return sendMessage(chatId, message)
 }

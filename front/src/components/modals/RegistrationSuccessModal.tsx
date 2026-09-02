@@ -77,13 +77,13 @@ export const RegistrationSuccessModal = ({
 						className='text-[13px] font-[500] mb-[8px]'
 						style={{ color: isDark ? '#44aaff' : '#c35436' }}
 					>
-						💬 {t('auth.telegram_section_title', 'Telegram для кодов игр')}
+						💬 {t('auth.telegram_section_title')}
 					</p>
 					<p
 						className='text-[12px] leading-[1.5]'
 						style={{ color: isDark ? 'rgba(180,200,255,0.7)' : 'var(--text-muted)' }}
 					>
-						{t('auth.telegram_section_desc', 'Подключите Telegram, чтобы получать коды игр прямо в сообщениях. Это удобнее и надежнее.')}
+						{t('auth.telegram_section_desc')}
 					</p>
 				</div>
 
@@ -108,7 +108,7 @@ export const RegistrationSuccessModal = ({
 							}
 						}
 					>
-						{t('auth.btn_telegram_register', 'Зарегистрироваться в Telegram')}
+						{t('auth.btn_telegram_register')}
 					</a>
 
 					{/* Close Button */}
@@ -128,7 +128,7 @@ export const RegistrationSuccessModal = ({
 							}
 						}
 					>
-						{t('auth.btn_skip', 'Позже')}
+						{t('auth.btn_skip')}
 					</button>
 				</div>
 			</div>

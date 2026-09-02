@@ -141,6 +141,7 @@
 		"players_modal_title": "Зареєстровані гравці",
 		"players_empty": "Поки що немає зареєстрованих гравців",
 		"game_code_label": "Код гри:",
+		"no_telegram_warning": "⚠️ Ви не підключені до Telegram. Скопіюйте код гри вище — він більше не буде доступний. Зв'яжіться з ігромайстром, якщо потеряєте код.",
 		"success_register_title": "Готово!",
 		"success_register_msg": "Ви зареєстровані як гравець. Нижче — ваш код гри. Якщо Ви раптом його забудете, ми вже надіслали його на пошту разом із посиланням на гру. Якщо листа немає, перевірте папку «Спам».",
 		"success_spectator_title": "Готово!",
@@ -214,7 +215,13 @@
 		"google_signin": "Продовжити з Google",
 		"loading": "Завантаження...",
 		"close": "Закрити",
-		"or": "або"
+		"or": "або",
+		"telegram_section_title": "💬 Telegram для кодів ігр",
+		"telegram_section_desc": "Підключіть Telegram, щоб отримувати коди ігр прямо в чат. Це надійніше та зручніше.",
+		"btn_telegram_register": "Зареєструватися в Telegram",
+		"btn_skip": "Позніше",
+		"telegram_connected_label": "Telegram підключено",
+		"telegram_connect_label": "Підключити Telegram"
 	},
 	"community": {
 		"badge": "Спільнота",

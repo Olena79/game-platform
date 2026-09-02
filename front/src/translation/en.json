@@ -141,6 +141,7 @@
 		"players_modal_title": "Registered Players",
 		"players_empty": "No players registered yet",
 		"game_code_label": "Game code:",
+		"no_telegram_warning": "⚠️ You are not connected to Telegram. Copy the game code above — it won't be available again. Contact the game master if you lose it.",
 		"success_register_title": "Done!",
 		"success_register_msg": "You are registered as a player. Your game code is below. If you forget it, we've already sent it to your email along with a link to the game. If you don't see the email, check your Spam folder.",
 		"success_spectator_title": "Done!",
@@ -214,7 +215,13 @@
 		"google_signin": "Continue with Google",
 		"loading": "Loading...",
 		"close": "Close",
-		"or": "or"
+		"or": "or",
+		"telegram_section_title": "💬 Telegram for game codes",
+		"telegram_section_desc": "Connect Telegram to receive game codes directly in chat. It's more reliable and convenient.",
+		"btn_telegram_register": "Register in Telegram",
+		"btn_skip": "Later",
+		"telegram_connected_label": "Telegram connected",
+		"telegram_connect_label": "Connect Telegram"
 	},
 	"community": {
 		"badge": "Community",

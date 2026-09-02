@@ -7,6 +7,7 @@ export interface IUser extends Document {
 	password: string
 	googleId?: string
 	telegramChatId?: string
+	language?: string
 	createdAt: Date
 	updatedAt: Date
 }
@@ -19,6 +20,7 @@ const UserSchema = new Schema<IUser>(
 		password:        { type: String, default: '' },
 		googleId:        { type: String, default: null, sparse: true, trim: true },
 		telegramChatId:  { type: String, default: null, sparse: true, trim: true },
+		language:        { type: String, default: 'uk', enum: ['uk', 'en'], trim: true },
 	},
 	{ timestamps: true }
 )

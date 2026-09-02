@@ -1,6 +1,7 @@
 import { Game } from '../models/Game'
 import { User } from '../models/User'
 import { sendGameStartReminder } from './email'
+import { sendGameReminderToTelegram } from './telegramBot'
 import logger from '../config/logger'
 
 export async function sendGameStartReminders(): Promise<void> {
@@ -28,7 +29,15 @@ export async function sendGameStartReminders(): Promise<void> {
 
 async function sendRemindersForGame(game: any): Promise<void> {
 	const participants = new Set<string>()
-	const emails: Array<{ email: string; name: string }> = []
+	const emailData: Array<{ email: string; name: string; userId: string }> = []
+
+	// Format game time for display
+	const gameTime = game.scheduledAt ? new Date(game.scheduledAt).toLocaleString('uk-UA', {
+		hour: '2-digit',
+		minute: '2-digit',
+		day: 'numeric',
+		month: 'long',
+	}) : 'N/A'
 
 	// Add GM
 	const gm = await User.findById(game.creatorId)
@@ -36,7 +45,7 @@ async function sendRemindersForGame(game: any): Promise<void> {
 		const key = String(gm._id)
 		if (!participants.has(key)) {
 			participants.add(key)
-			emails.push({ email: gm.email, name: gm.name || gm.email })
+			emailData.push({ email: gm.email, name: gm.name || gm.email, userId: String(gm._id) })
 		}
 	}
 
@@ -47,7 +56,7 @@ async function sendRemindersForGame(game: any): Promise<void> {
 			participants.add(key)
 			const user = await User.findById(player.userId)
 			if (user) {
-				emails.push({ email: user.email, name: user.name || user.email })
+				emailData.push({ email: user.email, name: user.name || user.email, userId: String(user._id) })
 			}
 		}
 	}
@@ -59,21 +68,37 @@ async function sendRemindersForGame(game: any): Promise<void> {
 			participants.add(key)
 			const user = await User.findById(spectator.userId)
 			if (user) {
-				emails.push({ email: user.email, name: user.name || user.email })
+				emailData.push({ email: user.email, name: user.name || user.email, userId: String(user._id) })
 			}
 		}
 	}
 
-	// Send reminders to all
-	const reminderPromises = emails.map(participant =>
-		sendGameStartReminder(participant.email, participant.name, {
-			title: game.title,
-			gameCode: game.gameCode,
-			scheduledAt: game.scheduledAt,
-		}).catch(err => {
+	// Send reminders to all (both email and Telegram)
+	const reminderPromises = emailData.map(async participant => {
+		try {
+			// Send email reminder
+			await sendGameStartReminder(participant.email, participant.name, {
+				title: game.title,
+				gameCode: game.gameCode,
+				scheduledAt: game.scheduledAt,
+			})
+
+			// Also send Telegram reminder if user has Telegram connected
+			const user = await User.findById(participant.userId)
+			if (user?.telegramChatId) {
+				const minutesUntil = Math.round((game.scheduledAt.getTime() - Date.now()) / 60000)
+				await sendGameReminderToTelegram(
+					user.telegramChatId,
+					game.title,
+					Math.max(minutesUntil, 1),
+					gameTime,
+					user.language || 'uk'
+				)
+			}
+		} catch (err) {
 			logger.error(`Failed to send reminder to ${participant.email}`, err)
-		}),
-	)
+		}
+	})
 
 	await Promise.all(reminderPromises)
 
@@ -81,5 +106,5 @@ async function sendRemindersForGame(game: any): Promise<void> {
 	game.reminderSent = true
 	await game.save()
 
-	logger.info(`Sent game start reminders for game ${game._id} to ${emails.length} participants`)
+	logger.info(`Sent game start reminders for game ${game._id} to ${emailData.length} participants`)
 }

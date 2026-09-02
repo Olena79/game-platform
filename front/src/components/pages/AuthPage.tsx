@@ -328,7 +328,17 @@ export const AuthPage = () => {
 									try {
 										const res = await googleAuthRequest(accessToken)
 										login(res.accessToken, res.refreshToken, res.user)
-										setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
+
+										// Check if this is a new registration
+										const isNewUser = res.user.telegramConnected === false
+										if (isNewUser) {
+											setRegistrationModal({
+												open: true,
+												userId: res.user.id,
+											})
+										} else {
+											setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
+										}
 									} catch (err) {
 										const msg = err instanceof Error ? err.message : 'Google auth failed'
 										setModal({ open: true, title: t('auth.modal_error_title'), message: msg, variant: 'error', success: false })
