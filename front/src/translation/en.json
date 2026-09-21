@@ -425,7 +425,17 @@
       "waiting_gm": "Waiting for GM signal...",
       "stop_rec": "■ Stop recording",
       "chat_title": "Chat",
-      "msg_placeholder": "Message..."
+      "msg_placeholder": "Message...",
+      "err_denied": "Screen access was not granted. Press “Prepare recording” again, pick a screen or tab and confirm “Share”",
+      "err_no_source": "Screen selection was cancelled — try again",
+      "err_busy": "The screen is in use by another program. Close other recorders and try again",
+      "err_unsupported": "This browser cannot record the screen. Open the observer in Chrome on a computer",
+      "err_capture": "Could not get screen capture permission ({{name}})",
+      "err_start": "Could not start the recording",
+      "err_no_id": "Error: recording id is missing",
+      "err_network": "No connection to the server",
+      "err_upload": "Could not save to Google Drive: {{reason}}",
+      "save_local": "↓ Save file"
     },
     "vote": {
       "title": "🗳️ New vote",

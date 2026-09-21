@@ -16,6 +16,7 @@ interface Props {
 	uploadProgress: number
 	shareLink: string
 	errorMsg: string
+	localFile: { url: string; name: string } | null
 	onPrepare: () => void
 	onStop: () => void
 	startAnim: boolean
@@ -26,7 +27,7 @@ interface Props {
 
 export const ObserverView = ({
 	state, myId, messages, onSendChat,
-	recordingStatus, uploadProgress, shareLink, errorMsg,
+	recordingStatus, uploadProgress, shareLink, errorMsg, localFile,
 	onPrepare, onStop,
 	startAnim, endAnim, onStartAnimDone, onEndAnimDone,
 }: Props) => {
@@ -84,6 +85,14 @@ export const ObserverView = ({
 
 				{/* Error */}
 				{isError && <span className='text-[11px]' style={{ color: '#ff3850' }}>{errorMsg}</span>}
+
+				{/* Upload failed but the video itself survived — let the GM keep it */}
+				{localFile && (
+					<a href={localFile.url} download={localFile.name}
+						className='text-[11px] underline' style={{ color: '#0fffc8' }}>
+						{t('room.observer.save_local')}
+					</a>
+				)}
 
 				<div className='flex-1' />
 

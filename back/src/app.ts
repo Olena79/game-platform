@@ -45,7 +45,7 @@ import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
 import { Recording } from './models/Recording'
-import { deleteFile } from './services/googleDrive'
+import { deleteFile, verifyDriveAccess } from './services/googleDrive'
 import { startTelegramPolling, stopTelegramPolling } from './services/telegramBot'
 import {
 	authLimiter,
@@ -142,25 +142,42 @@ registerCommunity(io)
 // ── Sentry error handler (must be after all other middleware and routes) ───────
 app.use(getSentryMiddleware()[1])
 
-// Delete expired recordings from Google Drive every 6 hours
-cron.schedule('0 */6 * * *', async () => {
+// Delete expired recordings from Google Drive every 6 hours.
+// Recordings expire 7 days after they start (set in routes/recordings.ts).
+const cleanupExpiredRecordings = async () => {
 	try {
-		const expired = await Recording.find({
-			expiresAt: { $lte: new Date() },
-			status: 'completed',
-			driveFileId: { $ne: '' },
-		})
+		const expired = await Recording.find({ expiresAt: { $lte: new Date() } })
+		let removed = 0
+		let kept = 0
 		for (const rec of expired) {
-			try { await deleteFile(rec.driveFileId) } catch { /* file may already be deleted */ }
+			if (rec.driveFileId) {
+				try {
+					await deleteFile(rec.driveFileId)
+				} catch (err) {
+					// Drive still holds the file: keep the row so the next run
+					// retries instead of leaking an orphaned video forever.
+					kept++
+					logger.warn('Could not delete recording from Drive', {
+						task: 'cron:cleanup',
+						recordingId: String(rec._id),
+						error: err instanceof Error ? err.message : String(err),
+					})
+					continue
+				}
+			}
+			// Rows with no file (upload never finished) just go
 			await rec.deleteOne()
+			removed++
 		}
-		if (expired.length > 0) {
-			logger.info(`Cleaned up ${expired.length} expired recording(s)`, { task: 'cron:cleanup' })
+		if (removed > 0 || kept > 0) {
+			logger.info(`Cleaned up ${removed} expired recording(s), ${kept} retained for retry`, { task: 'cron:cleanup' })
 		}
 	} catch (err) {
 		logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err })
 	}
-})
+}
+
+cron.schedule('0 */6 * * *', cleanupExpiredRecordings)
 
 
 const PORT = process.env.PORT || 5000
@@ -169,6 +186,16 @@ connectDB()
 	.then(() => {
 		// Start Telegram bot polling
 		startTelegramPolling()
+
+		// Recording storage is only exercised when a game ends, so check it at
+		// startup — a misconfigured Drive should not be discovered by losing a game.
+		verifyDriveAccess().then(({ ok, detail }) => {
+			if (ok) logger.info(`Google Drive ready — ${detail}`, { context: 'server:startup' })
+			else logger.error(`Google Drive NOT usable — recordings will fail to save: ${detail}`, { context: 'server:startup' })
+		})
+
+		// Clear anything that expired while the server was down
+		cleanupExpiredRecordings()
 
 		httpServer.listen(PORT, () => {
 			logger.info(`Server running on http://localhost:${PORT}`, { context: 'server:startup', port: PORT })

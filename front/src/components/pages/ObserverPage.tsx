@@ -86,6 +86,7 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 				uploadProgress={recording.uploadProgress}
 				shareLink={recording.shareLink}
 				errorMsg={recording.errorMsg}
+				localFile={recording.localFile}
 				onPrepare={recording.prepare}
 				onStop={recording.stop}
 				startAnim={startAnim}

@@ -3,7 +3,7 @@ import { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { Recording } from '../models/Recording'
 import { User } from '../models/User'
-import { uploadStreamToDrive, makeFilePublic } from '../services/googleDrive'
+import { uploadStreamToDrive, makeFilePublic, driveErrorReason } from '../services/googleDrive'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { recordingIdSchema } from '../validation/schemas'
 import { z } from 'zod'
@@ -62,8 +62,12 @@ router.put('/upload/:id', authMiddleware, validateParams(recordingIdSchema), asy
 
 		res.json({ shareLink })
 	} catch (err: any) {
-		logger.error('[recordings/upload]', err instanceof Error ? err.message : 'unknown error')
-		res.status(500).json({ message: 'Upload failed' })
+		// Surface the Drive reason: the GM is looking at a finished recording
+		// that just failed to save and needs to know whether to retry or to
+		// download the file instead.
+		const reason = driveErrorReason(err)
+		logger.error('[recordings/upload]', { recordingId: req.params.id, reason })
+		res.status(500).json({ message: 'Upload failed', reason })
 	}
 })
 
