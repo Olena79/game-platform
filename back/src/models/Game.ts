@@ -27,6 +27,8 @@ export interface IGame extends Document {
 	images: string[]
 	defaultTimerSeconds: number | null
 	gameCode: string
+	/** GM's private notes for the session in progress, delivered when it ends */
+	gmNotes?: string
 	spectatorCode: string
 	registeredPlayers: IRegisteredPlayer[]
 	spectators: IRegisteredPlayer[]
@@ -66,6 +68,7 @@ const GameSchema = new Schema<IGame>(
 		images:             { type: [String], default: [] },
 		defaultTimerSeconds: { type: Number, default: null },
 		gameCode:           { type: String, unique: true, sparse: true },
+		gmNotes:            { type: String, default: '' },
 		spectatorCode:      { type: String, unique: true, sparse: true },
 		registeredPlayers:  { type: [RegisteredPlayerSchema], default: [] },
 		spectators:         { type: [RegisteredPlayerSchema], default: [] },

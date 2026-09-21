@@ -340,6 +340,44 @@ export async function sendNotesToTelegram(
 	return allSent
 }
 
+/**
+ * The recording link only ever appeared in the observer window. When a
+ * recording is closed after the gamemaster has already left — or salvaged by
+ * the server — nobody is there to read it, so it goes to their chat instead.
+ */
+export async function sendRecordingLinkToTelegram(
+	telegramChatId: string,
+	gameTitle: string,
+	shareLink: string,
+	interrupted: boolean,
+	language: string = 'uk',
+): Promise<boolean> {
+	if (!BOT_TOKEN || !telegramChatId) return false
+	const chatId = parseInt(telegramChatId, 10)
+	if (!Number.isFinite(chatId)) return false
+
+	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
+	const titleLine = gameTitle ? '\n<b>' + escapeHtml(gameTitle) + '</b>' : ''
+
+	const parts = lang === 'uk'
+		? [
+			'🎥 <b>Запис гри збережено</b>' + titleLine,
+			'',
+			shareLink,
+			interrupted ? '\n⚠️ Запис було перервано — збережено те, що встигло завантажитись.' : '',
+			'\n🗓 Файл видалиться через 7 днів.',
+		]
+		: [
+			'🎥 <b>Recording saved</b>' + titleLine,
+			'',
+			shareLink,
+			interrupted ? '\n⚠️ The recording was interrupted — whatever had been uploaded is kept.' : '',
+			'\n🗓 The file is deleted after 7 days.',
+		]
+
+	return sendMessage(chatId, parts.filter(Boolean).join('\n'))
+}
+
 export async function sendGameCodeToTelegram(
 	telegramChatId: string,
 	gameCode: string,

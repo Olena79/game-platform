@@ -19,6 +19,7 @@ import {
 	grRoleSchema,
 	grStartSchema,
 	grEndSchema,
+	grNotesSchema,
 	grCoinsTransferSchema,
 	grCoinsBankSchema,
 	grInfluenceSchema,
@@ -40,6 +41,7 @@ import {
 	grBreakoutEndSchema,
 } from '../validation/schemas'
 import logger from '../config/logger'
+import { deliverGameNotes } from '../services/notesDelivery'
 
 const rooms = new Map<string, GameRoomState>()
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -47,6 +49,61 @@ const observerSockets = new Map<string, string>() // gameCode → socketId
 const loadingRooms = new Map<string, Promise<GameRoomState | null>>() // deduplicate concurrent loadRoom calls
 const breakoutTimers = new Map<string, ReturnType<typeof setTimeout>>() // `${gameCode}:${roomId}`
 const userSockets = new Map<string, Set<string>>() // `${gameCode}:${userId}` → active socket IDs
+// The GM's notes, synced as they type. Deliberately kept out of GameRoomState:
+// that object is broadcast to every participant, and these are private.
+const gmNotes = new Map<string, string>()               // gameCode → notes draft
+const gmAwayTimers = new Map<string, ReturnType<typeof setTimeout>>() // gameCode → grace timer
+
+/** How long the gamemaster may be gone before the session counts as over. */
+const GM_AWAY_GRACE_MS = 90_000
+
+/**
+ * Everything that has to happen when a session is over, whichever way it
+ * ended: the notes go to the gamemaster and the observer stops recording.
+ *
+ * The GM pressing “end game” is only one of the ways out — hanging up,
+ * closing the tab or losing the connection are just as final, and used to
+ * leave both the notes and an open recording behind.
+ */
+async function closeOutSession(
+	io: Server,
+	state: GameRoomState,
+	reason: 'ended' | 'gm_left',
+): Promise<void> {
+	const gameCode = state.gameCode
+
+	// Stop the recording first: the observer finalises the upload properly,
+	// instead of the server having to salvage it minutes later.
+	const obsSocketId = observerSockets.get(gameCode)
+	if (obsSocketId) io.to(obsSocketId).emit('gr:record-signal', { action: 'stop' })
+
+	const notes = gmNotes.get(gameCode) ?? ''
+	if (notes.trim()) {
+		const delivered = await deliverGameNotes(gameCode, notes, state.gamemasterId, state.title, reason)
+		if (delivered) gmNotes.delete(gameCode)
+	}
+}
+
+/**
+ * The gamemaster leaving without ending the game is still the end of the
+ * session — but a reload or a dropped connection looks identical at this
+ * point, so give them a grace period to come back first.
+ */
+function scheduleGmAwayCloseOut(io: Server, state: GameRoomState, gameCode: string, userId: string): void {
+	if (userId !== state.gamemasterId) return
+	if (gmAwayTimers.has(gameCode)) return
+
+	const timer = setTimeout(() => {
+		gmAwayTimers.delete(gameCode)
+		const current = rooms.get(gameCode)
+		if (!current) return
+		const gmBack = current.players.some(p => p.userId === current.gamemasterId && p.connected)
+		if (gmBack) return
+		logger.info(`[disconnect] gamemaster gone for ${GM_AWAY_GRACE_MS / 1000}s, closing out gameCode=${gameCode}`)
+		void closeOutSession(io, current, 'gm_left')
+	}, GM_AWAY_GRACE_MS)
+	gmAwayTimers.set(gameCode, timer)
+}
 
 function initials(name: string | undefined): string {
 	if (!name) return '??'
@@ -117,6 +174,9 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		hasObserver: false,
 	}
 	rooms.set(gameCode, state)
+	// A draft left by a previous process (restart, redeploy) is still owed
+	// to the gamemaster.
+	if (game.gmNotes) gmNotes.set(gameCode, game.gmNotes)
 	return state
 }
 
@@ -160,6 +220,15 @@ export function registerGameRoom(io: Server) {
 			userSockets.get(uKey)!.add(socket.id)
 
 			const isGamemaster = userId === state.gamemasterId
+			if (isGamemaster) {
+				// They reconnected (reload, flaky network) — the session goes on
+				const away = gmAwayTimers.get(d.gameCode)
+				if (away) {
+					clearTimeout(away)
+					gmAwayTimers.delete(d.gameCode)
+					logger.info(`[gr:join] gamemaster returned, session continues gameCode=${d.gameCode}`)
+				}
+			}
 
 			// Determine spectator status: the code type is authoritative.
 			// A registered player always keeps player status regardless of code used.
@@ -354,6 +423,15 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		}))
 
+		// Notes are synced as the GM types so the server always holds a copy
+		// — the browser's is the only other one, and it leaves with the tab.
+		socket.on('gr:notes', validateSocketEvent(grNotesSchema, async (d: any) => {
+			const state = rooms.get(d.gameCode)
+			if (!state || !curUser || !isGM(state, curUser)) return
+			gmNotes.set(d.gameCode, d.notes)
+			Game.updateOne({ gameCode: d.gameCode }, { gmNotes: d.notes }).catch(() => { /* draft only */ })
+		}))
+
 		socket.on('gr:end', validateSocketEvent(grEndSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
@@ -367,6 +445,10 @@ export function registerGameRoom(io: Server) {
 			state.messages = []
 			pushState(io, state)
 			emit(io, d.gameCode, 'gr:end-anim', {})
+			// Stops the recording and delivers whatever notes the server holds.
+			// The room also sends them over HTTP so the GM sees the result; the
+			// draft is cleared on success, so only one of the two ever fires.
+			void closeOutSession(io, state, 'ended')
 			// Delete all messages for this game from DB
 			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
 			const t = setTimeout(() => rooms.delete(d.gameCode), 60_000)
@@ -761,6 +843,8 @@ export function registerGameRoom(io: Server) {
 					if (p) { p.connected = false; p.socketId = '' }
 					logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} fully disconnected`)
 					pushState(io, state)
+
+					scheduleGmAwayCloseOut(io, state, curCode, curUser)
 				} else {
 					// User still has another tab open — keep them connected,
 					// update socketId to a still-alive socket so private messages deliver
@@ -776,6 +860,7 @@ export function registerGameRoom(io: Server) {
 				if (p) { p.connected = false; p.socketId = '' }
 				logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} disconnected (no tracking)`)
 				pushState(io, state)
+				scheduleGmAwayCloseOut(io, state, curCode, curUser)
 			}
 		})
 	})

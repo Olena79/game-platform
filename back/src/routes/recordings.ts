@@ -13,6 +13,7 @@ import {
 	DRIVE_CHUNK_UNIT,
 } from '../services/googleDrive'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
+import { sendRecordingLinkToTelegram } from '../services/telegramBot'
 import { recordingIdSchema } from '../validation/schemas'
 import { z } from 'zod'
 
@@ -108,6 +109,30 @@ router.put('/upload/:id', authMiddleware, validateParams(recordingIdSchema), asy
  */
 const heldChunks = new Map<string, { buf: Buffer; driveOffset: number; touchedAt: number }>()
 
+/**
+ * Tells the gamemaster where the finished recording is.
+ *
+ * The link used to live only in the observer window, which is exactly the
+ * window that is gone whenever a recording had to be closed on its own.
+ */
+async function notifyRecordingSaved(gmEmail: string, gameTitle: string, shareLink: string, interrupted: boolean): Promise<void> {
+	try {
+		const gm = await User.findOne({ email: gmEmail }).select('telegramChatId language')
+		if (!gm?.telegramChatId) return
+		await sendRecordingLinkToTelegram(
+			gm.telegramChatId,
+			gameTitle,
+			shareLink,
+			interrupted,
+			(gm as { language?: string }).language || 'uk',
+		)
+	} catch (err) {
+		logger.warn('[recordings] could not notify the gamemaster', {
+			error: err instanceof Error ? err.message : String(err),
+		})
+	}
+}
+
 const rawChunkBody = express.raw({ type: () => true, limit: '64mb' })
 
 router.post('/chunk/:id', authMiddleware, validateParams(recordingIdSchema), rawChunkBody, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -166,6 +191,9 @@ router.post('/chunk/:id', authMiddleware, validateParams(recordingIdSchema), raw
 				status: 'completed',
 				uploadedBytes: total,
 			})
+			// The GM may well have closed the room by now
+			void notifyRecordingSaved(recording.gmEmail, recording.gameTitle, shareLink, false)
+
 			res.json({ shareLink, complete: true, bytes: total })
 			return
 		}
@@ -210,6 +238,7 @@ export async function finalizeStaleUploads(idleMs = 5 * 60 * 1000): Promise<void
 				salvaged: true,
 			})
 			logger.warn(`Salvaged interrupted recording ${id} (${Math.round(total / 1048576)} MB)`, { task: 'recordings:salvage' })
+			void notifyRecordingSaved(recording.gmEmail, recording.gameTitle, shareLink, true)
 		} catch (err) {
 			logger.error('[recordings/salvage]', { recordingId: id, reason: driveErrorReason(err) })
 			await Recording.findByIdAndUpdate(id, { status: 'failed' }).catch(() => undefined)

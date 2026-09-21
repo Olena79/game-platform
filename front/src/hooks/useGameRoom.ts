@@ -264,5 +264,8 @@ export function useGameRoom(rawCode: string) {
 		endBreakout:   (roomId: string)           => emit('gr:breakout-end',   { roomId }),
 		showImage:       (imageUrl: string | null)  => emit('gr:image-show',     { imageUrl }),
 		recordControl:   (action: 'start' | 'stop') => emit('gr:record-control', { action }),
+		// Keeps the server's copy of the GM's notes current, so they are still
+		// delivered if the tab closes instead of the game being ended.
+		syncNotes:       (notes: string)            => emit('gr:notes',          { notes }),
 	}
 }

@@ -192,6 +192,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		isSpectatorJoin,
 		recordStatus,
 		recordControl,
+		syncNotes,
 		recordingActive,
 	} = room
 
@@ -247,6 +248,14 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 			else localStorage.removeItem(notesKey)
 		} catch { /* private mode — the notes just aren't kept between reloads */ }
 	}, [notes, notesKey])
+
+	// ...and on the server, so that hanging up, closing the tab or dropping
+	// off the network still delivers them. Debounced: this fires while typing.
+	useEffect(() => {
+		if (!isGM) return
+		const t = setTimeout(() => syncNotes(notes), 2000)
+		return () => clearTimeout(t)
+	}, [notes, isGM, syncNotes])
 	// Notes are only kept in this browser and are delivered over Telegram when
 	// the game ends, so an unlinked GM has to hear about it before they write
 	// anything — not after the room has closed.
@@ -1250,8 +1259,9 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 											})
 											const data = await resp.json().catch(() => ({}))
 											if (data?.delivered) {
-												// Safely in Telegram — drop the local draft
+												// Safely in Telegram — drop both copies of the draft
 												try { localStorage.removeItem(notesKey) } catch { /* ignore */ }
+												syncNotes('')
 											}
 											if (!resp.ok || !data?.delivered) {
 												// The room is about to close; the notes must stay on

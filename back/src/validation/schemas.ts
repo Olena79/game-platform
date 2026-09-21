@@ -108,6 +108,13 @@ export const grStartSchema = z.object({
 	gameCode: z.string().min(1),
 })
 
+// The GM's notes are synced as they type so that leaving without pressing
+// “end game” — or closing the tab — still delivers them.
+export const grNotesSchema = z.object({
+	gameCode: z.string().min(1),
+	notes: z.string().max(50000),
+})
+
 export const grEndSchema = z.object({
 	gameCode: z.string().min(1),
 })
