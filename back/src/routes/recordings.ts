@@ -1,9 +1,17 @@
 import logger from '../config/logger'
-import { Router, Response } from 'express'
+import express, { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { Recording } from '../models/Recording'
 import { User } from '../models/User'
-import { uploadStreamToDrive, makeFilePublic, driveErrorReason } from '../services/googleDrive'
+import {
+	uploadStreamToDrive,
+	makeFilePublic,
+	driveErrorReason,
+	createResumableSession,
+	ensureStorageUsable,
+	uploadChunkToSession,
+	DRIVE_CHUNK_UNIT,
+} from '../services/googleDrive'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { recordingIdSchema } from '../validation/schemas'
 import { z } from 'zod'
@@ -23,16 +31,34 @@ router.post('/initiate', authMiddleware, validateBody(initiateRecordingSchema), 
 		if (!user) { res.status(401).json({ message: 'Unauthorized' }); return }
 
 		const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+		// Check storage before the game is recorded, not after: an unusable
+		// Drive means the observer should record locally instead of streaming
+		// into a session that can never be closed.
+		const storage = await ensureStorageUsable()
+		if (!storage.ok) {
+			logger.error('[recordings/initiate] storage unusable', { reason: storage.detail })
+			res.status(503).json({ message: 'Recording storage unavailable', reason: storage.detail })
+			return
+		}
+
+		const filename = `recording-${gameCode}-${Date.now()}.webm`
+		const uploadUri = await createResumableSession(filename)
+
 		const recording = await Recording.create({
 			gameCode,
 			gameTitle: gameTitle || '',
 			gmEmail: user.email,
+			uploadUri,
+			uploadedBytes: 0,
+			status: 'uploading',
 			expiresAt,
 		})
-		res.json({ recordingId: String(recording._id) })
+		res.json({ recordingId: String(recording._id), chunkUnit: DRIVE_CHUNK_UNIT })
 	} catch (err: any) {
-		logger.error('[recordings/initiate]', err)
-		res.status(500).json({ message: 'Failed to initiate recording' })
+		const reason = driveErrorReason(err)
+		logger.error('[recordings/initiate]', { reason })
+		res.status(500).json({ message: 'Failed to initiate recording', reason })
 	}
 })
 
@@ -70,6 +96,126 @@ router.put('/upload/:id', authMiddleware, validateParams(recordingIdSchema), asy
 		res.status(500).json({ message: 'Upload failed', reason })
 	}
 })
+
+/**
+ * The most recent chunk of each active upload, held back on purpose.
+ *
+ * Drive only turns a resumable session into a real file when it receives a
+ * chunk carrying the total size. By keeping the latest chunk here instead of
+ * forwarding it immediately, the server can always close the file on its own
+ * — so an observer tab that dies mid-game still leaves a playable recording
+ * behind (see finalizeStaleUploads).
+ */
+const heldChunks = new Map<string, { buf: Buffer; driveOffset: number; touchedAt: number }>()
+
+const rawChunkBody = express.raw({ type: () => true, limit: '64mb' })
+
+router.post('/chunk/:id', authMiddleware, validateParams(recordingIdSchema), rawChunkBody, async (req: AuthRequest, res: Response): Promise<void> => {
+	const id = req.params.id
+	try {
+		const recording = await Recording.findById(id)
+		if (!recording) { res.status(404).json({ message: 'Recording not found' }); return }
+
+		const uploader = await User.findById(req.userId).select('email')
+		if (!uploader || uploader.email !== recording.gmEmail) {
+			res.status(403).json({ message: 'FORBIDDEN' })
+			return
+		}
+		if (recording.status === 'completed') {
+			res.json({ shareLink: recording.shareLink, complete: true })
+			return
+		}
+		if (!recording.uploadUri) { res.status(409).json({ message: 'No upload session' }); return }
+
+		const body: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
+		const isFinal = req.header('X-Chunk-Final') === '1'
+		const offset = Number(req.header('X-Chunk-Offset'))
+
+		if (!Number.isInteger(offset) || offset < 0) {
+			res.status(400).json({ message: 'Invalid X-Chunk-Offset' })
+			return
+		}
+		// The client and Drive must agree on the byte position, otherwise the
+		// file silently ends up corrupt. Tell the client where to resume from.
+		if (offset !== recording.uploadedBytes) {
+			res.status(409).json({ message: 'Offset mismatch', expected: recording.uploadedBytes })
+			return
+		}
+		if (!isFinal && body.length % DRIVE_CHUNK_UNIT !== 0) {
+			res.status(400).json({ message: `Chunk must be a multiple of ${DRIVE_CHUNK_UNIT} bytes` })
+			return
+		}
+
+		const held = heldChunks.get(id)
+
+		if (isFinal) {
+			// Whatever is still held, plus this tail, closes the file
+			const buf = held ? Buffer.concat([held.buf, body]) : body
+			const startAt = held ? held.driveOffset : recording.uploadedBytes
+			if (buf.length === 0) {
+				res.status(409).json({ message: 'Nothing to finalise' })
+				return
+			}
+			const total = startAt + buf.length
+			const { fileId } = await uploadChunkToSession(recording.uploadUri, buf, startAt, total)
+			heldChunks.delete(id)
+			const shareLink = await makeFilePublic(fileId!)
+			await Recording.findByIdAndUpdate(id, {
+				driveFileId: fileId,
+				shareLink,
+				status: 'completed',
+				uploadedBytes: total,
+			})
+			res.json({ shareLink, complete: true, bytes: total })
+			return
+		}
+
+		// Not final: push the chunk held from last time, then hold this one
+		let driveOffset = recording.uploadedBytes
+		if (held) {
+			await uploadChunkToSession(recording.uploadUri, held.buf, held.driveOffset, null)
+			driveOffset = held.driveOffset + held.buf.length
+		}
+		heldChunks.set(id, { buf: body, driveOffset, touchedAt: Date.now() })
+		const accepted = driveOffset + body.length
+		await Recording.findByIdAndUpdate(id, { uploadedBytes: accepted, status: 'uploading' })
+		res.json({ complete: false, bytes: accepted })
+	} catch (err: any) {
+		const reason = driveErrorReason(err)
+		logger.error('[recordings/chunk]', { recordingId: id, reason })
+		res.status(500).json({ message: 'Chunk upload failed', reason })
+	}
+})
+
+/**
+ * Closes uploads whose observer went away. Without this, bytes already in
+ * Drive would sit in an unfinished session and the game would be lost.
+ */
+export async function finalizeStaleUploads(idleMs = 5 * 60 * 1000): Promise<void> {
+	for (const [id, held] of heldChunks) {
+		if (Date.now() - held.touchedAt < idleMs) continue
+		heldChunks.delete(id)
+		try {
+			const recording = await Recording.findById(id)
+			if (!recording || recording.status === 'completed' || !recording.uploadUri) continue
+
+			const total = held.driveOffset + held.buf.length
+			const { fileId } = await uploadChunkToSession(recording.uploadUri, held.buf, held.driveOffset, total)
+			const shareLink = await makeFilePublic(fileId!)
+			await Recording.findByIdAndUpdate(id, {
+				driveFileId: fileId,
+				shareLink,
+				status: 'completed',
+				uploadedBytes: total,
+				salvaged: true,
+			})
+			logger.warn(`Salvaged interrupted recording ${id} (${Math.round(total / 1048576)} MB)`, { task: 'recordings:salvage' })
+		} catch (err) {
+			logger.error('[recordings/salvage]', { recordingId: id, reason: driveErrorReason(err) })
+			await Recording.findByIdAndUpdate(id, { status: 'failed' }).catch(() => undefined)
+		}
+	}
+}
 
 router.get('/:id', validateParams(recordingIdSchema), async (req, res): Promise<void> => {
 	try {

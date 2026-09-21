@@ -38,7 +38,7 @@ import { getSentryMiddleware } from './config/sentry'
 import authRoutes from './routes/auth'
 import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
-import recordingRoutes from './routes/recordings'
+import recordingRoutes, { finalizeStaleUploads } from './routes/recordings'
 import uploadRoutes from './routes/upload'
 import telegramRoutes from './routes/telegram'
 import { registerGameRoom } from './socket/gameRoom'
@@ -178,6 +178,10 @@ const cleanupExpiredRecordings = async () => {
 }
 
 cron.schedule('0 */6 * * *', cleanupExpiredRecordings)
+
+// Close recordings whose observer window disappeared, so the part that did
+// reach Drive becomes a playable file instead of an unfinished upload session.
+cron.schedule('*/2 * * * *', () => { void finalizeStaleUploads() })
 
 
 const PORT = process.env.PORT || 5000

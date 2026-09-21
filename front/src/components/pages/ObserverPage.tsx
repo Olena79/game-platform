@@ -83,7 +83,7 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 				messages={messages}
 				onSendChat={sendChat}
 				recordingStatus={recording.status}
-				uploadProgress={recording.uploadProgress}
+				uploadedBytes={recording.uploadedBytes}
 				shareLink={recording.shareLink}
 				errorMsg={recording.errorMsg}
 				localFile={recording.localFile}

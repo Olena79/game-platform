@@ -435,7 +435,10 @@
       "err_no_id": "Error: recording id is missing",
       "err_network": "No connection to the server",
       "err_upload": "Could not save to Google Drive: {{reason}}",
-      "save_local": "↓ Save file"
+      "save_local": "↓ Save file",
+      "mb": "MB",
+      "err_upload_partial": "Upload interrupted ({{reason}}). The first {{mb}} MB are saved to Google Drive — the file appears in the folder within a few minutes",
+      "err_local_mode": "Google Drive is unavailable ({{reason}}). Recording locally — save the file yourself once you stop"
     },
     "vote": {
       "title": "🗳️ New vote",

@@ -13,7 +13,7 @@ interface Props {
 	messages: ChatMessage[]
 	onSendChat: (text: string) => void
 	recordingStatus: RecordingStatus
-	uploadProgress: number
+	uploadedBytes: number
 	shareLink: string
 	errorMsg: string
 	localFile: { url: string; name: string } | null
@@ -27,7 +27,7 @@ interface Props {
 
 export const ObserverView = ({
 	state, myId, messages, onSendChat,
-	recordingStatus, uploadProgress, shareLink, errorMsg, localFile,
+	recordingStatus, uploadedBytes, shareLink, errorMsg, localFile,
 	onPrepare, onStop,
 	startAnim, endAnim, onStartAnimDone, onEndAnimDone,
 }: Props) => {
@@ -65,14 +65,12 @@ export const ObserverView = ({
 					{isRecording ? t('room.observer.rec_active') : isUploading ? t('room.observer.rec_uploading') : isDone ? t('room.observer.rec_saved') : isPrepared ? t('room.observer.rec_ready') : isError ? t('room.observer.rec_error') : t('room.observer.status')}
 				</span>
 
-				{/* Upload progress bar */}
-				{isUploading && (
-					<div className='flex items-center gap-[6px]'>
-						<div className='w-[80px] h-[3px] rounded-full overflow-hidden' style={{ background: 'rgba(15,255,200,0.15)' }}>
-							<div className='h-full rounded-full transition-all' style={{ width: `${uploadProgress}%`, background: '#0fffc8' }} />
-						</div>
-						<span className='text-[10px]' style={{ color: '#0fffc8' }}>{uploadProgress}%</span>
-					</div>
+				{/* Bytes already in storage — the upload runs during the game, so
+				    this counts up instead of appearing only at the end */}
+				{(isRecording || isUploading) && uploadedBytes > 0 && (
+					<span className='text-[10px]' style={{ color: '#0fffc8' }}>
+						↑ {(uploadedBytes / 1048576).toFixed(0)} {t('room.observer.mb')}
+					</span>
 				)}
 
 				{/* Share link */}
