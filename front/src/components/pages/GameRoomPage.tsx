@@ -218,7 +218,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		? (activeBreakoutRoom.shownImageUrl ?? null)
 		: (state?.shownImageUrl ?? null)) ?? null
 
-	const { token: authToken } = useAuth()
+	const { token: authToken, user: authUser } = useAuth()
 	const lkRoom = useRoomContext()
 	const { localParticipant } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
@@ -235,9 +235,42 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	const [showImgPicker, setShowImgPicker] = useState(false)
 	const [showStopConfirm, setShowStopConfirm] = useState(false)
 	const [showSpectatorVote, setShowSpectatorVote] = useState(false)
-	const [notes, setNotes] = useState('')
+	// Notes survive a reload or an accidentally closed tab: they only leave the
+	// browser when the game ends, and until then this is the only copy.
+	const notesKey = `gm-notes-${gameCode}`
+	const [notes, setNotes] = useState(() => {
+		try { return localStorage.getItem(notesKey) ?? '' } catch { return '' }
+	})
+	useEffect(() => {
+		try {
+			if (notes) localStorage.setItem(notesKey, notes)
+			else localStorage.removeItem(notesKey)
+		} catch { /* private mode — the notes just aren't kept between reloads */ }
+	}, [notes, notesKey])
+	// Notes are only kept in this browser and are delivered over Telegram when
+	// the game ends, so an unlinked GM has to hear about it before they write
+	// anything — not after the room has closed.
+	const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null)
+	const [notesWarningDismissed, setNotesWarningDismissed] = useState(false)
+	const [notesDeliveryError, setNotesDeliveryError] = useState('')
 	const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 	const [mobilePanelOpen, setMobilePanelOpen] = useState<'media' | 'emoji' | 'chat' | 'settings' | null>(null)
+
+	// Telegram link state, read fresh: the copy in the auth payload dates from
+	// the last login and may predate the GM linking their account.
+	useEffect(() => {
+		if (!isGM || !authToken) return
+		let cancelled = false
+		fetch(`${API}/api/telegram/status`, { headers: { Authorization: `Bearer ${authToken}` } })
+			.then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+			.then(d => { if (!cancelled) setTelegramLinked(Boolean(d.telegramConnected)) })
+			.catch(err => {
+				// Unknown state: say nothing rather than warn about a link that exists
+				console.warn('[room] telegram status check failed:', err)
+				if (!cancelled) setTelegramLinked(null)
+			})
+		return () => { cancelled = true }
+	}, [isGM, authToken])
 
 	// ── Mobile resize detection ──────────────────────────────────────────────────
 	useEffect(() => {
@@ -453,6 +486,49 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 				isGM={isGM}
 				onClose={() => announce(null)}
 			/>
+
+			{/* GM without Telegram: their notes have nowhere to go */}
+			{isGM && telegramLinked === false && !notesWarningDismissed && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[10px] py-[6px] px-[16px] flex-wrap'
+					style={{ background: 'rgba(255,150,60,0.10)', borderBottom: '1px solid rgba(255,150,60,0.25)' }}>
+					<span style={{ color: 'rgba(255,175,90,0.95)', fontSize: '12px' }}>
+						⚠️ {t('room.notes_no_telegram')}
+					</span>
+					<a
+						href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'}?start=${authUser?.id ?? ''}`}
+						target='_blank' rel='noreferrer'
+						className='text-[12px] font-[600] underline'
+						style={{ color: '#0fffc8' }}>
+						{t('room.notes_connect_telegram')}
+					</a>
+					<button onClick={() => setNotesWarningDismissed(true)}
+						className='text-[12px] cursor-pointer'
+						style={{ color: 'rgba(255,175,90,0.6)' }}>
+						✕
+					</button>
+				</div>
+			)}
+
+			{/* Notes could not be delivered — show them rather than lose them */}
+			{notesDeliveryError && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[10px] py-[6px] px-[16px] flex-wrap'
+					style={{ background: 'rgba(255,56,80,0.12)', borderBottom: '1px solid rgba(255,56,80,0.28)' }}>
+					<span style={{ color: 'rgba(255,120,140,0.95)', fontSize: '12px' }}>
+						{notesDeliveryError}
+					</span>
+					<button
+						onClick={() => { void navigator.clipboard?.writeText(notes) }}
+						className='text-[12px] font-[600] underline cursor-pointer'
+						style={{ color: '#0fffc8' }}>
+						{t('room.notes_copy')}
+					</button>
+					<button onClick={() => setNotesDeliveryError('')}
+						className='text-[12px] cursor-pointer'
+						style={{ color: 'rgba(255,120,140,0.6)' }}>
+						✕
+					</button>
+				</div>
+			)}
 
 			{/* Recording active banner */}
 			{recordingActive && (
@@ -698,6 +774,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							isSpectator={isSpectator}
 							notes={notes}
 							onNotesChange={setNotes}
+							telegramLinked={telegramLinked}
 							onSendChat={sendChat}
 							onCastVote={castVote}
 							onCloseVote={closeVote}
@@ -837,7 +914,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', height: '72vh', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ChatPanel
 								state={panelState} myId={myId} isGM={isGM} isSpectator={isSpectator}
-								notes={notes} onNotesChange={setNotes}
+								notes={notes} onNotesChange={setNotes} telegramLinked={telegramLinked}
 								onSendChat={sendChat} onCastVote={castVote} onCloseVote={closeVote} onClearVote={clearVote}
 								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
 								onAnnounce={() => setShowAnnounce(true)} onVoting={() => setShowVote(true)} onSpectatorVoting={() => setShowSpectatorVote(true)}
@@ -1137,6 +1214,11 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						>
 							{t('room.stop_confirm_msg')}
 						</p>
+						{notes.trim() && telegramLinked === false && (
+							<p className='text-[12px] leading-[1.4]' style={{ color: 'rgba(255,175,90,0.9)' }}>
+								⚠️ {t('room.stop_confirm_notes_warning')}
+							</p>
+						)}
 						<div className='flex gap-[8px]'>
 							<button
 								onClick={() => setShowStopConfirm(false)}
@@ -1154,7 +1236,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 									setShowStopConfirm(false)
 									if (notes.trim() && authToken) {
 										try {
-											await fetch(`${API}/api/games/send-notes`, {
+											const resp = await fetch(`${API}/api/games/send-notes`, {
 												method: 'POST',
 												headers: {
 													'Content-Type': 'application/json',
@@ -1166,8 +1248,23 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 													gameCode,
 												}),
 											})
+											const data = await resp.json().catch(() => ({}))
+											if (data?.delivered) {
+												// Safely in Telegram — drop the local draft
+												try { localStorage.removeItem(notesKey) } catch { /* ignore */ }
+											}
+											if (!resp.ok || !data?.delivered) {
+												// The room is about to close; the notes must stay on
+												// screen with a way to copy them out.
+												setNotesDeliveryError(
+													data?.reason === 'telegram_not_linked'
+														? t('room.notes_not_sent_no_telegram')
+														: t('room.notes_not_sent'),
+												)
+											}
 										} catch (err) {
 											Sentry.captureException(err, { tags: { operation: 'send-notes' } })
+											setNotesDeliveryError(t('room.notes_not_sent'))
 										}
 									}
 									endGame()

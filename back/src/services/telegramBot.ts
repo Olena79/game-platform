@@ -197,6 +197,14 @@ export async function startTelegramPolling(): Promise<void> {
 		return
 	}
 
+	// Telegram allows a single getUpdates consumer per bot, so a second instance
+	// (a developer machine, a one-off script) steals updates from the deployed
+	// one. This lets such a run still send messages without taking the bot over.
+	if (process.env.TELEGRAM_POLLING === 'off') {
+		logger.warn('[telegram] Polling disabled by TELEGRAM_POLLING=off — sending still works')
+		return
+	}
+
 	if (pollingActive) {
 		logger.warn('[telegram] Polling already active, skipping restart')
 		return
@@ -276,6 +284,60 @@ const gameNotificationMessages = {
 		reminder: (name: string, minutesUntil: number, timeStr: string) =>
 			`⏰ <b>Reminder!</b>\n\n<b>${name}</b> starts in ${minutesUntil} minutes\n⏱️ ${timeStr}`,
 	},
+}
+
+/** Telegram rejects anything longer than this in a single message. */
+const TELEGRAM_MAX_MESSAGE = 4096
+
+/** Notes are free text typed by the GM, and the bot posts with parse_mode HTML. */
+function escapeHtml(text: string): string {
+	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** Splits on line boundaries where possible, so a long game stays readable. */
+function splitForTelegram(text: string, limit: number): string[] {
+	const parts: string[] = []
+	let rest = text
+	while (rest.length > limit) {
+		let cut = rest.lastIndexOf('\n', limit)
+		if (cut < limit * 0.5) cut = limit    // one very long line: hard cut
+		parts.push(rest.slice(0, cut))
+		rest = rest.slice(cut).replace(/^\n/, '')
+	}
+	if (rest.length > 0) parts.push(rest)
+	return parts
+}
+
+/**
+ * Sends the GM's notes after a game. These exist only in the browser until
+ * this runs — ending the game clears them — so a failure here loses them.
+ */
+export async function sendNotesToTelegram(
+	telegramChatId: string,
+	gameTitle: string,
+	notes: string,
+	language: string = 'uk',
+): Promise<boolean> {
+	if (!BOT_TOKEN || !telegramChatId) return false
+
+	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
+	const header = lang === 'uk'
+		? `📝 <b>Нотатки з гри</b>\n<b>${escapeHtml(gameTitle)}</b>\n\n`
+		: `📝 <b>Notes from the game</b>\n<b>${escapeHtml(gameTitle)}</b>\n\n`
+
+	const chatId = parseInt(telegramChatId, 10)
+	if (!Number.isFinite(chatId)) return false
+
+	const body = escapeHtml(notes)
+	const chunks = splitForTelegram(body, TELEGRAM_MAX_MESSAGE - header.length - 32)
+
+	let allSent = true
+	for (let i = 0; i < chunks.length; i++) {
+		const prefix = i === 0 ? header : `<b>(${i + 1}/${chunks.length})</b>\n\n`
+		const ok = await sendMessage(chatId, prefix + chunks[i])
+		if (!ok) allSent = false
+	}
+	return allSent
 }
 
 export async function sendGameCodeToTelegram(

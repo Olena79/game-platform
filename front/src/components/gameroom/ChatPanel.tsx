@@ -11,6 +11,8 @@ interface Props {
 	isGM: boolean
 	isSpectator: boolean
 	notes: string
+	/** null while unknown — the hint stays hidden until we actually know */
+	telegramLinked?: boolean | null
 	onNotesChange: (v: string) => void
 	onSendChat: (text: string, recipients?: string[]) => void
 	onCastVote: (optionIds: string[]) => void
@@ -42,7 +44,7 @@ interface Props {
 
 export const ChatPanel = ({
 	state, myId, isGM, isSpectator,
-	notes, onNotesChange,
+	notes, onNotesChange, telegramLinked = null,
 	onSendChat, onCastVote, onCloseVote, onClearVote,
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
@@ -443,6 +445,21 @@ export const ChatPanel = ({
 							))}
 						</div>
 					</div>
+
+					{/* Where the notes end up — stated next to the field itself, not
+					    only in the banner the GM may have dismissed on the way in */}
+					{telegramLinked === false && (
+						<div className='flex-shrink-0 px-[10px] py-[7px] text-[11px] leading-[1.4]'
+							style={{ background: 'rgba(255,150,60,0.08)', borderBottom: '1px solid rgba(255,150,60,0.2)', color: 'rgba(255,175,90,0.9)' }}>
+							⚠️ {t('room.chat.notes_no_telegram')}
+						</div>
+					)}
+					{telegramLinked === true && (
+						<div className='flex-shrink-0 px-[10px] py-[7px] text-[11px] leading-[1.4]'
+							style={{ borderBottom: '1px solid #151824', color: 'rgba(140,170,255,0.5)' }}>
+							{t('room.chat.notes_to_telegram')}
+						</div>
+					)}
 
 					{/* Notes textarea */}
 					<textarea

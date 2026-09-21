@@ -301,7 +301,13 @@
     "image_picker_title": "🖼 Room image",
     "hide_image": "Hide image",
     "stop_confirm_title": "Stop game?",
-    "stop_confirm_msg": "The game will end for all participants. Notes will be sent to your email.",
+    "stop_confirm_msg": "The game will end for all participants. Notes will be sent to you on Telegram.",
+    "notes_no_telegram": "Your notes will not be saved: they are sent to Telegram when the game ends, and your account is not linked",
+    "notes_connect_telegram": "Link Telegram",
+    "notes_copy": "Copy notes",
+    "notes_not_sent": "Could not send the notes to Telegram. Copy them before closing this tab",
+    "notes_not_sent_no_telegram": "The notes went nowhere: Telegram is not linked. Copy them before closing this tab",
+    "stop_confirm_notes_warning": "Telegram is not linked — your notes will not be sent",
     "stop_confirm_yes": "Stop",
     "coin": {
       "title": "Coins",
@@ -345,7 +351,9 @@
       "spectator_view": "👁 View only",
       "no_scenario": "No scenario set",
       "insert_player": "Insert player",
-      "notes_placeholder": "Your notes during the game..."
+      "notes_placeholder": "Your notes during the game...",
+      "notes_no_telegram": "These notes will not be saved — link Telegram to receive them after the game",
+      "notes_to_telegram": "When the game ends, these notes arrive in your Telegram"
     },
     "mod": {
       "title": "Host panel",

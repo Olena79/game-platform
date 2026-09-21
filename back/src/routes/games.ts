@@ -5,9 +5,9 @@ import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
-import { sendGameCodeToTelegram, sendGameReminderToTelegram } from '../services/telegramBot'
+import { sendGameCodeToTelegram, sendGameReminderToTelegram, sendNotesToTelegram } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
-import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema } from '../validation/schemas'
+import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema } from '../validation/schemas'
 const router = Router()
 
 // Strip full card number from any response that goes outside the owner context.
@@ -413,6 +413,44 @@ router.delete('/:id/like', authMiddleware, async (req: AuthRequest, res: Respons
 	} catch (err: any) {
 		logger.error('[games/:id/like DELETE]', err)
 		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+/**
+ * Delivers the GM's notes when a game ends.
+ *
+ * The notes live in the browser and are gone the moment the room closes, so
+ * the response always says whether they actually reached Telegram — the room
+ * shows the text again instead of losing it silently. Notes only ever go to
+ * the requester's own chat.
+ */
+router.post('/send-notes', authMiddleware, validateBody(sendNotesSchema), async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const { notes, gameTitle } = req.body
+
+		const user = await User.findById(req.userId).select('telegramChatId language')
+		if (!user) { res.status(401).json({ message: 'Unauthorized' }); return }
+
+		if (!user.telegramChatId) {
+			res.status(200).json({ delivered: false, reason: 'telegram_not_linked' })
+			return
+		}
+
+		const sent = await sendNotesToTelegram(
+			user.telegramChatId,
+			gameTitle || '',
+			notes,
+			(user as { language?: string }).language || 'uk',
+		)
+		if (!sent) {
+			logger.error('[games/send-notes] delivery failed', { userId: req.userId })
+			res.status(502).json({ delivered: false, reason: 'send_failed' })
+			return
+		}
+		res.json({ delivered: true })
+	} catch (err: any) {
+		logger.error('[games/send-notes]', err)
+		res.status(500).json({ delivered: false, reason: 'server_error' })
 	}
 })
 

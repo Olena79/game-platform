@@ -251,6 +251,14 @@ export const gameCodeSchema = z.object({
 	code: z.string().min(1).max(10, 'Invalid game code'),
 })
 
+// The GM's notes exist only in the browser during a game, so the limit is
+// generous — refusing a long session's notes would throw them away.
+export const sendNotesSchema = z.object({
+	notes: z.string().min(1, 'Notes are empty').max(50000, 'Notes are too long'),
+	gameTitle: z.string().max(200).optional(),
+	gameCode: z.string().max(10).optional(),
+})
+
 // ────── Telegram Schemas ──────────────────────────────────────
 
 export const telegramLinkSchema = z.object({
