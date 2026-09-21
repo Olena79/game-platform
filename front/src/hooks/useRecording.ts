@@ -245,7 +245,11 @@ export function useRecording(
 
 			const recorder = new MediaRecorder(streamRef.current, {
 				mimeType,
-				videoBitsPerSecond: 4_000_000,
+				// 2 Mbps — about 0.9 GB per hour. VP9 handles a screen full of
+				// video tiles well at this rate, and the account only has 15 GB
+				// for every recording that hasn't expired yet.
+				videoBitsPerSecond: 2_000_000,
+				audioBitsPerSecond: 128_000,
 			})
 			recorder.ondataavailable = e => {
 				if (e.data.size === 0) return
