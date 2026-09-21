@@ -23,6 +23,7 @@ import { useGameRoom } from '../../hooks/useGameRoom'
 import { useAuth } from '../../context/AuthContext'
 import { sfx } from '../../utils/sounds'
 import { useMockParticipants } from '../../hooks/useMockParticipants'
+import { useImmersiveMode } from '../../hooks/useImmersiveMode'
 import { DevToolbar } from '../gameroom/DevToolbar'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
@@ -432,6 +433,11 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		<div
 			className='w-screen h-screen flex flex-col overflow-hidden'
 			style={{
+				// 100dvh follows the *visible* viewport on mobile, so the bottom
+				// bar never ends up underneath the browser chrome. h-screen
+				// (100vh) stays as the fallback for browsers without dvh.
+				height: '100dvh',
+				maxHeight: '100dvh',
 				background: '#07080f',
 				color: '#dde1f0',
 				fontFamily: "'Segoe UI', sans-serif",
@@ -1207,32 +1213,9 @@ function GameRoomInner() {
 	const [initMic, setInitMic] = useState(false)
 	const [initCam, setInitCam] = useState(false)
 
-	// Request fullscreen on mobile for better UX
-	useEffect(() => {
-		const isMobile = /iPhone|iPad|Android|webOS|BlackBerry|Windows Phone/i.test(navigator.userAgent)
-		if (!isMobile || !containerRef.current) return
-
-		const requestFullscreen = async () => {
-			try {
-				const elem = containerRef.current as any
-				if (elem.requestFullscreen) {
-					await elem.requestFullscreen({ navigationUI: 'hide' })
-				} else if (elem.webkitRequestFullscreen) {
-					await elem.webkitRequestFullscreen()
-				}
-			} catch (err) {
-				console.warn('[fullscreen] Request failed:', err)
-			}
-		}
-
-		// Try to enter fullscreen on user interaction
-		const handleClick = () => {
-			requestFullscreen()
-			document.removeEventListener('click', handleClick)
-		}
-		document.addEventListener('click', handleClick)
-		return () => document.removeEventListener('click', handleClick)
-	}, [])
+	// Immersive mode — locks page scrolling and hides the browser chrome
+	// (URL bar + Android nav bar) for as long as the room is open.
+	const requestImmersive = useImmersiveMode(true)
 
 	if (isLoading) {
 		return (
@@ -1322,6 +1305,9 @@ function GameRoomInner() {
 				roomTitle={room.state?.title ?? ''}
 				userName={userName}
 				onJoin={(mic, cam) => {
+					// Still inside the button's click handler → the gesture is
+					// live, which the Fullscreen API requires.
+					requestImmersive()
 					setInitMic(mic)
 					setInitCam(cam)
 					setPreJoinDone(true)
@@ -1331,7 +1317,7 @@ function GameRoomInner() {
 	}
 
 	return (
-		<div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+		<div ref={containerRef} style={{ width: '100%', height: '100dvh' }}>
 			<LiveKitRoom
 				key={activeLk.roomName}
 				token={activeLk.token}
@@ -1340,7 +1326,7 @@ function GameRoomInner() {
 				audio={false}
 				video={false}
 				options={LK_ROOM_OPTS}
-				style={{ height: '100vh', background: '#07080f' }}
+				style={{ height: '100dvh', background: '#07080f' }}
 			>
 				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
 			</LiveKitRoom>

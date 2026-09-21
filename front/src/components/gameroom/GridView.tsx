@@ -62,34 +62,63 @@ function getSpeechBorderColor(count: number): string {
 	return '#cc1133'
 }
 
-// Returns optimal cols/rows — Google Meet style, tiles prefer 16:9 aspect ratio
+// Tile geometry — shared by the layout math and the card itself, so the
+// measured size and the rendered size can't drift apart.
+const TILE_GAP = 7
+const TILE_PAD = 7
+const TILE_FOOTER_H = 42   // fixed footer height (role + name), see GridPlayerCard
+const TILE_RATIO = 16 / 9  // video area aspect — identical on every device
+
+// Picks the column count whose video boxes come out largest while staying
+// close to 16:9 — Google Meet style.
 function computeGrid(n: number, w: number, h: number) {
 	if (n <= 0) return { cols: 1, rows: 1 }
-	const GAP = 7, PAD = 7
-	const TARGET = 16 / 9
 	let bestCols = 1
 	let bestScore = -1
 	for (let cols = 1; cols <= n; cols++) {
 		const rows = Math.ceil(n / cols)
-		const tileW = (w - PAD * 2 - GAP * (cols - 1)) / cols
-		const tileH = (h - PAD * 2 - GAP * (rows - 1)) / rows
-		if (tileW <= 0 || tileH <= 0) continue
-		const diff = Math.abs(tileW / tileH - TARGET) / TARGET
+		const cellW = (w - TILE_PAD * 2 - TILE_GAP * (cols - 1)) / cols
+		// The footer is chrome, not video — exclude it before judging the ratio
+		const cellH = (h - TILE_PAD * 2 - TILE_GAP * (rows - 1)) / rows - TILE_FOOTER_H
+		if (cellW <= 0 || cellH <= 0) continue
+		const diff = Math.abs(cellW / cellH - TILE_RATIO) / TILE_RATIO
 		// Maximise area, but heavily penalise tiles far from 16:9
-		const score = tileW * tileH * Math.max(0.15, 1 - diff * 0.7)
+		const score = cellW * cellH * Math.max(0.15, 1 - diff * 0.7)
 		if (score > bestScore) { bestScore = score; bestCols = cols }
 	}
 	return { cols: bestCols, rows: Math.ceil(n / bestCols) }
 }
 
-// Mobile grid: use standard desktop grid (16:9 ratio optimization works well on mobile too)
-function computeMobileGrid(n: number, w: number, h: number) {
-	// Mobile: use same optimal grid as desktop (16:9 preference)
-	// This ensures consistent video sizes whether desktop or mobile
-	return computeGrid(n, w, h)
+/**
+ * Turns the container into concrete tile pixels.
+ *
+ * Both dimensions are bounded here: the tile is sized from the row height
+ * first and only then clamped by the column width. That's what keeps a narrow
+ * phone viewport from producing tiles taller than the screen — previously the
+ * tile took the full width and derived its height from it, so the column
+ * overflowed and `alignContent: center` cropped it at the top and bottom.
+ */
+function fitTiles(n: number, w: number, h: number) {
+	const { cols, rows } = computeGrid(n, w, h)
+	const cellW = Math.max(1, (w - TILE_PAD * 2 - TILE_GAP * (cols - 1)) / cols)
+	const cellH = Math.max(1, (h - TILE_PAD * 2 - TILE_GAP * (rows - 1)) / rows)
+
+	let videoH = cellH - TILE_FOOTER_H
+	let tileW = videoH * TILE_RATIO
+	if (tileW > cellW) {          // width-bound: shrink to the column
+		tileW = cellW
+		videoH = tileW / TILE_RATIO
+	}
+	// Floor so a cramped container still renders something usable
+	return {
+		cols,
+		rows,
+		tileW: Math.max(120, Math.floor(tileW)),
+		videoH: Math.max(68, Math.floor(videoH)),
+	}
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking, videoHeight }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
@@ -97,6 +126,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
 	isMockSpeaking?: boolean
+	videoHeight: number
 }) {
 	const { t } = useTranslation()
 	const participants = useParticipants()
@@ -148,8 +178,10 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				{micMuted ? '🔇' : '🎤'}
 			</div>
 
-			{/* Camera area */}
-			<div className='relative overflow-hidden flex items-center justify-center' style={{ background: '#000', width: '100%', aspectRatio: '16/9' }}>
+			{/* Camera area — height comes from the grid fit, width from the tile,
+			    so every participant gets a pixel-identical box */}
+			<div className='relative overflow-hidden flex items-center justify-center flex-shrink-0'
+				style={{ background: '#000', width: '100%', height: `${videoHeight}px` }}>
 				{hasVideo && camPub ? (
 					<VideoTrack
 						trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }}
@@ -195,9 +227,9 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				)}
 			</div>
 
-			{/* Footer */}
-			<div className='flex-shrink-0 px-[7px] py-[5px] flex items-center justify-between gap-[4px]'
-				style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
+			{/* Footer — fixed height, it's part of TILE_FOOTER_H in the grid math */}
+			<div className='flex-shrink-0 px-[7px] flex items-center justify-between gap-[4px] overflow-hidden'
+				style={{ height: `${TILE_FOOTER_H}px`, lineHeight: 1.25, background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 				<div className='flex-1 min-w-0'>
 					{player.isGamemaster ? (
 						<>
@@ -351,9 +383,8 @@ export const GridView = ({
 		obs.observe(el)
 		return () => obs.disconnect()
 	}, [])
-	const { cols, rows, lastSpan: mobileLastSpan = false } = isMobile
-		? { ...computeMobileGrid(pagedPlayers.length, containerSize.w, containerSize.h), lastSpan: false }
-		: { ...computeGrid(pagedPlayers.length, containerSize.w, containerSize.h), lastSpan: false }
+	// Same fit on phone and desktop — identical framing for everyone
+	const { cols, tileW, videoH } = fitTiles(pagedPlayers.length, containerSize.w, containerSize.h)
 
 	const handRaisedRef = useRef(handRaised)
 	handRaisedRef.current = handRaised
@@ -448,34 +479,33 @@ export const GridView = ({
 			{/* Grid — tiles fill full container (Google Meet style) */}
 			<div
 				ref={gridRef}
-				className='flex-1 overflow-hidden'
+				className='flex-1 overflow-hidden min-h-0'
 				style={{
 					display: 'grid',
-					gridTemplateColumns: `repeat(${cols}, 1fr)`,
-					gap: '7px',
-					padding: '7px',
+					// Fixed pixel columns instead of 1fr: the tiles are already sized
+					// to fit the container, so the block stays centred and never
+					// overflows — no more tops cut off on a phone.
+					gridTemplateColumns: `repeat(${cols}, ${tileW}px)`,
+					gap: `${TILE_GAP}px`,
+					padding: `${TILE_PAD}px`,
 					alignContent: 'center',
+					justifyContent: 'center',
 				}}
 			>
-				{pagedPlayers.map((p, idx) => (
-					<div
+				{pagedPlayers.map(p => (
+					<GridPlayerCard
 						key={p.userId}
-						style={{
-							...(mobileLastSpan && idx === pagedPlayers.length - 1 ? { gridColumn: 'span 2' } : {}),
-						}}
-					>
-						<GridPlayerCard
-							player={p}
-							isGM={isGM}
-							myId={myId}
-							onSetRole={onSetRole}
-							onSetInfluence={onSetInfluence}
-							onMutePlayer={onMutePlayer}
-							reaction={playerReactions[p.userId]}
-							gameStarted={state.status === 'started'}
-							isMockSpeaking={mockSpeakingId === p.userId}
-						/>
-					</div>
+						player={p}
+						isGM={isGM}
+						myId={myId}
+						onSetRole={onSetRole}
+						onSetInfluence={onSetInfluence}
+						onMutePlayer={onMutePlayer}
+						reaction={playerReactions[p.userId]}
+						gameStarted={state.status === 'started'}
+						isMockSpeaking={mockSpeakingId === p.userId}
+						videoHeight={videoH}
+					/>
 				))}
 			</div>
 

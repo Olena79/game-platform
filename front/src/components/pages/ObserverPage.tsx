@@ -74,7 +74,7 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 			connect={true}
 			audio={false}
 			video={false}
-			style={{ height: '100vh', background: '#07080f' }}
+			style={{ height: '100dvh', background: '#07080f' }}
 		>
 			<RoomAudioRenderer />
 			<ObserverView

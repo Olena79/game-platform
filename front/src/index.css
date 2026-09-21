@@ -80,6 +80,19 @@
 		transition: background 0.25s ease, color 0.25s ease;
 	}
 
+	/* ── Game room: immersive mode ──────────────── */
+	/* Applied by useImmersiveMode while the room is open. Locking the body
+	   kills pull-to-refresh and rubber-banding, which on mobile is what keeps
+	   sliding the browser chrome back over the layout. */
+	body.room-immersive {
+		position: fixed;
+		inset: 0;
+		width: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+		touch-action: manipulation;
+	}
+
 	/* ── Custom scrollbars ─────────────────────────────────── */
 	::-webkit-scrollbar { width: 4px; height: 4px; }
 	::-webkit-scrollbar-track { background: transparent; }

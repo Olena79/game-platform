@@ -4,8 +4,17 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="apple-touch-icon" href="/favicon-192.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+		<!-- PWA: installed to the home screen the app runs without browser chrome.
+		     On iOS that's the only way to hide the address bar — Safari has no
+		     Fullscreen API for elements, unlike Android Chrome. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+		<meta name="apple-mobile-web-app-title" content="Ігри Сенсів" />
 
 		<title>Games of Senses — онлайн-платформа для рольових ігор</title>
 		<meta name="description" content="Games of Senses — платформа для онлайн рольових ігор з відео, чатом, голосуванням та реальним часом. Створюйте ігри, запрошуйте гравців та занурюйтесь у гру." />
