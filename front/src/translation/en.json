@@ -285,6 +285,7 @@
     "bar_emoji": "Emoji",
     "bar_chat": "Chat",
     "bar_panel": "Panel",
+    "ios_hint": "To hide the address bar: Share → Add to Home Screen",
     "mic_label": "Mic",
     "cam_label": "Camera",
     "screen_label": "Screen",

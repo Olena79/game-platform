@@ -41,6 +41,7 @@ import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
 import { ModPanel } from '../gameroom/ModPanel'
 import { PreJoinScreen } from '../gameroom/PreJoinScreen'
+import { IosInstallHint } from '../gameroom/IosInstallHint'
 import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
 import { useTranslation } from 'react-i18next'
 
@@ -725,6 +726,10 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					</div>
 				)}
 			</div>
+
+			{/* iOS: one-off hint that the address bar only goes away once the
+			    site is installed to the home screen */}
+			{isMobile && <IosInstallHint />}
 
 			{/* Mobile bottom bar */}
 			{isMobile && (
