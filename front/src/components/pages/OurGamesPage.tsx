@@ -607,7 +607,10 @@ export const OurGamesPage = () => {
 								onRegisterSpectator={() => handleRegisterSpectator(game._id)}
 								onUnregisterSpectator={() => handleUnregisterSpectator(game._id)}
 								onShowPlayers={() => setPlayersModal({ open: true, game })}
-								onEnterGame={() => navigate(`/game?code=${game.gameCode}`)}
+								// A spectator is given the spectator code and no game code;
+								// without this the link read "?code=undefined" and the
+								// room answered that it does not exist.
+								onEnterGame={() => navigate(`/game?code=${game.gameCode ?? game.spectatorCode ?? ''}`)}
 								onDonate={() => setDonateModal({ open: true, gameId: game._id, cost: game.participationCost || 0 })}
 							/>
 						))}
