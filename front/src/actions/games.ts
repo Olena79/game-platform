@@ -56,8 +56,15 @@ async function handleResponse<T>(res: Response): Promise<T> {
 export const resolveGameCode = (code: string): Promise<{ gameCode: string; isSpectator: boolean }> =>
 	fetch(`${API}/api/games/resolve/${encodeURIComponent(code)}`).then(handleResponse<{ gameCode: string; isSpectator: boolean }>)
 
-export const getGames = (): Promise<GameData[]> =>
-	fetch(`${API}/api/games`).then(handleResponse<GameData[]>)
+/**
+ * The token is optional but matters: without it the server cannot tell who is
+ * asking, so it withholds the entry code from the creator, reports nobody as
+ * registered, and shows every game as unliked.
+ */
+export const getGames = (token?: string | null): Promise<GameData[]> =>
+	fetch(`${API}/api/games`, {
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+	}).then(handleResponse<GameData[]>)
 
 export const getGameForEdit = (token: string, id: string): Promise<GameData> =>
 	fetch(`${API}/api/games/${id}/edit`, {

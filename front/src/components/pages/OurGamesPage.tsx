@@ -270,11 +270,12 @@ export const OurGamesPage = () => {
 
 	// ── Data fetch ──────────────────────────────────────────────────────────────
 	useEffect(() => {
-		getGames()
+		// Refetched when the session appears: the answer depends on who asks
+		getGames(token)
 			.then(setGames)
 			.catch(() => setGames([]))
 			.finally(() => setPageLoading(false))
-	}, [])
+	}, [token])
 
 	// ── Handlers (unchanged) ────────────────────────────────────────────────────
 	const handleEdit = async (gameId: string) => {
