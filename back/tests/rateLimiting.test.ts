@@ -1,6 +1,8 @@
+import express from 'express'
 import request from 'supertest'
 import {
 	authLimiter,
+	loginLimiter,
 	gamesLimiter,
 	communityLimiter,
 	uploadLimiter,
@@ -8,118 +10,65 @@ import {
 	recordingsLimiter,
 } from '../src/middleware/rateLimitMiddleware'
 
-describe('Rate Limiting Middleware', () => {
-	describe('authLimiter', () => {
-		it('should be defined', () => {
-			expect(authLimiter).toBeDefined()
-		})
+/**
+ * express-rate-limit v8 no longer exposes `.options`, so these check what the
+ * limiters actually do to requests instead of what they were configured with.
+ */
+function appWith(limiter: express.RequestHandler, method: 'get' | 'post' = 'get') {
+	const app = express()
+	app.use(express.json())
+	app.use(limiter)
+	app[method]('/', (_req, res) => { res.json({ ok: true }) })
+	return app
+}
 
-		it('should have correct window of 15 minutes', () => {
-			expect(authLimiter.options.windowMs).toBe(15 * 60 * 1000)
-		})
+async function hit(app: express.Express, times: number, body?: object) {
+	const results: number[] = []
+	for (let i = 0; i < times; i++) {
+		const req = body ? request(app).post('/').send(body) : request(app).get('/')
+		const res = await req
+		results.push(res.status)
+	}
+	return results
+}
 
-		it('should limit auth to 100 requests per 15 min', () => {
-			expect(authLimiter.options.max).toBe(100)
-		})
+describe('Rate limiting', () => {
+	it('every limiter is a usable middleware', () => {
+		for (const limiter of [authLimiter, loginLimiter, gamesLimiter, communityLimiter, uploadLimiter, livekitLimiter, recordingsLimiter]) {
+			expect(typeof limiter).toBe('function')
+		}
 	})
 
-	describe('gamesLimiter', () => {
-		it('should be defined', () => {
-			expect(gamesLimiter).toBeDefined()
-		})
-
-		it('should allow 500 requests per 15 min', () => {
-			expect(gamesLimiter.options.max).toBe(500)
-		})
-
-		it('should have 15 minute window', () => {
-			expect(gamesLimiter.options.windowMs).toBe(15 * 60 * 1000)
-		})
+	it('lets ordinary traffic through', async () => {
+		const statuses = await hit(appWith(gamesLimiter), 5)
+		expect(statuses.every(s => s === 200)).toBe(true)
 	})
 
-	describe('communityLimiter', () => {
-		it('should be defined', () => {
-			expect(communityLimiter).toBeDefined()
-		})
-
-		it('should allow 500 requests per 15 min', () => {
-			expect(communityLimiter.options.max).toBe(500)
-		})
+	it('sends standard rate limit headers', async () => {
+		const res = await request(appWith(gamesLimiter)).get('/')
+		expect(res.headers['ratelimit-limit'] ?? res.headers['ratelimit']).toBeDefined()
 	})
 
-	describe('uploadLimiter', () => {
-		it('should be defined', () => {
-			expect(uploadLimiter).toBeDefined()
-		})
+	// Password guessing is the case worth being strict about: ten tries per
+	// account per quarter hour, and a wrong password does count.
+	it('stops a burst of failed sign-ins', async () => {
+		const app = express()
+		app.use(express.json())
+		app.use(loginLimiter)
+		app.post('/', (_req, res) => { res.status(401).json({ message: 'INVALID_CREDENTIALS' }) })
 
-		it('should restrict uploads to 50 requests per 15 min', () => {
-			expect(uploadLimiter.options.max).toBe(50)
-		})
-
-		it('should be more restrictive than other limiters', () => {
-			expect(uploadLimiter.options.max).toBeLessThan(gamesLimiter.options.max)
-			expect(uploadLimiter.options.max).toBeLessThan(communityLimiter.options.max)
-		})
+		const statuses = await hit(app, 12, { email: 'victim@example.com', password: 'guess' })
+		expect(statuses.filter(s => s === 429).length).toBeGreaterThan(0)
 	})
 
-	describe('livekitLimiter', () => {
-		it('should be defined', () => {
-			expect(livekitLimiter).toBeDefined()
-		})
+	it('counts sign-in attempts per account, not per address', async () => {
+		const app = express()
+		app.use(express.json())
+		app.use(loginLimiter)
+		app.post('/', (_req, res) => { res.status(401).json({ message: 'INVALID_CREDENTIALS' }) })
 
-		it('should allow 100 requests per 15 min', () => {
-			expect(livekitLimiter.options.max).toBe(100)
-		})
-	})
-
-	describe('recordingsLimiter', () => {
-		it('should be defined', () => {
-			expect(recordingsLimiter).toBeDefined()
-		})
-
-		it('should allow 100 requests per 15 min', () => {
-			expect(recordingsLimiter.options.max).toBe(100)
-		})
-	})
-
-	describe('Rate limiter configurations', () => {
-		const limiters = [
-			{ name: 'authLimiter', limiter: authLimiter },
-			{ name: 'gamesLimiter', limiter: gamesLimiter },
-			{ name: 'communityLimiter', limiter: communityLimiter },
-			{ name: 'uploadLimiter', limiter: uploadLimiter },
-			{ name: 'livekitLimiter', limiter: livekitLimiter },
-			{ name: 'recordingsLimiter', limiter: recordingsLimiter },
-		]
-
-		it.each(limiters)('should have standardHeaders enabled for $name', ({ limiter }) => {
-			expect(limiter.options.standardHeaders).toBe(true)
-		})
-
-		it.each(limiters)('should have legacyHeaders disabled for $name', ({ limiter }) => {
-			expect(limiter.options.legacyHeaders).toBe(false)
-		})
-
-		it.each(limiters)('should have error message for $name', ({ limiter }) => {
-			expect(limiter.options.message).toBeDefined()
-			expect(typeof limiter.options.message).toBe('object')
-			expect((limiter.options.message as any).message).toContain('Too many')
-		})
-	})
-
-	describe('Rate limit order', () => {
-		it('uploadLimiter should be most restrictive', () => {
-			const limits = {
-				upload: uploadLimiter.options.max,
-				auth: authLimiter.options.max,
-				livekit: livekitLimiter.options.max,
-				recordings: recordingsLimiter.options.max,
-				games: gamesLimiter.options.max,
-				community: communityLimiter.options.max,
-			}
-			const maxLimit = Math.max(...Object.values(limits))
-			expect(limits.upload).toBe(Math.min(...Object.values(limits)))
-			expect(limits.community).toBe(maxLimit)
-		})
+		await hit(app, 12, { email: 'first@example.com', password: 'guess' })
+		const other = await request(app).post('/').send({ email: 'second@example.com', password: 'guess' })
+		expect(other.status).toBe(401)   // a different account is unaffected
 	})
 })

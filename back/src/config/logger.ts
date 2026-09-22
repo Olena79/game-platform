@@ -29,36 +29,29 @@ const logger = winston.createLogger({
 	level: isDev ? 'debug' : 'info',
 	format: logFormat,
 	defaultMeta: { service: 'games-of-senses' },
+	// Console only in production: the hosting platform collects stdout, while
+	// files sit on a disk that is thrown away at every deploy and restart —
+	// they cannot be read back and consume space in the meantime.
 	transports: [
-		// Console output (always)
 		new winston.transports.Console({
 			format: consoleFormat,
 		}),
-		// Error file
-		new winston.transports.File({
-			filename: path.join(process.cwd(), 'logs', 'error.log'),
-			level: 'error',
-			maxsize: 5242880, // 5MB
-			maxFiles: 5,
-		}),
-		// All logs file
-		new winston.transports.File({
-			filename: path.join(process.cwd(), 'logs', 'combined.log'),
-			maxsize: 5242880, // 5MB
-			maxFiles: 5,
-		}),
+		...(isDev
+			? [
+				new winston.transports.File({
+					filename: path.join(process.cwd(), 'logs', 'error.log'),
+					level: 'error',
+					maxsize: 5242880,
+					maxFiles: 5,
+				}),
+				new winston.transports.File({
+					filename: path.join(process.cwd(), 'logs', 'combined.log'),
+					maxsize: 5242880,
+					maxFiles: 5,
+				}),
+			]
+			: []),
 	],
 })
-
-// In production, also log to file
-if (!isDev) {
-	logger.add(
-		new winston.transports.File({
-			filename: path.join(process.cwd(), 'logs', 'app.log'),
-			maxsize: 5242880,
-			maxFiles: 10,
-		})
-	)
-}
 
 export default logger

@@ -36,10 +36,11 @@ describe('Socket.IO Event Validation', () => {
 		})
 
 		it('should reject invalid data', async () => {
-			const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+			const emit = jest.fn()
+			const socket = { id: 'test-socket', emit } as never
 			const handler = validateSocketEvent(grChatSchema, async () => {
 				throw new Error('Should not be called')
-			})
+			}, socket)
 
 			const invalidPayload = {
 				gameCode: 'ABC123',
@@ -47,10 +48,10 @@ describe('Socket.IO Event Validation', () => {
 				recipients: [],
 			}
 
+			// The handler above throws if it runs, so reaching the assertion at
+			// all is half the test.
 			await handler(invalidPayload)
-			expect(consoleSpy).toHaveBeenCalled()
-
-			consoleSpy.mockRestore()
+			expect(emit).toHaveBeenCalledWith('gr:action-error', expect.any(String))
 		})
 	})
 
@@ -175,19 +176,15 @@ describe('Socket.IO Event Validation', () => {
 	})
 
 	describe('Schema error handling', () => {
-		it('should handle validation errors gracefully', async () => {
-			const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-			const handler = validateSocketEvent(grChatSchema, async () => {})
+		it('should tell the sender when a payload is refused', async () => {
+			const emit = jest.fn()
+			const socket = { id: 'test-socket', emit } as never
+			const handler = validateSocketEvent(grChatSchema, async () => {}, socket)
 
-			const invalidPayload = {
-				gameCode: '',
-				text: '',
-			}
+			await handler({ gameCode: '', text: '' })
 
-			await handler(invalidPayload)
-			expect(consoleSpy).toHaveBeenCalled()
-
-			consoleSpy.mockRestore()
+			// A refused command must not look like a delivered one
+			expect(emit).toHaveBeenCalledWith('gr:action-error', expect.any(String))
 		})
 
 		it('should not call handler if validation fails', async () => {

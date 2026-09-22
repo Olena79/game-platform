@@ -54,6 +54,7 @@ import {
 	uploadLimiter,
 	livekitLimiter,
 	recordingsLimiter,
+	loginLimiter,
 	apiLimiter,
 } from './middleware/rateLimitMiddleware'
 
@@ -71,8 +72,13 @@ app.set('trust proxy', 1)
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set.')
 
-const clientUrl = isDev ? 'http://localhost:5173' : process.env.CLIENT_URL || 'http://localhost:3000'
-logger.info(`CORS configured for: ${clientUrl}`, { context: 'app:cors' })
+// One list for both Express and Socket.IO. They used to be built
+// differently: with two domains in CLIENT_URL the API worked and the
+// WebSocket did not, which reads as "the room will not open".
+const allowedOrigins = isDev
+	? ['http://localhost:5173', 'http://localhost:3000']
+	: (process.env.CLIENT_URL || 'http://localhost:3000').split(',').map(url => url.trim()).filter(Boolean)
+logger.info(`CORS configured for: ${allowedOrigins.join(', ')}`, { context: 'app:cors' })
 
 if (!isDev && !process.env.CLIENT_URL) {
 	logger.warn('CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost', {
@@ -82,7 +88,7 @@ if (!isDev && !process.env.CLIENT_URL) {
 
 const io = new Server(httpServer, {
 	cors: {
-		origin: isDev ? true : clientUrl,
+		origin: isDev ? true : allowedOrigins,
 		credentials: true,
 		methods: ['GET', 'POST'],
 	},
@@ -113,7 +119,7 @@ io.use((socket, next) => {
 
 app.use(
 	cors({
-		origin: isDev ? true : (process.env.CLIENT_URL || 'http://localhost:3000').split(',').map(url => url.trim()),
+		origin: isDev ? true : allowedOrigins,
 		credentials: true,
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -128,6 +134,7 @@ app.get('/health', (_req, res) => res.status(200).send('OK'))
 
 // ── Rate limiting by API section ──────────────────────────────────────────────
 // Each endpoint is limited based on its resource cost and use frequency
+app.use('/api/auth/login',  loginLimiter)
 app.use('/api/auth',        authLimiter, authRoutes)
 app.use('/api/telegram',    telegramRoutes)
 app.use('/api/upload',      uploadLimiter, uploadRoutes)

@@ -9,8 +9,32 @@ type EventHandler<T = any> = (data: T) => void | Promise<void>
  * believing it had acted — that is how a gamemaster could never clear a
  * shown picture. With a socket passed in, the sender hears about it.
  */
+/**
+ * How many events one socket may send per second before the rest are ignored.
+ *
+ * gr:react broadcasts twice to the whole room and gr:chat writes to the
+ * database, so a client in a loop could flatten a game for everyone in it.
+ */
+const EVENTS_PER_SECOND = 20
+const rates = new WeakMap<Socket, { count: number; windowStart: number }>()
+
+function withinRate(socket: Socket): boolean {
+	const now = Date.now()
+	const entry = rates.get(socket)
+	if (!entry || now - entry.windowStart > 1000) {
+		rates.set(socket, { count: 1, windowStart: now })
+		return true
+	}
+	entry.count += 1
+	return entry.count <= EVENTS_PER_SECOND
+}
+
 export function validateSocketEvent<T>(schema: ZodSchema, handler: EventHandler<T>, socket?: Socket) {
 	return async (data: any) => {
+		if (socket && !withinRate(socket)) {
+			logger.warn('[socket] event rate exceeded', { socketId: socket.id })
+			return
+		}
 		try {
 			const validated = schema.parse(data)
 			await handler(validated as T)

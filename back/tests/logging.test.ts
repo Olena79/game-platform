@@ -18,18 +18,13 @@ describe('Logger Configuration', () => {
 			expect(hasConsoleTransport).toBe(true)
 		})
 
-		it('should have file transport for errors', () => {
-			const hasFileTransport = logger.transports.some(
-				(t) => t.constructor.name === 'File' && (t as any).filename?.includes('error.log')
-			)
-			expect(hasFileTransport).toBe(true)
-		})
-
-		it('should have combined log file transport', () => {
-			const hasFileTransport = logger.transports.some(
-				(t) => t.constructor.name === 'File' && (t as any).filename?.includes('combined.log')
-			)
-			expect(hasFileTransport).toBe(true)
+		// Outside development there are no log files on purpose: the host's
+		// filesystem is recreated on every deploy, so files there can never be
+		// read back and only consume space.
+		it('should write to files only in development', () => {
+			const fileTransports = logger.transports.filter(t => t.constructor.name === 'File')
+			const expected = process.env.NODE_ENV === 'development'
+			expect(fileTransports.length > 0).toBe(expected)
 		})
 
 		it('should use json format', () => {
@@ -103,22 +98,9 @@ describe('Logger Configuration', () => {
 	})
 
 	describe('Log File Configuration', () => {
-		it('should have max file size limit', () => {
-			const fileTransport = logger.transports.find(
-				(t) => t.constructor.name === 'File' && (t as any).filename?.includes('error.log')
-			) as any
-
-			expect(fileTransport).toBeDefined()
-			expect(fileTransport.maxsize).toBe(5242880) // 5MB
-		})
-
-		it('should have max file retention', () => {
-			const fileTransport = logger.transports.find(
-				(t) => t.constructor.name === 'File' && (t as any).filename?.includes('error.log')
-			) as any
-
-			expect(fileTransport).toBeDefined()
-			expect(fileTransport.maxFiles).toBeGreaterThan(0)
+		it('should keep the console transport in every environment', () => {
+			const hasConsole = logger.transports.some(t => t.constructor.name === 'Console')
+			expect(hasConsole).toBe(true)
 		})
 	})
 })

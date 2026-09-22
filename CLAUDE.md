@@ -2,39 +2,35 @@
 
 ## 📊 PROJECT STATUS
 
-**Last Updated**: 2026-08-30  
-**Phase**: Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE
+**Last Updated**: 2026-09-22
+**State**: post-audit hardening. A full-stack audit found 14 blockers; they
+are fixed and verified against the running server. Read this file as the
+current description of the code — it previously described features that were
+never built, which is part of how those blockers survived to release.
 
-### ✅ Phase 1 Completed
-- Input validation (Zod) on all API routes
-- Error handling (try-catch) everywhere
-- React error boundaries + useErrorHandler hook
-- Test infrastructure (Jest + Vitest) configured
-- 100+ test examples created
+### What actually exists
+- Auth: email + password, Google sign-in (audience checked), refresh tokens,
+  password recovery over **Telegram** (there is no email service in this
+  project — it was removed, and nothing has replaced it).
+- Notifications: Telegram only. Game codes, reminders helper, GM notes after a
+  game, recording links, password reset links.
+- Recording: browser-side screen capture in the observer window, streamed to
+  Google Drive in 8 MiB chunks while the game runs, finalised by the server if
+  the observer disappears, deleted after 7 days by a cron job.
+- Storage: Google Drive through **OAuth as a real account**
+  (`GOOGLE_OAUTH_*`). A service account cannot own Drive files outside Google
+  Workspace — every upload fails with `storageQuotaExceeded`.
+- Tests: 6 suites, 85 tests, `npm test` from `/back`.
 
-**See PHASE_1_COMPLETED.md for details**
+### Not implemented (do not assume otherwise)
+- No email of any kind. No `services/email.ts`.
+- No scheduled game reminders: `sendGameReminderToTelegram` exists but nothing
+  calls it, and there is no reminder cron.
+- No notification to the gamemaster when a player registers.
+- No account deletion or data export.
+- Recording state (`heldChunks`) and Telegram polling both assume **exactly
+  one backend instance**. A second instance breaks uploads and steals the bot.
 
-### ✅ Phase 2 Completed
-- Rate limiting on all API endpoints (tiered by resource cost)
-- Request logging (Winston + Morgan, JSON format)
-- Sentry error tracking (backend + frontend)
-- Socket.IO event validation (Zod schemas)
-- JWT refresh tokens (1h access, 30d refresh)
-
-**See PHASE_2_PROGRESS.md for details**
-
-### ✅ Phase 3 Completed
-- GM registration notifications (player/spectator role clarification)
-- Game start reminders (30 minutes before scheduled time)
-- Cron job for automatic reminder dispatch
-- Email templates with security hardening
-
-**See PHASE_3_PROGRESS.md for details**
-
-### 🔜 Phase 4 (Optional - Future)
-See NEXT_STEPS.md for post-Phase 3 planning
-
----
 
 ## 🎯 Project Overview
 
@@ -510,7 +506,9 @@ community:like:toggle
 |--------|------|------|------|---------|
 | POST | `/api/auth/register` | No | `{ email, password }` | `{ user, token }` |
 | POST | `/api/auth/login` | No | `{ email, password }` | `{ user, token }` |
-| POST | `/api/auth/logout` | JWT | — | `{ message }` |
+| POST | `/api/auth/logout` | JWT | — | `{ message }` (revokes all refresh tokens) |
+| POST | `/api/auth/forgot-password` | No | `{ email }` | `{ ok: true }` (always) |
+| POST | `/api/auth/reset-password` | No | `{ token, password }` | `{ ok: true }` |
 | POST | `/api/auth/google` | No | `{ token }` | `{ user, token }` |
 
 ### Games
@@ -525,13 +523,18 @@ community:like:toggle
 ### LiveKit Tokens
 | Method | Path | Auth | Query | Returns |
 |--------|------|------|-------|---------|
-| POST | `/api/livekit/token` | JWT | `roomName`, `userName` | `{ token }` |
+| POST | `/api/livekit/token` | JWT | `{ gameCode, breakoutId?, userName }` | `{ token, url }` |
+| POST | `/api/livekit/observer-token` | JWT (creator) | `{ gameCode, userName }` | `{ token, url }` |
+
+The room name is built by the server from the game and membership is checked:
+the client cannot name a room.
 
 ### Recordings
 | Method | Path | Auth | Returns |
 |--------|------|------|---------|
-| GET | `/api/recordings` | JWT | `[Recording]` |
-| DELETE | `/api/recordings/:id` | JWT | `{ message }` |
+| POST | `/api/recordings/initiate` | JWT | `{ recordingId, chunkUnit }` |
+| POST | `/api/recordings/chunk/:id` | JWT | `{ complete, bytes }` or `{ shareLink }` |
+| GET | `/api/recordings/:id` | JWT (the GM who recorded it) | `Recording` |
 
 ### Upload
 | Method | Path | Auth | Body | Returns |
@@ -602,7 +605,12 @@ cp front/.env.example front/.env
 - **Git**: Commits prefixed with scope (e.g., `feat(socket):`, `fix(auth):`)
 
 ### Testing
-Currently no tests. TODO: Unit tests (models, auth logic), integration tests (Socket.IO events), E2E tests (Playwright).
+`cd back && npm test` — 6 suites, 85 tests (schemas, socket event validation,
+token service, rate limiting, logging, Sentry). They run without a database.
+`tests/setupEnv.ts` provides the environment modules validate at import time.
+
+Not covered by the suite and checked by hand against a running server: the
+recording upload chain, notes delivery, and the session close-out.
 
 ### Git Workflow
 - `main` / `master`: Production-ready

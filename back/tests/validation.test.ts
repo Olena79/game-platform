@@ -70,47 +70,54 @@ describe('Validation Schemas', () => {
 			expect(() => createGameSchema.parse(invalidData)).toThrow()
 		})
 
-		it('should reject invalid maxParticipants', () => {
-			const invalidData = {
-				title: 'Valid Title',
-				maxParticipants: 1000,
-			}
-			expect(() => createGameSchema.parse(invalidData)).toThrow()
+		it('should reject an out-of-range player count', () => {
+			expect(() => createGameSchema.parse({ title: 'Valid Title', maxPlayers: 1000 })).toThrow()
 		})
 
-		it('should provide defaults for optional fields', () => {
-			const validData = {
+		it('should reject maxPlayers below minPlayers', () => {
+			expect(() => createGameSchema.parse({ title: 'Valid Title', minPlayers: 8, maxPlayers: 4 })).toThrow()
+		})
+
+		it('should keep every field the create form sends', () => {
+			const parsed = createGameSchema.parse({
 				title: 'Test Game',
-			}
-			const parsed = createGameSchema.parse(validData)
-			expect(parsed.maxParticipants).toBe(10)
-			expect(parsed.recordingEnabled).toBe(true)
+				scenario: 'secret plot',
+				minPlayers: 3,
+				maxPlayers: 7,
+				useCoins: true,
+				coinsPerPlayer: 10,
+				participationCost: 200,
+				gmCardNumber: '1234123412341234',
+				coverImage: 'https://example.com/c.png',
+				images: ['https://example.com/a.png'],
+				defaultTimerSeconds: 600,
+			})
+			expect(parsed.scenario).toBe('secret plot')
+			expect(parsed.maxPlayers).toBe(7)
+			expect(parsed.coinsPerPlayer).toBe(10)
+			expect(parsed.participationCost).toBe(200)
+			expect(parsed.defaultTimerSeconds).toBe(600)
+			expect(parsed.images).toHaveLength(1)
+		})
+
+		it('should reject a card number that is not 16 digits', () => {
+			expect(() => createGameSchema.parse({ title: 'Valid Title', gmCardNumber: '12345' })).toThrow()
 		})
 	})
 
 	describe('createPostSchema', () => {
 		it('should validate correct post data', () => {
-			const validData = {
-				text: 'This is a post',
-				images: ['https://example.com/image.jpg'],
-			}
-			expect(() => createPostSchema.parse(validData)).not.toThrow()
+			expect(() => createPostSchema.parse({ text: 'This is a post', topic: 'tema' })).not.toThrow()
 		})
 
 		it('should reject empty text', () => {
-			const invalidData = {
-				text: '',
-				images: [],
-			}
-			expect(() => createPostSchema.parse(invalidData)).toThrow()
+			expect(() => createPostSchema.parse({ text: '' })).toThrow()
 		})
 
-		it('should reject invalid image URLs', () => {
-			const invalidData = {
-				text: 'Valid text',
-				images: ['not-a-url'],
-			}
-			expect(() => createPostSchema.parse(invalidData)).toThrow()
+		// The model caps text at 1000; anything longer used to pass validation
+		// and then fail as a 500 inside Mongoose.
+		it('should reject text longer than the model allows', () => {
+			expect(() => createPostSchema.parse({ text: 'x'.repeat(1001) })).toThrow()
 		})
 	})
 

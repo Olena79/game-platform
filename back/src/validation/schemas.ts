@@ -114,7 +114,8 @@ export const grJoinSchema = z.object({
 
 export const grChatSchema = z.object({
 	gameCode: z.string().min(1),
-	text: z.string().min(1, 'Message text is required').max(500),
+	// Trimmed first, so a message of nothing but spaces is not a message
+	text: z.string().trim().min(1, 'Message text is required').max(500),
 	recipients: z.array(z.string()).optional(),
 })
 

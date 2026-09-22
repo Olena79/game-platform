@@ -1,4 +1,23 @@
 import rateLimit from 'express-rate-limit'
+import type { Request } from 'express'
+
+/**
+ * Password guessing, specifically.
+ *
+ * The general auth limiter allows 100 requests per quarter hour per IP, which
+ * is some 9600 password attempts a day from one address. This one is keyed by
+ * the account being guessed at, so a shared NAT does not shield an attacker
+ * and does not punish everyone else either.
+ */
+export const loginLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 10,
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: (req: Request) => String((req.body?.email ?? '').toLowerCase() || req.ip),
+	skipSuccessfulRequests: true,
+	message: { message: 'Too many sign-in attempts. Please wait 15 minutes.' },
+})
 
 // ─ Auth Limiter (Already in use)
 export const authLimiter = rateLimit({

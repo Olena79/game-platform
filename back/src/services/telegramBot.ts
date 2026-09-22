@@ -4,7 +4,6 @@ import { User } from '../models/User'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'
-const API_URL = process.env.VITE_API_URL || 'http://localhost:5000'
 const TELEGRAM_API = 'https://api.telegram.org/bot'
 
 interface TelegramUpdate {
@@ -84,7 +83,7 @@ async function getUpdates(): Promise<PollResult> {
 	}
 }
 
-async function sendMessage(chatId: number, text: string): Promise<boolean> {
+async function sendMessage(chatId: number, text: string, attempt = 0): Promise<boolean> {
 	try {
 		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/sendMessage`, {
 			method: 'POST',
@@ -97,6 +96,14 @@ async function sendMessage(chatId: number, text: string): Promise<boolean> {
 		})
 		const data = await response.json()
 		if (!data.ok) {
+			// Telegram allows roughly one message per second per chat, and a
+			// burst of registrations used to lose the overflow with no retry.
+			const retryAfter = data.parameters?.retry_after
+			if (retryAfter && attempt === 0) {
+				logger.warn('[telegram] rate limited, retrying', { chatId, retryAfter })
+				await sleep((retryAfter + 1) * 1000)
+				return sendMessage(chatId, text, attempt + 1)
+			}
 			logger.error('[telegram] sendMessage failed', { chatId, error: data.description })
 			return false
 		}
@@ -275,16 +282,16 @@ export function stopTelegramPolling(): void {
 
 const gameNotificationMessages = {
 	uk: {
-		playerCode: (code: string, name: string) => `🎮 <b>Код гри:</b> <code>${code}</code>\n\n<b>${name}</b>\n👤 Роль: Гравець`,
-		spectatorCode: (code: string, name: string) => `👁️ <b>Код глядача:</b> <code>${code}</code>\n\n<b>${name}</b>`,
+		playerCode: (code: string, name: string) => `🎮 <b>Код гри:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>\n👤 Роль: Гравець`,
+		spectatorCode: (code: string, name: string) => `👁️ <b>Код глядача:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>`,
 		reminder: (name: string, minutesUntil: number, timeStr: string) =>
-			`⏰ <b>Нагадування!</b>\n\n<b>${name}</b> починається через ${minutesUntil} хвилин\n⏱️ ${timeStr}`,
+			`⏰ <b>Нагадування!</b>\n\n<b>${escapeHtml(name)}</b> починається через ${minutesUntil} хвилин\n⏱️ ${timeStr}`,
 	},
 	en: {
-		playerCode: (code: string, name: string) => `🎮 <b>Game code:</b> <code>${code}</code>\n\n<b>${name}</b>\n👤 Role: Player`,
-		spectatorCode: (code: string, name: string) => `👁️ <b>Spectator code:</b> <code>${code}</code>\n\n<b>${name}</b>`,
+		playerCode: (code: string, name: string) => `🎮 <b>Game code:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>\n👤 Role: Player`,
+		spectatorCode: (code: string, name: string) => `👁️ <b>Spectator code:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>`,
 		reminder: (name: string, minutesUntil: number, timeStr: string) =>
-			`⏰ <b>Reminder!</b>\n\n<b>${name}</b> starts in ${minutesUntil} minutes\n⏱️ ${timeStr}`,
+			`⏰ <b>Reminder!</b>\n\n<b>${escapeHtml(name)}</b> starts in ${minutesUntil} minutes\n⏱️ ${timeStr}`,
 	},
 }
 
@@ -400,14 +407,14 @@ export async function sendRecordingLinkToTelegram(
 			'',
 			shareLink,
 			interrupted ? '\n⚠️ Запис було перервано — збережено те, що встигло завантажитись.' : '',
-			'\n🗓 Файл видалиться через 7 днів.',
+			'\n⚠️ Запис відкриє будь-хто, кому перешлеш це посилання.\n🗓 Файл видалиться через 7 днів.',
 		]
 		: [
 			'🎥 <b>Recording saved</b>' + titleLine,
 			'',
 			shareLink,
 			interrupted ? '\n⚠️ The recording was interrupted — whatever had been uploaded is kept.' : '',
-			'\n🗓 The file is deleted after 7 days.',
+			'\n⚠️ Anyone you forward this link to can open the recording.\n🗓 The file is deleted after 7 days.',
 		]
 
 	return sendMessage(chatId, parts.filter(Boolean).join('\n'))
