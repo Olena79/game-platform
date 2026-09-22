@@ -78,6 +78,8 @@ export interface GameRoomState {
 	coverImage: string
 	/** Never sent in gr:state — the gamemaster gets it via gr:gm-state */
 	scenario?: never
+	/** The room's own clock, so countdowns agree across devices */
+	serverNow?: number
 	title: string
 	gamemasterId: string
 	shownImageUrl: string | null

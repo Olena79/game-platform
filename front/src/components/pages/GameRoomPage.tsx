@@ -196,6 +196,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		scenario,
 		actionError,
 		myVote,
+		clockOffset,
 		recordControl,
 		syncNotes,
 		recordingActive,
@@ -601,7 +602,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 				{/* Left / Main area */}
 				<div className='flex-1 flex flex-col overflow-hidden min-w-0 relative'>
 					{/* Floating timer overlay — uses current room's timer */}
-					{activeTimer && <TimerFloatOverlay timer={activeTimer} />}
+					{activeTimer && <TimerFloatOverlay timer={activeTimer} clockOffset={clockOffset} />}
 
 					{/* View switcher */}
 					<div
@@ -823,7 +824,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							onOpenObserver={handleOpenObserver}
 							onRecordStart={() => recordControl('start')}
 							onRecordStop={() => recordControl('stop')}
-							recordStatus={recordStatus}
+							recordStatus={recordStatus} clockOffset={clockOffset}
 							privateChats={privateChats}
 							unreadDMs={unreadDMs}
 							onMarkDMRead={markDMRead}
@@ -980,7 +981,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 								onOpenObserver={handleOpenObserver}
 								onRecordStart={() => recordControl('start')}
 								onRecordStop={() => recordControl('stop')}
-								recordStatus={recordStatus}
+								recordStatus={recordStatus} clockOffset={clockOffset}
 							/>
 						</div>
 					)}

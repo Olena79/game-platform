@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Video, Square } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
 
-function useTimer(timer: RoomTimer | null) {
+function useTimer(timer: RoomTimer | null, clockOffset = 0) {
 	const [remaining, setRemaining] = useState(0)
 
 	useEffect(() => {
 		if (!timer) { setRemaining(0); return }
 		const update = () => {
 			if (!timer.running || !timer.endsAt) { setRemaining(timer.totalSeconds); return }
-			setRemaining(Math.max(0, Math.round((timer.endsAt - Date.now()) / 1000)))
+			setRemaining(Math.max(0, Math.round((timer.endsAt - (Date.now() + clockOffset)) / 1000)))
 		}
 		update()
 		const id = setInterval(update, 500)
@@ -41,15 +41,16 @@ interface Props {
 	onRecordStart: () => void
 	onRecordStop: () => void
 	recordStatus: string
+	clockOffset?: number
 }
 
 export const ModPanel = ({
 	state, onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
-	onOpenObserver, onRecordStart, onRecordStop, recordStatus,
+	onOpenObserver, onRecordStart, onRecordStop, recordStatus, clockOffset = 0,
 }: Props) => {
 	const { t } = useTranslation()
-	const remaining = useTimer(state.timer)
+	const remaining = useTimer(state.timer, clockOffset)
 	const timer = state.timer
 
 	const hasObserver = state.hasObserver ?? false

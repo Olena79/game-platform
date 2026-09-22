@@ -186,10 +186,14 @@ function emit(io: Server, gameCode: string, event: string, data: unknown) {
  * scenario cannot travel in it. Hiding the tab in the UI was never enough:
  * the payload is one DevTools tab away.
  */
-function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> {
+function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> & { serverNow: number } {
 	const { scenario, ...rest } = state
 	return {
 		...rest,
+		// Timers end at a server timestamp, and every viewer used to compare it
+		// with their own clock. A device a few minutes off showed a different
+		// countdown to everyone else in the same round.
+		serverNow: Date.now(),
 		activeVote: hideVoters(rest.activeVote),
 		spectatorVote: hideVoters(rest.spectatorVote),
 	}

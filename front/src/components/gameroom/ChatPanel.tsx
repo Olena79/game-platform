@@ -39,6 +39,8 @@ interface Props {
 	onRecordStart?: () => void
 	onRecordStop?: () => void
 	recordStatus?: string
+	/** Passed down so the gamemaster's timer matches the room's clock */
+	clockOffset?: number
 	showMod?: boolean
 	privateChats?: Record<string, ChatMessage[]>
 	unreadDMs?: Record<string, number>
@@ -52,7 +54,7 @@ export const ChatPanel = ({
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
-	onOpenObserver, onRecordStart, onRecordStop, recordStatus = '',
+	onOpenObserver, onRecordStart, onRecordStop, recordStatus = '', clockOffset = 0,
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
@@ -501,6 +503,7 @@ export const ChatPanel = ({
 					onRecordStart={onRecordStart ?? (() => {})}
 					onRecordStop={onRecordStop ?? (() => {})}
 					recordStatus={recordStatus}
+					clockOffset={clockOffset}
 				/>
 			)}
 		</div>

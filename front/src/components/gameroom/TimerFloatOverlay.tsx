@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { RoomTimer } from './types'
 
-interface Props { timer: RoomTimer }
+interface Props { timer: RoomTimer 	/** Difference between this device's clock and the room's */
+	clockOffset?: number
+}
 
 function fmt(s: number) {
 	const m = Math.floor(s / 60), sec = s % 60
@@ -26,7 +28,7 @@ function beep(freqs: number[], duration: number, gap = 0.08) {
 	} catch {}
 }
 
-export const TimerFloatOverlay = ({ timer }: Props) => {
+export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 	const [remaining, setRemaining] = useState(0)
 	const warned30Ref  = useRef(false)
 	const warnedEndRef = useRef(false)
@@ -44,7 +46,7 @@ export const TimerFloatOverlay = ({ timer }: Props) => {
 				setRemaining(timer.totalSeconds)
 				return
 			}
-			const rem = Math.max(0, Math.round((timer.endsAt - Date.now()) / 1000))
+			const rem = Math.max(0, Math.round((timer.endsAt - (Date.now() + clockOffset)) / 1000))
 			setRemaining(rem)
 
 			// start beep — once when timer becomes running

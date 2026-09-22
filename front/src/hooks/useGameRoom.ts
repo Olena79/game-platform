@@ -32,6 +32,8 @@ export function useGameRoom(rawCode: string) {
 	const [recordStatus, setRecordStatus] = useState<string>('')
 	const [scenario, setScenario] = useState('')
 	const [actionError, setActionError] = useState('')
+	// How far this device's clock sits from the room's
+	const [clockOffset, setClockOffset] = useState(0)
 	// What this person voted for: an anonymous vote no longer says so in the state
 	const [myVote, setMyVote] = useState<{ voteId: string; optionIds: string[] } | null>(null)
 	const [recordingActive, setRecordingActive] = useState(false)
@@ -132,6 +134,9 @@ export function useGameRoom(rawCode: string) {
 		socket.on('connect_error', () => setConnStatus('failed'))
 
 		socket.on('gr:state', (s: GameRoomState) => {
+			// The room's clock, so a device with the wrong time still counts down
+			// the same round as everyone else.
+			if (typeof s.serverNow === 'number') setClockOffset(s.serverNow - Date.now())
 			if ((prevStatusRef.current === 'lobby' || prevStatusRef.current === 'ended') && s.status === 'started') setStartAnim(true)
 			prevStatusRef.current = s.status
 			setState(s)
@@ -264,6 +269,7 @@ export function useGameRoom(rawCode: string) {
 		recordStatus,
 		scenario,
 		actionError,
+		clockOffset,
 		myVote,
 		recordingActive,
 		lk, lkBreakout,
