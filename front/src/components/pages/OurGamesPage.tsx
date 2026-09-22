@@ -48,14 +48,17 @@ function DonateModal({ gameId, cost, token, onClose }: {
 	}
 
 	return (
-		<div className='fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-[16px]'
+		// Centred at every width and measured against the *visible* viewport:
+		// items-end pinned the card to the bottom of a phone screen, and that
+		// bottom sits under the browser's own bar, so half the card was cut off.
+		<div className='fixed inset-0 z-[90] flex items-center justify-center p-[16px] overflow-y-auto'
 			style={isDark
 				? { background: 'rgba(3,4,15,0.72)', backdropFilter: 'blur(4px)' }
 				: { background: 'rgba(240,235,228,0.8)', backdropFilter: 'blur(4px)' }
 			}
 			onClick={onClose}>
 			<div
-				className='w-full max-w-[340px] rounded-[20px] p-[24px] flex flex-col gap-[16px]'
+				className='w-full max-w-[340px] max-h-[85dvh] overflow-y-auto rounded-[20px] p-[24px] flex flex-col gap-[16px]'
 				style={isDark
 					? { background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.2)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }
 					: { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: '0 16px 48px rgba(0,0,0,0.12)' }
