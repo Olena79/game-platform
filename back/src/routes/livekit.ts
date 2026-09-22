@@ -5,6 +5,7 @@ import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { validateBody } from '../middleware/validationMiddleware'
 import { livekitTokenSchema } from '../validation/schemas'
 import { Game } from '../models/Game'
+import { canEnterBreakout } from '../socket/gameRoom'
 
 const LIVEKIT_API_KEY    = process.env.LIVEKIT_API_KEY
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET
@@ -70,6 +71,13 @@ router.post('/token', authMiddleware, validateBody(livekitTokenSchema), async (r
 		const access = await resolveAccess(req.body, String(req.userId))
 		if (!access) {
 			logger.warn('[livekit/token] refused', { code: req.body.code, gameCode: req.body.gameCode, userId: req.userId })
+			res.status(403).json({ message: 'FORBIDDEN' })
+			return
+		}
+
+		// A breakout room is a private conversation; the invitation decides
+		if (breakoutId && !canEnterBreakout(access.game.gameCode, breakoutId, String(req.userId))) {
+			logger.warn('[livekit/token] breakout refused', { breakoutId, userId: req.userId })
 			res.status(403).json({ message: 'FORBIDDEN' })
 			return
 		}

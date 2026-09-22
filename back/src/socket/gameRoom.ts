@@ -90,6 +90,23 @@ async function closeOutSession(
 }
 
 /**
+ * May this person have the media for a breakout room?
+ *
+ * The socket refuses an uninvited join, but the video token was granted to
+ * anyone holding the game code — so a private breakout could be listened to
+ * by joining its LiveKit room directly. The invitation has to hold on both
+ * sides of the room.
+ */
+export function canEnterBreakout(gameCode: string, roomId: string, userId: string): boolean {
+	const state = rooms.get(gameCode)
+	if (!state) return false
+	if (state.gamemasterId === String(userId)) return true
+	const br = state.breakoutRooms.find(r => r.id === roomId)
+	if (!br) return false
+	return br.invitedIds.includes(String(userId)) || br.playerIds.includes(String(userId))
+}
+
+/**
  * Drops a room once nobody is left in it.
  *
  * Checked again after the delay, because players reconnect — and rechecked
