@@ -24,19 +24,41 @@ export const refreshTokenSchema = z.object({
 
 // ────── Game Schemas ──────────────────────────────────────────────────────
 
-export const createGameSchema = z.object({
-	title: z.string().min(3, 'Title must be at least 3 characters').max(100),
-	description: z.string().max(500).optional(),
-	maxParticipants: z.number().min(1).max(100).optional().default(10),
-	recordingEnabled: z.boolean().optional().default(true),
-})
+// Zod strips unknown keys, and validateBody replaces the body with the result,
+// so anything missing here was silently dropped before it reached the model.
+// The form sends fourteen fields; this now knows all of them.
+const gameFields = {
+	title:               z.string().min(3, 'Title is too short').max(100),
+	description:         z.string().max(500).optional(),
+	minPlayers:          z.number().int().min(1).max(100).optional(),
+	maxPlayers:          z.number().int().min(1).max(100).optional(),
+	scenario:            z.string().max(20000).optional(),
+	useCoins:            z.boolean().optional(),
+	coinsPerPlayer:      z.number().int().min(0).max(1_000_000).optional(),
+	useInfluence:        z.boolean().optional(),
+	influencePerPlayer:  z.number().int().min(0).max(1_000_000).optional(),
+	participationCost:   z.number().min(0).max(1_000_000).optional(),
+	gmCardNumber:        z.string().regex(/^(\d{16})?$/, 'Card number must be 16 digits').optional(),
+	scheduledAt:         z.coerce.date().optional(),
+	coverImage:          z.string().url().or(z.literal('')).optional(),
+	images:              z.array(z.string().url()).max(30).optional(),
+	defaultTimerSeconds: z.number().int().min(1).max(86400).nullable().optional(),
+}
 
-export const updateGameSchema = z.object({
-	title: z.string().min(3).max(100).optional(),
-	description: z.string().max(500).optional(),
-	maxParticipants: z.number().min(1).max(100).optional(),
-	recordingEnabled: z.boolean().optional(),
-})
+export const createGameSchema = z.object(gameFields)
+	.refine(d => (d.maxPlayers ?? 6) >= (d.minPlayers ?? 2), {
+		message: 'maxPlayers must be greater than or equal to minPlayers',
+		path: ['maxPlayers'],
+	})
+
+export const updateGameSchema = z.object({ ...gameFields, title: gameFields.title.optional() })
+	.refine(d => d.minPlayers === undefined || d.maxPlayers === undefined || d.maxPlayers >= d.minPlayers, {
+		message: 'maxPlayers must be greater than or equal to minPlayers',
+		path: ['maxPlayers'],
+	})
+
+/** The fields a creator may change on an existing game. */
+export const EDITABLE_GAME_FIELDS = Object.keys(gameFields) as Array<keyof typeof gameFields>
 
 export const gameIdSchema = z.object({
 	id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID'),
@@ -59,8 +81,10 @@ export const livekitTokenSchema = z.object({
 // ────── Community Schemas ────────────────────────────────────────────────
 
 export const createPostSchema = z.object({
-	text: z.string().min(1, 'Post text is required').max(2000),
-	images: z.array(z.string().url()).optional().default([]),
+	// 1000 is what the model allows; 2000 here meant a long post was accepted
+	// by validation and then rejected by Mongoose as a 500.
+	text: z.string().min(1, 'Post text is required').max(1000),
+	topic: z.string().max(100).optional(),
 })
 
 export const createCommentSchema = z.object({

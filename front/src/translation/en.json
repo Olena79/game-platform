@@ -368,6 +368,7 @@
       "open_observer": "Open observer",
       "rec_active": "● Recording",
       "rec_uploading": "Uploading...",
+      "rec_not_ready": "Pick a screen in the recording window",
       "rec_saved": "✓ Saved",
       "rec_ready": "Ready",
       "observer_connected": "Observer connected",

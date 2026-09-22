@@ -193,6 +193,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		isSpectatorJoin,
 		recordStatus,
 		scenario,
+		actionError,
 		recordControl,
 		syncNotes,
 		recordingActive,
@@ -518,6 +519,14 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						style={{ color: 'rgba(255,175,90,0.6)' }}>
 						✕
 					</button>
+				</div>
+			)}
+
+			{/* A command the server refused — shown briefly, the room stays */}
+			{actionError && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px]'
+					style={{ background: 'rgba(255,150,60,0.10)', borderBottom: '1px solid rgba(255,150,60,0.22)' }}>
+					<span style={{ color: 'rgba(255,175,90,0.95)', fontSize: '12px' }}>{actionError}</span>
 				</div>
 			)}
 

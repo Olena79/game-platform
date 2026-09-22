@@ -62,15 +62,19 @@ export default function makeCommunityRouter(io: Server): Router {
 	// ── Create post ───────────────────────────────────────────────────────────
 	router.post('/posts', authMiddleware, validateBody(createPostSchema), async (req: AuthRequest, res: Response) => {
 		try {
-			const { text, images } = req.body
+			const { text } = req.body
 
 			const user = await User.findById(req.userId).lean()
 			if (!user) { res.status(401).json({ message: 'User not found' }); return }
 
+			// authorName is required by the model. Without it every post ended
+			// in a ValidationError and a 500 — the feed never worked at all.
 			const post = await Post.create({
 				authorId:      req.userId,
+				authorName:    user.name || user.email,
+				authorSurname: user.surname || '',
+				topic:         String(req.body.topic ?? '').slice(0, 100),
 				text:          text.trim(),
-				images:        images || [],
 			})
 
 			const data = serializePost(post, req.userId)
@@ -179,9 +183,11 @@ export default function makeCommunityRouter(io: Server): Router {
 			if (!user) { res.status(401).json({ message: 'User not found' }); return }
 
 			const comment = await Comment.create({
-				postId:   req.params.id,
-				authorId: req.userId,
-				text:     text.trim(),
+				postId:        req.params.id,
+				authorId:      req.userId,
+				authorName:    user.name || user.email,
+				authorSurname: user.surname || '',
+				text:          text.trim(),
 			})
 
 			post.commentsCount += 1

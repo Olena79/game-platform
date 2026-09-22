@@ -7,7 +7,7 @@ import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendGameReminderToTelegram, sendNotesToTelegram } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
-import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema } from '../validation/schemas'
+import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
 
 // Strip full card number from any response that goes outside the owner context.
@@ -193,18 +193,18 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 		const user = await User.findById(req.userId)
 		if (!user) { res.status(404).json({ message: 'User not found' }); return }
 
-		const { title, description } = req.body
+		const { title, ...rest } = req.body
 
 		const gameCode      = await generateUniqueCode()
 		const spectatorCode = await generateUniqueCode()
 
 		const game = await Game.create({
-			title:              title.trim(),
-			creatorId:          req.userId,
-			creatorName:        user.name || user.email,
+			...rest,
+			title:       title.trim(),
+			creatorId:   req.userId,
+			creatorName: user.name || user.email,
 			gameCode,
 			spectatorCode,
-			description:        description ? String(description).slice(0, 500) : '',
 		})
 
 		res.status(201).json(publicGameView(game))
@@ -224,10 +224,11 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 			return
 		}
 
-		const { title, description } = req.body
-
-		if (title !== undefined)       game.title = title
-		if (description !== undefined) game.description = description
+		for (const field of EDITABLE_GAME_FIELDS) {
+			const value = (req.body as Record<string, unknown>)[field]
+			if (value !== undefined) (game as unknown as Record<string, unknown>)[field] = value
+		}
+		if (typeof game.title === 'string') game.title = game.title.trim()
 
 		await game.save()
 		res.json(publicGameView(game))

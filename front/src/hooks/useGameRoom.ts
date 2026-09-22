@@ -30,6 +30,7 @@ export function useGameRoom(rawCode: string) {
 	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
 	const [recordStatus, setRecordStatus] = useState<string>('')
 	const [scenario, setScenario] = useState('')
+	const [actionError, setActionError] = useState('')
 	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
@@ -121,6 +122,11 @@ export function useGameRoom(rawCode: string) {
 			setState(s)
 		})
 		socket.on('gr:error', (msg: string) => setError(msg))
+		// A refused command: say so for a moment, keep the room
+		socket.on('gr:action-error', (msg: string) => {
+			setActionError(msg)
+			setTimeout(() => setActionError(''), 5000)
+		})
 
 		socket.on('gr:chat', (msg: ChatMessage) => {
 			const isPrivate = (msg.recipients?.length ?? 0) > 0
@@ -232,6 +238,7 @@ export function useGameRoom(rawCode: string) {
 		newPublicMsgSignal,
 		recordStatus,
 		scenario,
+		actionError,
 		recordingActive,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,

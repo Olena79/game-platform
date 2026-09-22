@@ -1,6 +1,24 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodSchema } from 'zod'
 
+/**
+ * Zod 4 reports problems in `issues`; the old code read `errors`, which is
+ * undefined there — so every rejected request arrived as an empty object and
+ * the UI could only say "Request failed".
+ */
+function validationError(label: string, error: any) {
+	const issues = (error?.issues ?? []).map((e: any) => ({
+		field: Array.isArray(e.path) ? e.path.join('.') : String(e.path ?? ''),
+		message: e.message,
+	}))
+	return {
+		error: label,
+		// `message` is what the client actually displays
+		message: issues[0]?.message ?? label,
+		details: issues,
+	}
+}
+
 export const validateBody = (schema: ZodSchema) => {
 	return (req: Request, res: Response, next: NextFunction) => {
 		try {
@@ -8,13 +26,7 @@ export const validateBody = (schema: ZodSchema) => {
 			req.body = validated as any
 			next()
 		} catch (error: any) {
-			return res.status(400).json({
-				error: 'Validation error',
-				details: error.errors?.map((e: any) => ({
-					field: e.path.join('.'),
-					message: e.message,
-				})),
-			})
+			return res.status(400).json(validationError('Validation error', error))
 		}
 	}
 }
@@ -26,13 +38,7 @@ export const validateParams = (schema: ZodSchema) => {
 			req.params = validated as any
 			next()
 		} catch (error: any) {
-			return res.status(400).json({
-				error: 'Invalid parameters',
-				details: error.errors?.map((e: any) => ({
-					field: e.path.join('.'),
-					message: e.message,
-				})),
-			})
+			return res.status(400).json(validationError('Invalid parameters', error))
 		}
 	}
 }
@@ -44,13 +50,7 @@ export const validateQuery = (schema: ZodSchema) => {
 			req.query = validated as any
 			next()
 		} catch (error: any) {
-			return res.status(400).json({
-				error: 'Invalid query parameters',
-				details: error.errors?.map((e: any) => ({
-					field: e.path.join('.'),
-					message: e.message,
-				})),
-			})
+			return res.status(400).json(validationError('Invalid query parameters', error))
 		}
 	}
 }

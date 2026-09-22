@@ -28,15 +28,22 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 		sendStatus(status)
 	})
 
-	// React to record signals from GM
+	// React to record signals from GM.
+	//
+	// A 'start' that arrives before a screen has been picked used to be
+	// swallowed here: the gamemaster saw the button react, played the whole
+	// game, and ended up with no recording and no warning.
 	useEffect(() => {
 		if (!recordSignal) return
-		if (recordSignal === 'start' && recording.status === 'prepared') {
-			recording.start()
-		} else if (recordSignal === 'stop' && recording.status === 'recording') {
-			recording.stop()
-		}
 		setRecordSignal(null)
+
+		if (recordSignal === 'start') {
+			if (recording.status === 'prepared') recording.start()
+			else if (recording.status === 'recording' || recording.status === 'uploading') return
+			else sendStatus('error')   // nothing to record from — tell the GM
+			return
+		}
+		if (recording.status === 'recording') recording.stop()
 	}, [recordSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (!user) {

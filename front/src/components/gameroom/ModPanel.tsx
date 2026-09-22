@@ -57,6 +57,7 @@ export const ModPanel = ({
 	const isPrepared = recordStatus === 'prepared'
 	const isUploading = recordStatus === 'uploading'
 	const isDone = recordStatus === 'done'
+	const isRecError = recordStatus === 'error'
 
 	const toolBtn = (
 		icon: React.ReactNode, label: string,
@@ -139,7 +140,7 @@ export const ModPanel = ({
 							}}>
 							<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
 							<span className='text-[12px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
-								{isRecording ? t('room.mod.rec_active') : isUploading ? t('room.mod.rec_uploading') : isDone ? t('room.mod.rec_saved') : isPrepared ? t('room.mod.rec_ready') : t('room.mod.observer_connected')}
+								{isRecording ? t('room.mod.rec_active') : isUploading ? t('room.mod.rec_uploading') : isDone ? t('room.mod.rec_saved') : isPrepared ? t('room.mod.rec_ready') : isRecError ? t('room.mod.rec_not_ready') : t('room.mod.observer_connected')}
 							</span>
 						</div>
 						<div className='grid grid-cols-2 gap-[5px]'>
