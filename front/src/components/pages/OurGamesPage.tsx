@@ -1005,15 +1005,43 @@ const GameCard = ({
 				</div>
 			</div>
 
-			{/* GM codes block */}
-			{isCreator && game.spectatorCode && (
-				<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
-					style={isDark
-						? { background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }
-						: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)' }
-					}>
-					<span className='text-[11px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>{t('our_games.spectator_code_label')}</span>
-					<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: isDark ? '#c07fff' : 'var(--accent)' }}>{game.spectatorCode}</span>
+			{/* GM codes block — the gamemaster hands both of these out */}
+			{isCreator && (game.gameCode || game.spectatorCode) && (
+				<div className='flex flex-col gap-[6px]'>
+					{game.gameCode && (
+						<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
+							style={isDark
+								? { background: 'rgba(15,255,200,0.05)', border: '1px solid rgba(15,255,200,0.16)' }
+								: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)' }
+							}>
+							<span className='text-[11px]' style={{ color: isDark ? 'rgba(120,235,205,0.8)' : 'var(--text-muted)' }}>{t('our_games.player_code_label')}</span>
+							<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: isDark ? '#0fffc8' : 'var(--accent)' }}>{game.gameCode}</span>
+							<button
+								onClick={() => { void navigator.clipboard?.writeText(game.gameCode ?? '') }}
+								className='ml-auto text-[11px] cursor-pointer underline'
+								style={{ color: isDark ? 'rgba(120,235,205,0.7)' : 'var(--text-muted)' }}
+							>
+								{t('our_games.copy_code')}
+							</button>
+						</div>
+					)}
+					{game.spectatorCode && (
+						<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
+							style={isDark
+								? { background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }
+								: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)' }
+							}>
+							<span className='text-[11px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>{t('our_games.spectator_code_label')}</span>
+							<span className='text-[13px] font-[700] font-mono tracking-[2px]' style={{ color: isDark ? '#c07fff' : 'var(--accent)' }}>{game.spectatorCode}</span>
+							<button
+								onClick={() => { void navigator.clipboard?.writeText(game.spectatorCode ?? '') }}
+								className='ml-auto text-[11px] cursor-pointer underline'
+								style={{ color: isDark ? 'rgba(190,148,255,0.7)' : 'var(--text-muted)' }}
+							>
+								{t('our_games.copy_code')}
+							</button>
+						</div>
+					)}
 				</div>
 			)}
 

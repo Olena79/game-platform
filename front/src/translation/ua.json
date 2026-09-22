@@ -176,7 +176,9 @@
     "cost_label": "Вартість участі:",
     "currency": "грн",
     "donate_btn": "Донат",
-    "spectator_code_label": "👁 Код глядача:"
+    "spectator_code_label": "👁 Код глядача:",
+    "player_code_label": "🎮 Код гравця:",
+    "copy_code": "копіювати"
   },
   "donate": {
     "title": "Донат ігромайстру",

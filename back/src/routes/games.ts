@@ -212,7 +212,7 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			spectatorCode,
 		})
 
-		res.status(201).json(publicGameView(game))
+		res.status(201).json(publicGameView(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games POST]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -236,7 +236,7 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		if (typeof game.title === 'string') game.title = game.title.trim()
 
 		await game.save()
-		res.json(publicGameView(game))
+		res.json(publicGameView(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games PUT]', err)
 		res.status(500).json({ message: 'Server error' })
