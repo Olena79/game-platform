@@ -9,7 +9,9 @@
     "terms_of_service": "Terms of Service"
   },
   "footer": {
-    "copy": "© 2025 Games of Senses"
+    "copy": "© 2025 Games of Senses",
+    "install_app": "Install the app",
+    "install_ios_steps": "In Safari: Share → Add to Home Screen. The site then opens like an app, without the address bar."
   },
   "home": {
     "hero": {

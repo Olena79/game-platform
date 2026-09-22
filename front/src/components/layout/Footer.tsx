@@ -1,5 +1,8 @@
 import React from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Smartphone } from 'lucide-react'
+import { useInstallPrompt } from '../../hooks/useInstallPrompt'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../context/ThemeContext'
 
@@ -26,6 +29,8 @@ const FooterLogo = ({ isDark }: { isDark: boolean }) => (
 export const Footer = () => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
+	const { canInstall, needsManualSteps, isMobile, isStandalone, promptInstall } = useInstallPrompt()
+	const [showSteps, setShowSteps] = useState(false)
 
 	return (
 		<footer
@@ -36,6 +41,26 @@ export const Footer = () => {
 				<FooterLogo isDark={isDark} />
 			</Link>
 			<div className='flex flex-col md:flex-row items-center gap-[16px] md:gap-[24px]'>
+				{/* Offered here rather than as a popup: the browser's own prompt
+				    reaches only some Android users, and never an iPhone. */}
+				{!isStandalone && isMobile && (canInstall || needsManualSteps) && (
+					<div className='flex flex-col items-center gap-[6px]'>
+						<button
+							onClick={() => { if (canInstall) void promptInstall(); else setShowSteps(v => !v) }}
+							className='flex items-center gap-[7px] rounded-[10px] px-[14px] py-[7px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-110'
+							style={isDark
+								? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
+								: { background: 'var(--accent-subtle)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+						>
+							<Smartphone size={13} /> {t('footer.install_app')}
+						</button>
+						{showSteps && (
+							<p className='text-[11px] leading-[1.45] text-center max-w-[260px]' style={{ color: 'var(--footer-text)' }}>
+								{t('footer.install_ios_steps')}
+							</p>
+						)}
+					</div>
+				)}
 				<p className='text-[12px] text-center md:text-left' style={{ color: 'var(--footer-text)' }}>
 					{t('footer.copy')}
 				</p>

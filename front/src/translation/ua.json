@@ -9,7 +9,9 @@
     "terms_of_service": "Умови використання"
   },
   "footer": {
-    "copy": "© 2025 Games of Senses"
+    "copy": "© 2025 Games of Senses",
+    "install_app": "Встановити застосунок",
+    "install_ios_steps": "У Safari: «Поділитися» → «На екран Додому». Сайт відкриється як застосунок, без адресного рядка."
   },
   "home": {
     "hero": {
