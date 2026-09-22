@@ -65,7 +65,9 @@ export function useGameRoom(rawCode: string) {
 		const code = resolved?.gameCode ?? rawCode
 		try {
 			const userName = [user.name, user.surname].filter(Boolean).join(' ') || user.name
-			const payload = { gameCode: code, breakoutId, userName }
+			// `rawCode` is what the person was actually given — entry or
+			// spectator code — and that is what earns them their seat.
+			const payload = { code: rawCode, gameCode: code, breakoutId, userName }
 			const res = await fetch(`${API}/api/livekit/token`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },

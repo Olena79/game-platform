@@ -70,12 +70,19 @@ export const joinGameSchema = z.object({
 
 // ────── LiveKit Schemas ──────────────────────────────────────────────────
 
-// The client asks for a game, never for a room name: the room is derived
-// server-side, so nobody can request a token for someone else's session.
+// The client presents the code it was given, never a room name: the room is
+// derived server-side, so nobody can request a token for someone else's
+// session by guessing what it is called.
 export const livekitTokenSchema = z.object({
-	gameCode: z.string().min(1).max(10, 'Invalid game code'),
+	// The code as the person received it — entry code or spectator code
+	code: z.string().min(4).max(12).optional(),
+	// Canonical game code, for callers that already resolved it
+	gameCode: z.string().min(1).max(10).optional(),
 	breakoutId: z.string().max(64).optional(),
-	userName: z.string().min(1, 'User name is required').max(100, 'User name too long'),
+	userName: z.string().min(1, 'User name is required').max(100),
+}).refine(d => Boolean(d.code || d.gameCode), {
+	message: 'A game code is required',
+	path: ['code'],
 })
 
 // ────── Community Schemas ────────────────────────────────────────────────
