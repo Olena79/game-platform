@@ -32,9 +32,23 @@ export function useObserverRoom(gameCode: string) {
 			body: JSON.stringify({ gameCode, userName: 'Observer' }),
 			signal: ctrl.signal,
 		})
-			.then(r => r.json())
-			.then(d => { if (mounted) setLk({ token: d.token, url: d.url, roomName: `mindflow-${gameCode}` }) })
-			.catch(err => { if (mounted && err.name !== 'AbortError') setError('Не вдалося отримати токен LiveKit') })
+			.then(async r => {
+				// A refusal used to slip through as JSON and leave the window
+				// holding an undefined token, with nothing on screen to explain it.
+				if (!r.ok) throw new Error(r.status === 403 ? 'OBSERVER_FORBIDDEN' : `HTTP ${r.status}`)
+				return r.json()
+			})
+			.then(d => {
+				if (!mounted) return
+				if (!d?.token) throw new Error('EMPTY_TOKEN')
+				setLk({ token: d.token, url: d.url, roomName: `mindflow-${gameCode}` })
+			})
+			.catch(err => {
+				if (!mounted || err.name === 'AbortError') return
+				setError(err.message === 'OBSERVER_FORBIDDEN'
+					? 'Вікно запису доступне лише ігромастеру цієї гри'
+					: 'Не вдалося отримати токен LiveKit')
+			})
 
 		// Same as the room: losing this socket mid-game means losing the
 		// recording, so it reconnects with a token read fresh each time.

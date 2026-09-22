@@ -26,7 +26,8 @@ export function useGameRoom(rawCode: string) {
 	const [playerReactions, setPlayerReactions] = useState<Record<string, { emoji: string; key: number }>>({})
 	const [privateChats, setPrivateChats] = useState<Record<string, ChatMessage[]>>({})
 	const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
-	const [shouldMute, setShouldMute] = useState(false)
+	// 'all' is the room-wide command, 'self' is addressed to this person
+	const [shouldMute, setShouldMute] = useState<'all' | 'self' | null>(null)
 	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
 	const [recordStatus, setRecordStatus] = useState<string>('')
 	const [scenario, setScenario] = useState('')
@@ -188,8 +189,8 @@ export function useGameRoom(rawCode: string) {
 			setPrivateChats(grouped)
 		})
 
-		socket.on('gr:mute-all', () => setShouldMute(true))
-		socket.on('gr:mute-player', () => setShouldMute(true))
+		socket.on('gr:mute-all', () => setShouldMute('all'))
+		socket.on('gr:mute-player', () => setShouldMute('self'))
 
 		socket.on('gr:reactions', (r: Record<string, number>) => {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
@@ -228,7 +229,7 @@ export function useGameRoom(rawCode: string) {
 		setUnreadDMs(prev => { const n = { ...prev }; delete n[convKey]; return n })
 	}, [])
 
-	const clearMuteSignal = useCallback(() => setShouldMute(false), [])
+	const clearMuteSignal = useCallback(() => setShouldMute(null), [])
 
 	const gameCode = resolved?.gameCode ?? rawCode
 

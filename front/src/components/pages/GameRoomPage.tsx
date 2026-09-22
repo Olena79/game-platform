@@ -391,6 +391,9 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	const connectionState = useConnectionState()
 	useEffect(() => {
 		if (!shouldMute || isSpectator || !localParticipant) return
+		// "Mute everyone" means the room, not the person who pressed it: the
+		// gamemaster kept talking into a microphone they had switched off.
+		if (shouldMute === 'all' && isGM) { clearMuteSignal(); return }
 		if (connectionState !== ConnectionState.Connected) return
 		localParticipant.setMicrophoneEnabled(false)
 		setMicOn(false)
