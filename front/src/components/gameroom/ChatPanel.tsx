@@ -11,6 +11,8 @@ interface Props {
 	isGM: boolean
 	isSpectator: boolean
 	notes: string
+	/** Addressed to the gamemaster only, so it arrives as its own prop */
+	scenario: string
 	/** null while unknown — the hint stays hidden until we actually know */
 	telegramLinked?: boolean | null
 	onNotesChange: (v: string) => void
@@ -44,7 +46,7 @@ interface Props {
 
 export const ChatPanel = ({
 	state, myId, isGM, isSpectator,
-	notes, onNotesChange, telegramLinked = null,
+	notes, onNotesChange, scenario, telegramLinked = null,
 	onSendChat, onCastVote, onCloseVote, onClearVote,
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
@@ -406,9 +408,9 @@ export const ChatPanel = ({
 
 			{tab === 'scenario' && (
 				<div className='flex-1 overflow-y-auto p-[12px]'>
-					{state.scenario
+					{scenario
 						? <p className='text-[13px] leading-[1.75]' style={{ color: '#9eaac8', whiteSpace: 'pre-wrap' }}>
-								{state.scenario}
+								{scenario}
 							</p>
 						: <p className='text-[13px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
 								{t('room.chat.no_scenario')}

@@ -76,7 +76,8 @@ export interface GameRoomState {
 	breakoutRooms: BreakoutRoom[]
 	images: string[]
 	coverImage: string
-	scenario: string
+	/** Never sent in gr:state — the gamemaster gets it via gr:gm-state */
+	scenario?: never
 	title: string
 	gamemasterId: string
 	shownImageUrl: string | null

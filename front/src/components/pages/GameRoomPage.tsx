@@ -192,6 +192,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		showImage,
 		isSpectatorJoin,
 		recordStatus,
+		scenario,
 		recordControl,
 		syncNotes,
 		recordingActive,
@@ -785,6 +786,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							isSpectator={isSpectator}
 							notes={notes}
 							onNotesChange={setNotes}
+							scenario={scenario}
 							telegramLinked={telegramLinked}
 							onSendChat={sendChat}
 							onCastVote={castVote}
@@ -925,7 +927,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', height: '72vh', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							<ChatPanel
 								state={panelState} myId={myId} isGM={isGM} isSpectator={isSpectator}
-								notes={notes} onNotesChange={setNotes} telegramLinked={telegramLinked}
+								notes={notes} onNotesChange={setNotes} scenario={scenario} telegramLinked={telegramLinked}
 								onSendChat={sendChat} onCastVote={castVote} onCloseVote={closeVote} onClearVote={clearVote}
 								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
 								onAnnounce={() => setShowAnnounce(true)} onVoting={() => setShowVote(true)} onSpectatorVoting={() => setShowSpectatorVote(true)}

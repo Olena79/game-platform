@@ -119,8 +119,25 @@ function emit(io: Server, gameCode: string, event: string, data: unknown) {
 	io.to(`gr-${gameCode}`).emit(event, data)
 }
 
+/**
+ * Everything in here reaches every participant, spectators included, so the
+ * scenario cannot travel in it. Hiding the tab in the UI was never enough:
+ * the payload is one DevTools tab away.
+ */
+function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> {
+	const { scenario, ...rest } = state
+	return rest
+}
+
 function pushState(io: Server, state: GameRoomState) {
-	emit(io, state.gameCode, 'gr:state', state)
+	emit(io, state.gameCode, 'gr:state', publicState(state))
+	sendGmState(io, state)
+}
+
+/** The gamemaster's own view: the scenario, addressed to their socket only. */
+function sendGmState(io: Server, state: GameRoomState) {
+	const gm = state.players.find(p => p.isGamemaster && p.connected)
+	if (gm?.socketId) io.to(gm.socketId).emit('gr:gm-state', { scenario: state.scenario })
 }
 
 function makeDefaultTimer(seconds: number | null): RoomTimer | null {
@@ -783,7 +800,7 @@ export function registerGameRoom(io: Server) {
 			observerSockets.set(d.gameCode, socket.id)
 			state.hasObserver = true
 			pushState(io, state)
-			socket.emit('gr:state', state)
+			socket.emit('gr:state', publicState(state))
 
 			try {
 				const dbHistory = await GameMessage.find({

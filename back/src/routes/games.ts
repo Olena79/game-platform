@@ -11,17 +11,59 @@ import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendN
 const router = Router()
 
 // Strip full card number from any response that goes outside the owner context.
-// Returns hasGmCard (bool) and gmCardLast4 so the UI can show a "donate" button
-// without ever sending the raw PAN to the client.
-function publicGameView(game: { toObject(): Record<string, unknown> }) {
+// What anyone may see about a game.
+//
+// A whitelist, not a blacklist: the previous version returned the whole
+// document minus the card number, which handed every anonymous visitor the
+// entry codes, the scenario, the gamemaster's notes and the full list of
+// participants with their names and ids.
+const PUBLIC_GAME_FIELDS = [
+	'_id', 'title', 'description', 'creatorId', 'creatorName',
+	'minPlayers', 'maxPlayers', 'useCoins', 'coinsPerPlayer',
+	'useInfluence', 'influencePerPlayer', 'participationCost',
+	'scheduledAt', 'coverImage', 'images', 'likesCount', 'createdAt', 'updatedAt',
+] as const
+
+type GameDoc = { toObject(): Record<string, unknown> }
+
+function publicGameView(game: GameDoc, viewerId?: string) {
 	const obj = game.toObject()
 	const card = obj.gmCardNumber as string | undefined
-	delete obj.gmCardNumber
-	return {
-		...obj,
-		hasGmCard:   !!(card && card.length === 16),
-		gmCardLast4: card && card.length === 16 ? card.slice(-4) : '',
+	const uid = viewerId ? String(viewerId) : ''
+
+	const players = (obj.registeredPlayers as Array<{ userId?: unknown }> | undefined) ?? []
+	const spectators = (obj.spectators as Array<{ userId?: unknown }> | undefined) ?? []
+
+	const isCreator = Boolean(uid) && String(obj.creatorId) === uid
+	const isPlayer = Boolean(uid) && players.some(p => String(p.userId) === uid)
+	const isSpectator = Boolean(uid) && spectators.some(p => String(p.userId) === uid)
+
+	const out: Record<string, unknown> = {}
+	for (const field of PUBLIC_GAME_FIELDS) out[field] = obj[field]
+
+	// Counts are public; who exactly is playing is not
+	out.playersCount = players.length
+	out.spectatorsCount = spectators.length
+	// The last four digits are enough to recognise the card; the full number
+	// lives behind /:id/payment-details, which checks membership.
+	out.hasGmCard = !!(card && card.length === 16)
+	out.gmCardLast4 = card && card.length === 16 ? card.slice(-4) : ''
+
+	if (isCreator) {
+		out.gameCode = obj.gameCode
+		out.spectatorCode = obj.spectatorCode
+		out.registeredPlayers = obj.registeredPlayers
+		out.spectators = obj.spectators
+		out.scenario = obj.scenario
+		out.defaultTimerSeconds = obj.defaultTimerSeconds
+		out.gmNotes = obj.gmNotes
+	} else {
+		// Registered participants get back the one code that is theirs, so the
+		// list can still offer them a way in.
+		if (isPlayer) out.gameCode = obj.gameCode
+		if (isSpectator) out.spectatorCode = obj.spectatorCode
 	}
+	return out
 }
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -60,17 +102,10 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 			likedSet = new Set(likedIds.map(id => String(id)))
 		}
 
-		res.json(games.map(g => {
-			const obj = g.toObject() as any
-			const card = obj.gmCardNumber as string | undefined
-			delete obj.gmCardNumber
-			return {
-				...obj,
-				isLiked:    likedSet.has(String(g._id)),
-				hasGmCard:  !!(card && card.length === 16),
-				gmCardLast4: (card && card.length === 16) ? card.slice(-4) : '',
-			}
-		}))
+		res.json(games.map(g => ({
+			...publicGameView(g, req.userId),
+			isLiked: likedSet.has(String(g._id)),
+		})))
 	} catch (err: any) {
 		logger.error('[games GET]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -78,11 +113,11 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 })
 
 // GET /api/games/code/:code — get game by gameCode (public — card number stripped)
-router.get('/code/:code', validateParams(gameCodeSchema), async (req, res: Response): Promise<void> => {
+router.get('/code/:code', optionalAuth, validateParams(gameCodeSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		const game = await Game.findOne({ gameCode: req.params.code })
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(publicGameView(game))
+		res.json(publicGameView(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games/code]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -90,12 +125,12 @@ router.get('/code/:code', validateParams(gameCodeSchema), async (req, res: Respo
 })
 
 // GET /api/games/:id — публічна карта гри (card number stripped)
-router.get('/:id', async (req, res: Response): Promise<void> => {
+router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
 		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(publicGameView(game))
+		res.json(publicGameView(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games/:id GET]', err)
 		res.status(500).json({ message: 'Server error' })

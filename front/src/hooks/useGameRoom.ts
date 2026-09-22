@@ -29,6 +29,7 @@ export function useGameRoom(rawCode: string) {
 	const [shouldMute, setShouldMute] = useState(false)
 	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
 	const [recordStatus, setRecordStatus] = useState<string>('')
+	const [scenario, setScenario] = useState('')
 	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
@@ -178,6 +179,8 @@ export function useGameRoom(rawCode: string) {
 			setLkBreakout(null)
 		})
 		socket.on('gr:end-anim', () => setEndAnim(true))
+		// Scenario arrives separately, addressed to the gamemaster
+		socket.on('gr:gm-state', (d: { scenario: string }) => setScenario(d.scenario ?? ''))
 		socket.on('gr:record-status', (d: { status: string }) => setRecordStatus(d.status))
 		socket.on('gr:recording-notify', (d: { active: boolean }) => setRecordingActive(d.active))
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
@@ -228,6 +231,7 @@ export function useGameRoom(rawCode: string) {
 		shouldMute, clearMuteSignal,
 		newPublicMsgSignal,
 		recordStatus,
+		scenario,
 		recordingActive,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
