@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { User, Mail, Lock, X } from 'lucide-react'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import { loginRequest, registerRequest, googleAuthRequest } from '../../actions/auth'
+import { loginRequest, registerRequest, googleAuthRequest, forgotPasswordRequest } from '../../actions/auth'
 import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
 import { Modal } from '../minicomponents/Modal'
@@ -78,6 +78,7 @@ interface FieldErrors {
 	name?: string
 	email?: string
 	password?: string
+	consent?: string
 }
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
@@ -97,6 +98,13 @@ export const AuthPage = () => {
 	const { isDark } = useTheme()
 
 	const [isLogin, setIsLogin] = useState(true)
+	// Consent is a registration requirement, not decoration: this is where
+	// an email address is collected.
+	const [consent, setConsent] = useState(false)
+	const [forgotOpen, setForgotOpen] = useState(false)
+	const [forgotEmail, setForgotEmail] = useState('')
+	const [forgotSent, setForgotSent] = useState(false)
+	const [forgotBusy, setForgotBusy] = useState(false)
 	const [name, setName]           = useState('')
 	const [surname, setSurname]     = useState('')
 	const [email, setEmail]         = useState('')
@@ -147,6 +155,9 @@ export const AuthPage = () => {
 
 		if (!password || !isStrongPassword(password))
 			errs.password = t('auth.err_password_weak')
+
+		if (!isLogin && !consent)
+			errs.consent = t('auth.err_consent_required')
 
 		setFieldErrors(errs)
 		return Object.keys(errs).length === 0
@@ -315,12 +326,108 @@ export const AuthPage = () => {
 							autoComplete={isLogin ? 'current-password' : 'new-password'}
 						/>
 
+						{!isLogin && (
+							<label className='flex items-start gap-[8px] mt-[12px] cursor-pointer'>
+								<input
+									type='checkbox'
+									checked={consent}
+									onChange={e => { setConsent(e.target.checked); setFieldErrors(er => ({ ...er, consent: undefined })) }}
+									className='mt-[2px] cursor-pointer'
+								/>
+								<span className='text-[12px] leading-[1.45]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
+									<Trans
+										i18nKey='auth.consent_label'
+										components={{
+											terms: <Link to='/terms-of-service' target='_blank' style={{ color: isDark ? '#0fffc8' : 'var(--accent)', textDecoration: 'underline' }} />,
+											privacy: <Link to='/privacy-policy' target='_blank' style={{ color: isDark ? '#0fffc8' : 'var(--accent)', textDecoration: 'underline' }} />,
+										}}
+									/>
+								</span>
+							</label>
+						)}
+						{fieldErrors.consent && (
+							<p className='text-[11px] mt-[4px]' style={{ color: '#ff7890' }}>{fieldErrors.consent}</p>
+						)}
+
 						<div className='mt-[10px]'>
 							<AuthButton loading={loading}>
 								{isLogin ? t('auth.btn_login') : t('auth.btn_register')}
 							</AuthButton>
 						</div>
+
+						{isLogin && (
+							<button
+								type='button'
+								onClick={() => { setForgotOpen(true); setForgotEmail(email); setForgotSent(false) }}
+								className='mt-[10px] text-[12px] cursor-pointer self-center'
+								style={{ color: isDark ? 'rgba(140,180,255,0.75)' : 'var(--text-muted)', textDecoration: 'underline' }}
+							>
+								{t('auth.forgot_link')}
+							</button>
+						)}
 					</form>
+
+					{/* Recovery runs over Telegram — there is no mail service */}
+					{forgotOpen && (
+						<div className='fixed inset-0 z-[70] flex items-center justify-center px-[16px]'
+							style={{ background: 'rgba(0,0,0,0.55)' }}
+							onClick={() => setForgotOpen(false)}>
+							<div className='w-full max-w-[380px] rounded-[16px] p-[22px] flex flex-col gap-[14px]'
+								onClick={e => e.stopPropagation()}
+								style={isDark
+									? { background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }
+									: { background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)' }}>
+								<h3 className='text-[15px] font-[700]'>{t('auth.forgot_title')}</h3>
+
+								{forgotSent ? (
+									<p className='text-[13px] leading-[1.5]' style={{ color: isDark ? 'rgba(180,200,255,0.8)' : 'var(--text-secondary)' }}>
+										{t('auth.forgot_sent')}
+									</p>
+								) : (
+									<>
+										<p className='text-[12px] leading-[1.5]' style={{ color: isDark ? 'rgba(180,200,255,0.65)' : 'var(--text-muted)' }}>
+											{t('auth.forgot_hint')}
+										</p>
+										<input
+											type='email'
+											value={forgotEmail}
+											onChange={e => setForgotEmail(e.target.value)}
+											placeholder={t('auth.email')}
+											className='w-full rounded-[10px] px-[12px] py-[10px] text-[14px] focus:outline-none'
+											style={isDark
+												? { background: 'rgba(15,17,32,0.6)', border: '1px solid rgba(68,170,255,0.18)', color: '#dde1f0' }
+												: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}
+										/>
+									</>
+								)}
+
+								<div className='flex gap-[8px]'>
+									<button type='button' onClick={() => setForgotOpen(false)}
+										className='flex-1 py-[9px] rounded-[10px] text-[13px] cursor-pointer'
+										style={{ border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }}>
+										{t('auth.forgot_close')}
+									</button>
+									{!forgotSent && (
+										<button
+											type='button'
+											disabled={forgotBusy || !isValidEmail(forgotEmail)}
+											onClick={async () => {
+												setForgotBusy(true)
+												try { await forgotPasswordRequest(forgotEmail) } catch { /* the answer never varies */ }
+												setForgotBusy(false)
+												setForgotSent(true)
+											}}
+											className='flex-1 py-[9px] rounded-[10px] text-[13px] font-[600] cursor-pointer disabled:opacity-40'
+											style={isDark
+												? { background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
+												: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }}>
+											{t('auth.forgot_submit')}
+										</button>
+									)}
+								</div>
+							</div>
+						</div>
+					)}
 
 					{/* Google OAuth — only renders when VITE_GOOGLE_CLIENT_ID is set */}
 					{import.meta.env.VITE_GOOGLE_CLIENT_ID && (

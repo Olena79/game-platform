@@ -4,13 +4,16 @@ import { OAuth2Client } from 'google-auth-library'
 import { User } from '../models/User'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { validateBody } from '../middleware/validationMiddleware'
-import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema } from '../validation/schemas'
+import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas'
 import {
 	generateAccessToken,
 	issueTokenPair,
 	refreshAccessToken,
 	revokeAllUserTokens,
+	generatePasswordResetToken,
+	verifyPasswordResetToken,
 } from '../services/tokenService'
+import { sendPasswordResetToTelegram } from '../services/telegramBot'
 import logger from '../config/logger'
 
 interface GoogleUserInfo {
@@ -219,17 +222,61 @@ router.post('/refresh', validateBody(refreshTokenSchema), async (req: Request, r
 // POST /api/auth/logout — logout user (revoke all refresh tokens)
 router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const { refreshToken } = req.body
-
-		if (refreshToken && req.userId) {
-			// Revoke specific refresh token
-			await revokeAllUserTokens(req.userId)
-		}
+		// Revoke on the strength of the authenticated request itself: the old
+		// code only did so if the client happened to send a refresh token,
+		// which the frontend never did, so sessions outlived every logout.
+		if (req.userId) await revokeAllUserTokens(req.userId)
 
 		logger.info('User logged out', { userId: req.userId })
 		res.json({ message: 'Logged out' })
 	} catch (err) {
 		logger.error('[logout]', err)
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+/**
+ * Password recovery.
+ *
+ * The answer never varies, whatever the email: a different reply for a known
+ * address would turn this into a way of asking whether somebody has an
+ * account here. Delivery goes over Telegram, the one channel tied to the
+ * account that still exists.
+ */
+router.post('/forgot-password', validateBody(forgotPasswordSchema), async (req: Request, res: Response): Promise<void> => {
+	try {
+		const user = await User.findOne({ email: req.body.email })
+		if (user?.telegramChatId) {
+			const resetUrl = `${process.env.CLIENT_URL?.split(',')[0] ?? ''}/auth/reset?token=${generatePasswordResetToken(String(user._id))}`
+			await sendPasswordResetToTelegram(user.telegramChatId, resetUrl, user.language || 'uk')
+			logger.info('[forgot-password] reset link sent', { userId: String(user._id) })
+		} else if (user) {
+			logger.warn('[forgot-password] account has no Telegram linked', { userId: String(user._id) })
+		}
+		res.json({ ok: true })
+	} catch (err) {
+		logger.error('[forgot-password]', err)
+		res.json({ ok: true })   // still say nothing about the account
+	}
+})
+
+router.post('/reset-password', validateBody(resetPasswordSchema), async (req: Request, res: Response): Promise<void> => {
+	try {
+		const userId = verifyPasswordResetToken(req.body.token)
+		if (!userId) { res.status(400).json({ message: 'INVALID_OR_EXPIRED_TOKEN' }); return }
+
+		const user = await User.findById(userId)
+		if (!user) { res.status(400).json({ message: 'INVALID_OR_EXPIRED_TOKEN' }); return }
+
+		user.password = await bcrypt.hash(req.body.password, 10)
+		await user.save()
+		// Whoever knew the old password is no longer welcome
+		await revokeAllUserTokens(userId)
+
+		logger.info('[reset-password] password changed', { userId })
+		res.json({ ok: true })
+	} catch (err) {
+		logger.error('[reset-password]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })

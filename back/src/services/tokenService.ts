@@ -43,6 +43,20 @@ export function verifyTelegramLinkToken(token: string): string | null {
 	}
 }
 
+/** Single-purpose, half-hour token behind a password reset link. */
+export function generatePasswordResetToken(userId: string): string {
+	return jwt.sign({ id: userId, purpose: 'pwd-reset' }, JWT_SECRET, { expiresIn: '30m' })
+}
+
+export function verifyPasswordResetToken(token: string): string | null {
+	try {
+		const decoded = jwt.verify(token, JWT_SECRET) as { id?: string; purpose?: string }
+		return decoded.purpose === 'pwd-reset' && decoded.id ? decoded.id : null
+	} catch {
+		return null
+	}
+}
+
 export function generateAccessToken(userId: string): string {
 	return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY })
 }

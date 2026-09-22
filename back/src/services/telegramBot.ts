@@ -347,6 +347,39 @@ export async function sendNotesToTelegram(
  * recording is closed after the gamemaster has already left — or salvaged by
  * the server — nobody is there to read it, so it goes to their chat instead.
  */
+/**
+ * Password recovery runs over Telegram: there is no mail service any more,
+ * and this is the only channel we can prove belongs to the account.
+ */
+export async function sendPasswordResetToTelegram(
+	telegramChatId: string,
+	resetUrl: string,
+	language: string = 'uk',
+): Promise<boolean> {
+	if (!BOT_TOKEN || !telegramChatId) return false
+	const chatId = parseInt(telegramChatId, 10)
+	if (!Number.isFinite(chatId)) return false
+
+	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
+	const text = lang === 'uk'
+		? [
+			'\u{1F511} <b>\u0412\u0456\u0434\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u044f \u043f\u0430\u0440\u043e\u043b\u044f</b>',
+			'',
+			resetUrl,
+			'',
+			'\u041f\u043e\u0441\u0438\u043b\u0430\u043d\u043d\u044f \u0434\u0456\u0454 30 \u0445\u0432\u0438\u043b\u0438\u043d. \u042f\u043a\u0449\u043e \u0446\u0435 \u0431\u0443\u043b\u0438 \u043d\u0435 \u0432\u0438 \u2014 \u043f\u0440\u043e\u0441\u0442\u043e \u0437\u043d\u0435\u0445\u0442\u0443\u0439\u0442\u0435 \u0446\u0438\u043c \u043f\u043e\u0432\u0456\u0434\u043e\u043c\u043b\u0435\u043d\u043d\u044f\u043c.',
+		].join('\n')
+		: [
+			'\u{1F511} <b>Password reset</b>',
+			'',
+			resetUrl,
+			'',
+			'The link works for 30 minutes. If this was not you, ignore this message.',
+		].join('\n')
+
+	return sendMessage(chatId, text)
+}
+
 export async function sendRecordingLinkToTelegram(
 	telegramChatId: string,
 	gameTitle: string,

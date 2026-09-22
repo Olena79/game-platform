@@ -297,6 +297,15 @@ export const sendNotesSchema = z.object({
 	gameCode: z.string().max(10).optional(),
 })
 
+export const forgotPasswordSchema = z.object({
+	email: z.string().email('Invalid email'),
+})
+
+export const resetPasswordSchema = z.object({
+	token: z.string().min(10),
+	password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
 // ────── Telegram Schemas ──────────────────────────────────────
 
 // Only the chat id: the account comes from the authenticated session.

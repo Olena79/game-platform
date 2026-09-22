@@ -44,6 +44,21 @@ export const getMeRequest = (token: string): Promise<AuthUser> =>
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<AuthUser>)
 
+/** Always resolves the same way, whether or not the account exists. */
+export const forgotPasswordRequest = (email: string) =>
+	fetch(`${API}/api/auth/forgot-password`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ email }),
+	}).then(handleResponse<{ ok: boolean }>)
+
+export const resetPasswordRequest = (token: string, password: string) =>
+	fetch(`${API}/api/auth/reset-password`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ token, password }),
+	}).then(handleResponse<{ ok: boolean }>)
+
 export const googleAuthRequest = (idToken: string): Promise<AuthResponse> =>
 	fetch(`${API}/api/auth/google`, {
 		method: 'POST',

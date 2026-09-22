@@ -180,6 +180,16 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 				<p className='text-[11px]' style={{ color: 'rgba(100,140,220,0.28)' }}>
 					{t('room.prejoin.settings_hint')}
 				</p>
+
+				{/* Said before anyone joins: a session may be recorded, and that
+				    is video and audio of the person reading this. */}
+				<p className='text-[11px] leading-[1.45] max-w-[420px] text-center' style={{ color: 'rgba(200,168,48,0.65)' }}>
+					{t('room.prejoin.recording_notice')}{' '}
+					<a href='/privacy-policy' target='_blank' rel='noreferrer'
+						style={{ color: 'rgba(15,255,200,0.7)', textDecoration: 'underline' }}>
+						{t('room.prejoin.privacy_link')}
+					</a>
+				</p>
 			</div>
 		</div>
 	)

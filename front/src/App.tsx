@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireAuth } from './components/RequireAuth'
+import { ResetPasswordPage } from './components/pages/ResetPasswordPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { MobileBottomNav } from './components/layout/MobileBottomNav'
@@ -72,6 +73,7 @@ const SiteLayout = () => (
 			<Routes>
 				<Route path='/' element={<HomePage />} />
 				<Route path='/auth' element={<AuthPage />} />
+				<Route path='/auth/reset' element={<ResetPasswordPage />} />
 				<Route path='/game' element={<GamePage />} />
 				<Route path='/games' element={<OurGamesPage />} />
 				<Route path='/create-game' element={<RequireAuth><CreateGamePage /></RequireAuth>} />
