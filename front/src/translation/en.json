@@ -316,6 +316,7 @@
     "conn_error": "Connection error",
     "auth_required": "Authorization required",
     "not_found": "Room not found",
+    "not_participant": "You are not registered for this game. Sign up on the games page and the code will arrive in your Telegram.",
     "conn_failed": "Failed to connect to server",
     "retry": "Try again",
     "getting_token": "Getting LiveKit token...",

@@ -195,6 +195,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		recordStatus,
 		scenario,
 		actionError,
+		myVote,
 		recordControl,
 		syncNotes,
 		recordingActive,
@@ -797,6 +798,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							notes={notes}
 							onNotesChange={setNotes}
 							scenario={scenario}
+							myVote={myVote}
 							telegramLinked={telegramLinked}
 							onSendChat={sendChat}
 							onCastVote={castVote}
@@ -944,7 +946,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							}}>
 							<ChatPanel
 								state={panelState} myId={myId} isGM={isGM} isSpectator={isSpectator}
-								notes={notes} onNotesChange={setNotes} scenario={scenario} telegramLinked={telegramLinked}
+								notes={notes} onNotesChange={setNotes} scenario={scenario} myVote={myVote} telegramLinked={telegramLinked}
 								onSendChat={sendChat} onCastVote={castVote} onCloseVote={closeVote} onClearVote={clearVote}
 								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
 								onAnnounce={() => setShowAnnounce(true)} onVoting={() => setShowVote(true)} onSpectatorVoting={() => setShowSpectatorVote(true)}
@@ -1379,7 +1381,7 @@ function GameRoomInner() {
 				style={{ background: '#07080f' }}
 			>
 				<span className='text-[15px] font-[600]' style={{ color: '#ff3850' }}>
-					{t('room.not_found')}
+					{error === 'NOT_A_PARTICIPANT' ? t('room.not_participant') : t('room.not_found')}
 				</span>
 				<span
 					className='text-[12px]'

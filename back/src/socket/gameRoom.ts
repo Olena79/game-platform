@@ -171,7 +171,28 @@ function emit(io: Server, gameCode: string, event: string, data: unknown) {
  */
 function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> {
 	const { scenario, ...rest } = state
-	return rest
+	return {
+		...rest,
+		activeVote: hideVoters(rest.activeVote),
+		spectatorVote: hideVoters(rest.spectatorVote),
+	}
+}
+
+/**
+ * A vote marked anonymous used to travel with the full list of who chose
+ * what, and the lock icon in the interface was the only thing hiding it —
+ * one DevTools tab away in a game built on not knowing.
+ *
+ * The tally still has to add up, so each voter is replaced by a blank: the
+ * counts survive, the names do not. Voters learn their own choice from
+ * gr:my-vote, addressed to them alone.
+ */
+function hideVoters<T extends { isAnonymous?: boolean; options: Array<{ voterIds: string[] }> } | null>(vote: T): T {
+	if (!vote || !vote.isAnonymous) return vote
+	return {
+		...vote,
+		options: vote.options.map(o => ({ ...o, voterIds: o.voterIds.map(() => '') })),
+	} as T
 }
 
 function pushState(io: Server, state: GameRoomState) {
@@ -643,6 +664,7 @@ export function registerGameRoom(io: Server) {
 				const o = vote.options.find(o => o.id === oid)
 				if (o && curUser) o.voterIds.push(curUser)
 			})
+			socket.emit('gr:my-vote', { voteId: vote.id, optionIds: toVote })
 			pushState(io, state)
 		}, socket))
 
@@ -688,6 +710,7 @@ export function registerGameRoom(io: Server) {
 				const o = vote.options.find(o => o.id === oid)
 				if (o && curUser) o.voterIds.push(curUser)
 			})
+			socket.emit('gr:my-vote', { voteId: vote.id, optionIds: toVote })
 			pushState(io, state)
 		}, socket))
 
@@ -708,7 +731,9 @@ export function registerGameRoom(io: Server) {
 		socket.on('gr:breakout-create', validateSocketEvent(grBreakoutCreateSchema, async (d: any) => {
 			const state = rooms.get(d.gameCode)
 			if (!state || !curUser || !isGM(state, curUser)) return
-			if (state.breakoutRooms.length >= 5) { socket.emit('gr:error', 'Max 5 breakout rooms'); return }
+			// A refusal, not a broken room: gr:error would throw the gamemaster
+			// out to the "room not found" screen mid-game.
+			if (state.breakoutRooms.length >= 5) { socket.emit('gr:action-error', 'Max 5 breakout rooms'); return }
 			const br: BreakoutRoom = {
 				id: uid(), name: d.name.slice(0, 50),
 				imageUrl: d.imageUrl || '',

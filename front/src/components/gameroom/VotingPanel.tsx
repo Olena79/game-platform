@@ -5,17 +5,23 @@ import type { ActiveVote } from './types'
 interface Props {
 	vote: ActiveVote
 	myId: string
+	/** This viewer's own choice, sent privately for anonymous votes */
+	myVote?: { voteId: string; optionIds: string[] } | null
 	isGM: boolean
 	onCast: (optionIds: string[]) => void
 	onClose: () => void
 	onClear: () => void
 }
 
-export const VotingPanel = ({ vote, myId, isGM, onCast, onClose, onClear }: Props) => {
+export const VotingPanel = ({ vote, myId, myVote, isGM, onCast, onClose, onClear }: Props) => {
 	const [selected, setSelected] = useState<string[]>([])
 
 	const totalVotes = vote.options.reduce((s, o) => s + o.voterIds.length, 0)
-	const myVotes    = vote.options.filter(o => o.voterIds.includes(myId)).map(o => o.id)
+	// An anonymous vote carries blanks instead of voters, so our own choice
+	// comes back addressed to us rather than read out of the tally.
+	const myVotes    = vote.isAnonymous
+		? (myVote?.voteId === vote.id ? myVote.optionIds : [])
+		: vote.options.filter(o => o.voterIds.includes(myId)).map(o => o.id)
 	const hasVoted   = myVotes.length > 0
 
 	const toggle = (id: string) => {

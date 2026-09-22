@@ -13,6 +13,7 @@ interface Props {
 	notes: string
 	/** Addressed to the gamemaster only, so it arrives as its own prop */
 	scenario: string
+	myVote?: { voteId: string; optionIds: string[] } | null
 	/** null while unknown — the hint stays hidden until we actually know */
 	telegramLinked?: boolean | null
 	onNotesChange: (v: string) => void
@@ -46,7 +47,7 @@ interface Props {
 
 export const ChatPanel = ({
 	state, myId, isGM, isSpectator,
-	notes, onNotesChange, scenario, telegramLinked = null,
+	notes, onNotesChange, scenario, myVote = null, telegramLinked = null,
 	onSendChat, onCastVote, onCloseVote, onClearVote,
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
@@ -266,6 +267,7 @@ export const ChatPanel = ({
 						{tab === 'chat' && !isSpectator && state.activeVote && (
 							<VotingPanel
 								vote={state.activeVote}
+								myVote={myVote}
 								myId={myId}
 								isGM={isGM}
 								onCast={onCastVote}
@@ -277,6 +279,7 @@ export const ChatPanel = ({
 						{(tab === 'spectatorChat' || isGM) && state.spectatorVote && (
 							<VotingPanel
 								vote={state.spectatorVote}
+								myVote={myVote}
 								myId={myId}
 								isGM={isGM}
 								onCast={onCastSpectatorVote}

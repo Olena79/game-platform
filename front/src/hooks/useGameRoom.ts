@@ -31,6 +31,8 @@ export function useGameRoom(rawCode: string) {
 	const [recordStatus, setRecordStatus] = useState<string>('')
 	const [scenario, setScenario] = useState('')
 	const [actionError, setActionError] = useState('')
+	// What this person voted for: an anonymous vote no longer says so in the state
+	const [myVote, setMyVote] = useState<{ voteId: string; optionIds: string[] } | null>(null)
 	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
@@ -72,6 +74,9 @@ export function useGameRoom(rawCode: string) {
 			if (!res.ok) {
 				const error = await res.json().catch(() => ({}))
 				console.error('[LiveKit] Token request failed:', res.status, error)
+				// 403 means this person is not in this game. Saying so beats a
+				// room that sits on "connecting..." with no explanation.
+				if (res.status === 403) setError('NOT_A_PARTICIPANT')
 				return null
 			}
 			const d = await res.json()
@@ -137,6 +142,7 @@ export function useGameRoom(rawCode: string) {
 			else setConnStatus('failed')
 		})
 
+		socket.on('gr:my-vote', (d: { voteId: string; optionIds: string[] }) => setMyVote(d))
 		socket.on('gr:error', (msg: string) => setError(msg))
 		// A refused command: say so for a moment, keep the room
 		socket.on('gr:action-error', (msg: string) => {
@@ -255,6 +261,7 @@ export function useGameRoom(rawCode: string) {
 		recordStatus,
 		scenario,
 		actionError,
+		myVote,
 		recordingActive,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
