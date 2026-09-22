@@ -22,6 +22,20 @@ never built, which is part of how those blockers survived to release.
   Workspace — every upload fails with `storageQuotaExceeded`.
 - Tests: 6 suites, 85 tests, `npm test` from `/back`.
 
+### Deliberate decisions (do not "fix" these)
+- **The game code is the pass.** Holding the entry code grants a seat with a
+  voice; the spectator code grants a silent one. Signing up for the game on
+  the site is *not* required. This is a deliberate choice for the current
+  scale — about 50 members, roughly 10 people in a room once a week — because
+  the gamemaster hands out a place minutes before a game and registration
+  would get in the way.
+  **Revisit when the club passes ~100 members**: the intent is to require
+  registration then, so a forwarded code cannot bring a stranger into a
+  session. The check lives in `resolveAccess()` in `routes/livekit.ts` — the
+  participant-list path is still there, it simply is not the only way in.
+  What must never come back: granting a token for a room the caller merely
+  named, without presenting any code.
+
 ### Not implemented (do not assume otherwise)
 - No email of any kind. No `services/email.ts`.
 - No scheduled game reminders: `sendGameReminderToTelegram` exists but nothing
