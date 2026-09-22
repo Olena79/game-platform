@@ -258,8 +258,8 @@ export const OurGamesPage = () => {
 				const bt = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity
 				return at - bt
 			}
-			if (sortKey === 'players_asc')  return a.registeredPlayers.length - b.registeredPlayers.length
-			if (sortKey === 'players_desc') return b.registeredPlayers.length - a.registeredPlayers.length
+			if (sortKey === 'players_asc')  return (a.playersCount ?? 0) - (b.playersCount ?? 0)
+			if (sortKey === 'players_desc') return (b.playersCount ?? 0) - (a.playersCount ?? 0)
 			if (sortKey === 'likes')        return b.likesCount - a.likesCount
 			return 0
 		})
@@ -707,12 +707,12 @@ const PlayersListContent = ({ game }: { game: GameData | null }) => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
 	if (!game) return null
-	if (game.registeredPlayers.length === 0) {
+	if ((game.registeredPlayers ?? []).length === 0) {
 		return <p className='text-[14px]' style={{ color: isDark ? 'rgba(200,215,255,0.75)' : 'var(--text-muted)' }}>{t('our_games.players_empty')}</p>
 	}
 	return (
 		<div className='flex flex-col gap-[8px]'>
-			{game.registeredPlayers.map((p, i) => (
+			{(game.registeredPlayers ?? []).map((p, i) => (
 				<div key={String(p.userId ?? i)} className='flex items-center gap-[8px] text-[13px]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)' }}>
 					<span
 						className='w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] flex-shrink-0'
@@ -768,10 +768,13 @@ const GameCard = ({
 
 	const spectators   = game.spectators ?? []
 	const isCreator    = !!currentUserId && String(game.creatorId) === String(currentUserId)
-	const isRegistered = !!currentUserId && game.registeredPlayers.some(p => String(p.userId) === String(currentUserId))
-	const isSpectator  = !!currentUserId && spectators.some(p => String(p.userId) === String(currentUserId))
-	const isFull       = game.registeredPlayers.length >= game.maxPlayers
-	const regCount     = game.registeredPlayers.length
+	const players      = game.registeredPlayers ?? []
+	// The list itself only reaches the creator; everyone else gets a flag and
+	// a count, which is all this card ever needed.
+	const isRegistered = game.isRegistered ?? (!!currentUserId && players.some(p => String(p.userId) === String(currentUserId)))
+	const isSpectator  = game.isSpectatorRegistered ?? (!!currentUserId && spectators.some(p => String(p.userId) === String(currentUserId)))
+	const regCount     = game.playersCount ?? players.length
+	const isFull       = regCount >= game.maxPlayers
 
 	const formatDate = (iso: string) => {
 		try {
@@ -1026,7 +1029,7 @@ const GameCard = ({
 							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
 							{spectators.length > 0 && (
 								<span className='ml-[4px]' style={{ color: 'rgba(190,148,255,0.78)' }}>
-									· {spectators.length} 👁
+									· {game.spectatorsCount ?? spectators.length} 👁
 								</span>
 							)}
 						</button>

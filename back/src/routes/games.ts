@@ -41,9 +41,14 @@ function publicGameView(game: GameDoc, viewerId?: string) {
 	const out: Record<string, unknown> = {}
 	for (const field of PUBLIC_GAME_FIELDS) out[field] = obj[field]
 
-	// Counts are public; who exactly is playing is not
+	// Counts are public; who exactly is playing is not. The arrays stay
+	// present but empty for everyone else, so callers can keep reading them.
 	out.playersCount = players.length
 	out.spectatorsCount = spectators.length
+	out.registeredPlayers = []
+	out.spectators = []
+	out.isRegistered = isPlayer
+	out.isSpectatorRegistered = isSpectator
 	// The last four digits are enough to recognise the card; the full number
 	// lives behind /:id/payment-details, which checks membership.
 	out.hasGmCard = !!(card && card.length === 16)

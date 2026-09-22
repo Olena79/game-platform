@@ -8,6 +8,12 @@ export interface RegisteredPlayer {
 }
 
 export interface GameData {
+	/** Counts are public; the participant lists only reach the creator */
+	playersCount?: number
+	spectatorsCount?: number
+	/** Whether the caller is registered — computed server-side */
+	isRegistered?: boolean
+	isSpectatorRegistered?: boolean
 	_id: string
 	title: string
 	creatorId: string
@@ -32,8 +38,8 @@ export interface GameData {
 	defaultTimerSeconds?: number | null
 	gameCode: string
 	spectatorCode?: string
-	registeredPlayers: RegisteredPlayer[]
-	spectators: RegisteredPlayer[]
+	registeredPlayers?: RegisteredPlayer[]
+	spectators?: RegisteredPlayer[]
 	likesCount: number
 	isLiked: boolean
 	createdAt: string
