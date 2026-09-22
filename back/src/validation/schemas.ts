@@ -48,8 +48,11 @@ export const joinGameSchema = z.object({
 
 // ────── LiveKit Schemas ──────────────────────────────────────────────────
 
+// The client asks for a game, never for a room name: the room is derived
+// server-side, so nobody can request a token for someone else's session.
 export const livekitTokenSchema = z.object({
-	roomName: z.string().min(1, 'Room name is required').max(100, 'Room name too long'),
+	gameCode: z.string().min(1).max(10, 'Invalid game code'),
+	breakoutId: z.string().max(64).optional(),
 	userName: z.string().min(1, 'User name is required').max(100, 'User name too long'),
 })
 
@@ -77,9 +80,12 @@ export const recordingIdSchema = z.object({
 // ────── Socket.IO Game Room Schemas ───────────────────────────────────────
 
 export const grJoinSchema = z.object({
-	gameCode: z.string().min(1, 'Game code is required'),
+	// A plain string would reach Game.findOne() as an object and let a crafted
+	// payload like {"$ne": null} open somebody else's room.
+	gameCode: z.string().regex(/^[A-Za-z0-9-]{4,12}$/, 'Invalid game code'),
 	name: z.string().min(1, 'Name is required').max(100),
 	isSpectatorJoin: z.boolean().optional(),
+	userId: z.string().max(64).optional(),
 })
 
 export const grChatSchema = z.object({
@@ -233,7 +239,8 @@ export const grBreakoutEndSchema = z.object({
 
 export const grImageShowSchema = z.object({
 	gameCode: z.string().min(1),
-	imageUrl: z.string().url('Invalid image URL'),
+	// null clears the picture — without it the GM could never take one down
+	imageUrl: z.string().url('Invalid image URL').nullable(),
 })
 
 export const grRecordControlSchema = z.object({
@@ -247,7 +254,7 @@ export const grObserverConnectSchema = z.object({
 
 export const grRecordStatusSchema = z.object({
 	gameCode: z.string().min(1, 'Game code is required'),
-	status: z.enum(['idle', 'recording', 'done', 'error']),
+	status: z.enum(['idle', 'prepared', 'recording', 'uploading', 'done', 'error']),
 })
 
 export const commentIdSchema = z.object({
@@ -268,9 +275,9 @@ export const sendNotesSchema = z.object({
 
 // ────── Telegram Schemas ──────────────────────────────────────
 
+// Only the chat id: the account comes from the authenticated session.
 export const telegramLinkSchema = z.object({
-	userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-	telegramChatId: z.string().min(1, 'Telegram chat ID is required'),
+	telegramChatId: z.string().min(1).max(32).regex(/^-?\d+$/, 'Invalid Telegram chat ID'),
 })
 
 // ────── Utility Types ────────────────────────────────────────────────────

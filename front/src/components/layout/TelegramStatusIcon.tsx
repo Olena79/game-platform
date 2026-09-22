@@ -1,6 +1,7 @@
 import React, { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
+import { useTelegramLink } from '../../hooks/useTelegramLink'
 import { useTheme } from '../../context/ThemeContext'
 
 interface TelegramStatusIconProps {
@@ -20,15 +21,12 @@ export const TelegramStatusIcon = ({ size = 38 }: TelegramStatusIconProps) => {
 	const gradientId = `tg-gradient-${uid}`
 	const glowId = `tg-glow-${uid}`
 
-	if (!user) return null
-
-	const isConnected = user.telegramConnected ?? false
-	const telegramBotUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'
-	// Not linked yet → deep link carrying the user id so /start can bind the chat.
+	const isConnected = user?.telegramConnected ?? false
+	// Not linked yet → deep link carrying a signed, short-lived token.
 	// Already linked → plain chat link, just open the conversation.
-	const botLink = isConnected
-		? `https://t.me/${telegramBotUsername}`
-		: `https://t.me/${telegramBotUsername}?start=${user.id}`
+	const botLink = useTelegramLink(Boolean(user) && !isConnected)
+
+	if (!user) return null
 
 	const label = isConnected ? t('auth.telegram_open_bot') : t('auth.telegram_connect_label')
 

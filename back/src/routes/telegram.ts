@@ -3,18 +3,33 @@ import { User } from '../models/User'
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
 import { validateBody } from '../middleware/validationMiddleware'
 import { telegramLinkSchema } from '../validation/schemas'
+import { generateTelegramLinkToken } from '../services/tokenService'
 import logger from '../config/logger'
 
 const router = Router()
 
-// POST /api/telegram/link
-// Called by Telegram bot when user clicks /start USER_ID
-router.post('/link', validateBody(telegramLinkSchema), async (req: Request, res: Response): Promise<void> => {
+// GET /api/telegram/link-token
+// The value the deep link carries. Expires in 15 minutes and only proves who
+// asked for it — it is not a session token.
+router.get('/link-token', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const { userId, telegramChatId } = req.body
+		res.json({ token: generateTelegramLinkToken(String(req.userId)) })
+	} catch (err) {
+		logger.error('[telegram/link-token]', err)
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+// POST /api/telegram/link
+// Links the caller's OWN account. It used to take a user id from the body
+// with no authentication at all, which handed anyone else's game codes,
+// notes and recording links to whoever asked.
+router.post('/link', authMiddleware, validateBody(telegramLinkSchema), async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const { telegramChatId } = req.body
 
 		const user = await User.findByIdAndUpdate(
-			userId,
+			req.userId,
 			{ telegramChatId },
 			{ new: true }
 		).select('-password')
@@ -24,7 +39,7 @@ router.post('/link', validateBody(telegramLinkSchema), async (req: Request, res:
 			return
 		}
 
-		logger.info('[telegram/link] Telegram linked', { userId, telegramChatId })
+		logger.info('[telegram/link] Telegram linked', { userId: String(req.userId) })
 		res.json({
 			message: 'Telegram linked successfully',
 			user: {

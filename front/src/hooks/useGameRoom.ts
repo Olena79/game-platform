@@ -54,12 +54,14 @@ export function useGameRoom(rawCode: string) {
 			.catch(() => setError('Кімнату не знайдено'))
 	}, [rawCode])
 
-	const fetchLKToken = useCallback(async (roomName: string): Promise<LKData | null> => {
+	// The server builds the room name from the game and checks membership,
+	// so this only says which game (and which breakout, if any).
+	const fetchLKToken = useCallback(async (breakoutId?: string): Promise<LKData | null> => {
 		if (!authToken || !user) return null
+		const code = resolved?.gameCode ?? rawCode
 		try {
 			const userName = [user.name, user.surname].filter(Boolean).join(' ') || user.name
-			const payload = { roomName, userName }
-			console.log('[LiveKit] Requesting token with payload:', payload)
+			const payload = { gameCode: code, breakoutId, userName }
 			const res = await fetch(`${API}/api/livekit/token`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
@@ -71,12 +73,14 @@ export function useGameRoom(rawCode: string) {
 				return null
 			}
 			const d = await res.json()
+			// Mirror the server's naming so LiveKitRoom remounts on room changes
+			const roomName = breakoutId ? `mindflow-${code}-${breakoutId}` : `mindflow-${code}`
 			return { token: d.token, url: d.url, roomName }
 		} catch (err) {
 			console.error('[LiveKit] Token fetch error:', err)
 			return null
 		}
-	}, [authToken, user])
+	}, [authToken, user, resolved, rawCode])
 
 	// Step 2: connect socket once the code is resolved
 	useEffect(() => {
@@ -98,12 +102,12 @@ export function useGameRoom(rawCode: string) {
 			})
 			// Only fetch main token on first connect; LiveKit manages its own reconnection
 			if (!lkRef.current) {
-				const token = await fetchLKToken(`mindflow-${gameCode}`)
+				const token = await fetchLKToken()
 				if (token) setLk(token)
 			}
 			// Restore breakout session if socket reconnected while user was in a breakout room
 			if (currentBreakoutRoomIdRef.current && !lkBreakoutRef.current) {
-				const token = await fetchLKToken(`mindflow-${gameCode}-${currentBreakoutRoomIdRef.current}`)
+				const token = await fetchLKToken(currentBreakoutRoomIdRef.current ?? undefined)
 				if (token) setLkBreakout(token)
 			}
 		})
@@ -201,7 +205,7 @@ export function useGameRoom(rawCode: string) {
 
 	const joinBreakout = useCallback(async (roomId: string) => {
 		currentBreakoutRoomIdRef.current = roomId
-		const token = await fetchLKToken(`mindflow-${gameCode}-${roomId}`)
+		const token = await fetchLKToken(roomId)
 		if (token) setLkBreakout(token)
 		emit('gr:breakout-join', { roomId })
 		setBreakoutInvite(null)

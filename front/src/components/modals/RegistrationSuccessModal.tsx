@@ -2,26 +2,23 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
+import { useTelegramLink } from '../../hooks/useTelegramLink'
 
 interface RegistrationSuccessModalProps {
 	isOpen: boolean
-	telegramBotUsername: string
-	userId: string
 	onClose: () => void
 }
 
 export const RegistrationSuccessModal = ({
 	isOpen,
-	telegramBotUsername,
-	userId,
 	onClose,
 }: RegistrationSuccessModalProps) => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
+	// Signed token, not the account id — see useTelegramLink
+	const telegramDeepLink = useTelegramLink(isOpen)
 
 	if (!isOpen) return null
-
-	const telegramDeepLink = `https://t.me/${telegramBotUsername}?start=${userId}`
 
 	return (
 		<div

@@ -48,6 +48,8 @@ export interface BreakoutRoom {
 	timerSeconds: number | null
 	endsAt: number | null
 	playerIds: string[]
+	/** Who the GM invited — joining is limited to them */
+	invitedIds: string[]
 	timer: RoomTimer | null
 	shownImageUrl: string | null
 }

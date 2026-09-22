@@ -29,7 +29,7 @@ export function useObserverRoom(gameCode: string) {
 		fetch(`${API}/api/livekit/observer-token`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-			body: JSON.stringify({ roomName: `mindflow-${gameCode}` }),
+			body: JSON.stringify({ gameCode, userName: 'Observer' }),
 			signal: ctrl.signal,
 		})
 			.then(r => r.json())

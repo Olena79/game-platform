@@ -21,13 +21,20 @@ interface GoogleUserInfo {
 	family_name?: string
 }
 
-const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID)
+// Audience is what ties an ID token to THIS app. Without it verifyIdToken
+// skips the check entirely and accepts any token Google ever issued, to any
+// application — which is a full account takeover through /auth/google.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID
+if (!GOOGLE_CLIENT_ID) {
+	throw new Error('FATAL: GOOGLE_CLIENT_ID is not set — Google sign-in would accept tokens from any app')
+}
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
 
 async function verifyGoogleIdToken(idToken: string): Promise<GoogleUserInfo> {
 	try {
 		const ticket = await googleClient.verifyIdToken({
 			idToken,
-			audience: process.env.VITE_GOOGLE_CLIENT_ID,
+			audience: GOOGLE_CLIENT_ID,
 		})
 		const payload = ticket.getPayload()
 		if (!payload || !payload.email) {
@@ -51,7 +58,6 @@ const router = Router()
 // POST /api/auth/register
 router.post('/register', validateBody(registerSchema), async (req: Request, res: Response): Promise<void> => {
 	try {
-		logger.info('[register] Request body received', { body: JSON.stringify(req.body) })
 		const { email, password, name, surname } = req.body
 		const language = req.headers['accept-language']?.split(',')[0]?.split('-')[0]?.toLowerCase() || 'uk'
 		logger.info('[register] Destructured values', { email, password: '***', name, surname, language })

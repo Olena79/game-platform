@@ -364,8 +364,6 @@ export const AuthPage = () => {
 
 			<RegistrationSuccessModal
 				isOpen={registrationModal.open}
-				telegramBotUsername={import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'}
-				userId={registrationModal.userId}
 				onClose={() => {
 					setRegistrationModal({ open: false, userId: '' })
 					navigate('/')

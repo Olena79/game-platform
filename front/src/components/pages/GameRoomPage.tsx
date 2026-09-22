@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext'
 import { sfx } from '../../utils/sounds'
 import { useMockParticipants } from '../../hooks/useMockParticipants'
 import { useImmersiveMode } from '../../hooks/useImmersiveMode'
+import { useTelegramLink } from '../../hooks/useTelegramLink'
 import { DevToolbar } from '../gameroom/DevToolbar'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
@@ -262,6 +263,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null)
 	const [notesWarningDismissed, setNotesWarningDismissed] = useState(false)
 	const [notesDeliveryError, setNotesDeliveryError] = useState('')
+	const telegramLinkUrl = useTelegramLink(isGM && telegramLinked === false)
 	const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 	const [mobilePanelOpen, setMobilePanelOpen] = useState<'media' | 'emoji' | 'chat' | 'settings' | null>(null)
 
@@ -504,7 +506,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 						⚠️ {t('room.notes_no_telegram')}
 					</span>
 					<a
-						href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'gamesofsenses_bot'}?start=${authUser?.id ?? ''}`}
+						href={telegramLinkUrl}
 						target='_blank' rel='noreferrer'
 						className='text-[12px] font-[600] underline'
 						style={{ color: '#0fffc8' }}>

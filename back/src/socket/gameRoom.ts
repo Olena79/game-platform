@@ -19,6 +19,7 @@ import {
 	grRoleSchema,
 	grStartSchema,
 	grEndSchema,
+	grJoinSchema,
 	grNotesSchema,
 	grCoinsTransferSchema,
 	grCoinsBankSchema,
@@ -203,7 +204,7 @@ export function registerGameRoom(io: Server) {
 		// ── Join ────────────────────────────────────────────────────────────
 		// userId is taken exclusively from the JWT verified at handshake (socket.data.userId),
 		// NOT from the client payload. This prevents identity spoofing / IDOR.
-		socket.on('gr:join', async (d: { gameCode: string; name: string; isSpectatorJoin?: boolean }) => {
+		socket.on('gr:join', validateSocketEvent(grJoinSchema, async (d: any) => {
 			const userId = socket.data.userId as string | null
 			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
 
@@ -302,7 +303,7 @@ export function registerGameRoom(io: Server) {
 				}))
 				socket.emit('gr:chat-history', history)
 			} catch { /* non-critical */ }
-		})
+		}))
 
 		// ── Chat ────────────────────────────────────────────────────────────
 		socket.on('gr:chat', validateSocketEvent(grChatSchema, async (d: any) => {
@@ -650,7 +651,7 @@ export function registerGameRoom(io: Server) {
 				id: uid(), name: d.name.slice(0, 50),
 				imageUrl: d.imageUrl || '',
 				timerSeconds: d.timerSeconds,
-				endsAt: null, playerIds: [],
+				endsAt: null, playerIds: [], invitedIds: [],
 				timer: null,
 				shownImageUrl: null,
 			}
@@ -664,6 +665,7 @@ export function registerGameRoom(io: Server) {
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
 			d.playerIds.forEach((playerId: string) => {
+				if (!br.invitedIds.includes(playerId)) br.invitedIds.push(playerId)
 				const target = state!.players.find(p => p.userId === playerId)
 				if (target?.socketId) {
 					io.to(target.socketId).emit('gr:breakout-invited', {
@@ -678,6 +680,13 @@ export function registerGameRoom(io: Server) {
 			if (!state || !curUser) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
+			// Invitations are sent to named players; joining has to respect that,
+			// or a private breakout discussion is private in name only.
+			const invited = br.invitedIds?.includes(curUser) ?? false
+			if (!invited && !isGM(state, curUser)) {
+				socket.emit('gr:error', 'Not invited to this room')
+				return
+			}
 			// Remove from any current breakout
 			state.breakoutRooms.forEach(r => { r.playerIds = r.playerIds.filter(id => id !== curUser) })
 			br.playerIds.push(curUser!)

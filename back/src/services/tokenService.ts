@@ -24,6 +24,25 @@ export interface DecodedToken {
 /**
  * Generate access token (1h expiry)
  */
+/**
+ * Short-lived proof that the person opening the bot is the account owner.
+ *
+ * The deep link used to carry a raw user id, which anyone could read off the
+ * public game list and use to attach their own chat to someone else's account.
+ */
+export function generateTelegramLinkToken(userId: string): string {
+	return jwt.sign({ id: userId, purpose: 'tg-link' }, JWT_SECRET, { expiresIn: '15m' })
+}
+
+export function verifyTelegramLinkToken(token: string): string | null {
+	try {
+		const decoded = jwt.verify(token, JWT_SECRET) as { id?: string; purpose?: string }
+		return decoded.purpose === 'tg-link' && decoded.id ? decoded.id : null
+	} catch {
+		return null
+	}
+}
+
 export function generateAccessToken(userId: string): string {
 	return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY })
 }

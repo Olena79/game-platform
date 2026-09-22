@@ -1,4 +1,5 @@
 import logger from '../config/logger'
+import { verifyTelegramLinkToken } from './tokenService'
 import { User } from '../models/User'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
@@ -168,18 +169,19 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 	const firstName = from.first_name
 	const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 
-	// Parse /start command with parameter: /start USER_ID
+	// /start <token>, where the token is a short-lived signature over the
+	// account id. A raw id would be enough to attach this chat to somebody
+	// else's account — and ids are easy to come by.
 	if (text.startsWith('/start')) {
-		const parts = text.split(' ')
-		const userId = parts[1] || ''
+		const payload = text.split(' ')[1] || ''
 
-		if (!userId) {
+		if (!payload) {
 			await sendMessage(chatId, messages[lang].noDirectLink)
 			return
 		}
 
-		// Validate userId format (MongoDB ObjectId)
-		if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+		const userId = verifyTelegramLinkToken(payload)
+		if (!userId) {
 			await sendMessage(chatId, messages[lang].invalidLink)
 			return
 		}

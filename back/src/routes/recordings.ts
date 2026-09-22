@@ -246,10 +246,18 @@ export async function finalizeStaleUploads(idleMs = 5 * 60 * 1000): Promise<void
 	}
 }
 
-router.get('/:id', validateParams(recordingIdSchema), async (req, res): Promise<void> => {
+// A recording is video and audio of everyone who played. Guessing an id is
+// not a great feat, so the link is only handed to the gamemaster who made it.
+router.get('/:id', authMiddleware, validateParams(recordingIdSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const recording = await Recording.findById(req.params.id).select('shareLink status expiresAt gameTitle gameCode')
+		const recording = await Recording.findById(req.params.id).select('shareLink status expiresAt gameTitle gameCode gmEmail')
 		if (!recording) { res.status(404).json({ message: 'Not found' }); return }
+
+		const viewer = await User.findById(req.userId).select('email')
+		if (!viewer || viewer.email !== recording.gmEmail) {
+			res.status(403).json({ message: 'FORBIDDEN' })
+			return
+		}
 		if (recording.expiresAt < new Date()) { res.status(410).json({ message: 'Expired' }); return }
 		res.json({
 			shareLink: recording.shareLink,
