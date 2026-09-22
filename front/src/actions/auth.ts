@@ -59,6 +59,19 @@ export const resetPasswordRequest = (token: string, password: string) =>
 		body: JSON.stringify({ token, password }),
 	}).then(handleResponse<{ ok: boolean }>)
 
+export const exportAccountRequest = (authToken: string) =>
+	fetch(`${API}/api/account/export`, {
+		headers: { Authorization: `Bearer ${authToken}` },
+	}).then(handleResponse<Record<string, unknown>>)
+
+/** Irreversible. The password is required for accounts that have one. */
+export const deleteAccountRequest = (authToken: string, password?: string) =>
+	fetch(`${API}/api/account`, {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+		body: JSON.stringify({ password, confirm: true }),
+	}).then(handleResponse<{ ok: boolean }>)
+
 export const googleAuthRequest = (idToken: string): Promise<AuthResponse> =>
 	fetch(`${API}/api/auth/google`, {
 		method: 'POST',

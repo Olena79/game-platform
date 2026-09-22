@@ -5,6 +5,8 @@ export interface PostData {
 	authorId: string
 	authorName: string
 	authorSurname: string
+	/** The author deleted their account: the text stays, the name does not */
+	authorDeleted?: boolean
 	topic: string
 	text: string
 	likesCount: number
@@ -22,6 +24,7 @@ export interface CommentData {
 	authorId: string
 	authorName: string
 	authorSurname: string
+	authorDeleted?: boolean
 	text: string
 	likesCount: number
 	isLiked: boolean

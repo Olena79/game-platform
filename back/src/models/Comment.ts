@@ -5,6 +5,8 @@ export interface IComment extends Document {
 	parentId: Types.ObjectId | null
 	authorId: Types.ObjectId
 	authorName: string
+	/** The author deleted their account */
+	authorDeleted?: boolean
 	authorSurname: string
 	text: string
 	likesCount: number
@@ -19,7 +21,8 @@ const CommentSchema = new Schema<IComment>(
 		postId:        { type: Schema.Types.ObjectId, ref: 'Post', required: true },
 		parentId:      { type: Schema.Types.ObjectId, ref: 'Comment', default: null },
 		authorId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
-		authorName:    { type: String, required: true },
+		authorName:    { type: String, default: '' },
+		authorDeleted: { type: Boolean, default: false },
 		authorSurname: { type: String, default: '' },
 		text:          { type: String, required: true, maxlength: 500 },
 		likesCount:    { type: Number, default: 0 },

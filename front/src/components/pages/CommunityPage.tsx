@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight } from 'lucide-react'
+import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight, UserX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -25,8 +25,28 @@ function initials(name: string, surname: string): string {
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-const Avatar = ({ name, surname, size = 38 }: { name: string; surname: string; size?: number }) => {
+const Avatar = ({ name, surname, size = 38, deleted = false }: { name: string; surname: string; size?: number; deleted?: boolean }) => {
 	const { isDark } = useTheme()
+
+	// Someone who deleted their account keeps their words in the thread but
+	// not their face: a muted grey circle, visibly not a person's initials.
+	if (deleted) {
+		return (
+			<div
+				className='rounded-full flex items-center justify-center flex-shrink-0 select-none'
+				style={{
+					width: size, height: size,
+					background: isDark ? 'rgba(130,145,175,0.12)' : 'rgba(120,120,120,0.08)',
+					border: isDark ? '1.5px dashed rgba(150,165,195,0.35)' : '1.5px dashed rgba(120,120,120,0.3)',
+					color: isDark ? 'rgba(160,175,205,0.7)' : 'rgba(110,110,110,0.7)',
+				}}
+				title={undefined}
+			>
+				<UserX size={size * 0.45} strokeWidth={1.8} />
+			</div>
+		)
+	}
+
 	return (
 		<div
 			className='rounded-full flex items-center justify-center font-[700] flex-shrink-0 select-none'
@@ -78,16 +98,25 @@ const CommentItem = ({
 	const isOwn      = currentUserId === comment.authorId
 	const isEditing  = editingId === comment._id
 	const isReplying = replyingToId === comment._id
-	const fullName   = [comment.authorName, comment.authorSurname].filter(Boolean).join(' ')
+	const authorGone = Boolean(comment.authorDeleted)
+	const fullName   = authorGone
+		? t('community.deleted_author')
+		: [comment.authorName, comment.authorSurname].filter(Boolean).join(' ')
 
 	return (
 		<div className={depth > 0 ? `pl-[18px] border-l-2 ${isDark ? 'border-[rgba(68,170,255,0.18)]' : 'border-[rgba(192,83,58,0.18)]'}` : ''}>
 			<div className='py-[11px]'>
 				<div className='flex items-start gap-[9px]'>
-					<Avatar name={comment.authorName} surname={comment.authorSurname} size={30} />
+					<Avatar name={comment.authorName} surname={comment.authorSurname} size={30} deleted={authorGone} />
 					<div className='flex-1 min-w-0'>
 						<div className='flex items-center gap-[7px] flex-wrap'>
-							<span className='text-[14px] font-[600]' style={{ color: isDark ? 'rgba(215,232,255,0.97)' : 'var(--text-primary)' }}>{fullName}</span>
+							<span className='text-[14px] font-[600]'
+								style={{
+									color: authorGone
+										? (isDark ? 'rgba(160,175,205,0.7)' : 'rgba(110,110,110,0.75)')
+										: (isDark ? 'rgba(215,232,255,0.97)' : 'var(--text-primary)'),
+									fontStyle: authorGone ? 'italic' : 'normal',
+								}}>{fullName}</span>
 							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.72)' : 'var(--text-muted)' }}>{fmtDate(comment.createdAt)}</span>
 							{comment.editedAt && (
 								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.65)' }}>{t('community.edited')}</span>
@@ -337,7 +366,10 @@ const PostCard = ({
 	const { isDark } = useTheme()
 	const { t } = useTranslation()
 	const isOwn    = currentUserId === post.authorId
-	const fullName = [post.authorName, post.authorSurname].filter(Boolean).join(' ')
+	const authorGone = Boolean(post.authorDeleted)
+	const fullName = authorGone
+		? t('community.deleted_author')
+		: [post.authorName, post.authorSurname].filter(Boolean).join(' ')
 
 	return (
 		<div
@@ -350,10 +382,16 @@ const PostCard = ({
 			{/* Header */}
 			<div className='flex items-start justify-between gap-[10px]'>
 				<div className='flex items-start gap-[11px] min-w-0'>
-					<Avatar name={post.authorName} surname={post.authorSurname} />
+					<Avatar name={post.authorName} surname={post.authorSurname} deleted={authorGone} />
 					<div className='min-w-0'>
 						<div className='flex items-center gap-[8px] flex-wrap'>
-							<span className='text-[15px] font-[600]' style={{ color: isDark ? 'rgba(225,238,255,0.98)' : 'var(--text-primary)' }}>{fullName}</span>
+							<span className='text-[15px] font-[600]'
+								style={{
+									color: authorGone
+										? (isDark ? 'rgba(160,175,205,0.7)' : 'rgba(110,110,110,0.75)')
+										: (isDark ? 'rgba(225,238,255,0.98)' : 'var(--text-primary)'),
+									fontStyle: authorGone ? 'italic' : 'normal',
+								}}>{fullName}</span>
 							<span className='text-[12px]' style={{ color: isDark ? 'rgba(155,185,240,0.75)' : 'var(--text-muted)' }}>{fmtDate(post.createdAt)}</span>
 							{post.editedAt && (
 								<span className='text-[11px]' style={{ color: 'rgba(255,183,40,0.72)' }}>{t('community.edited')}</span>
@@ -455,7 +493,7 @@ const PostModal = ({
 }: {
 	title: string; token: string; initialTopic?: string; initialText?: string
 	onClose: () => void; onSubmit: (topic: string, text: string) => Promise<void>
-	authorName?: string; authorSurname?: string
+	authorName?: string; authorSurname?: string; authorDeleted?: boolean
 }) => {
 	const { isDark } = useTheme()
 	const { t } = useTranslation()

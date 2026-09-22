@@ -3,6 +3,8 @@ import mongoose, { Document, Schema, Types } from 'mongoose'
 export interface IPost extends Document {
 	authorId: Types.ObjectId
 	authorName: string
+	/** The author deleted their account; the text stays, the person does not */
+	authorDeleted?: boolean
 	authorSurname: string
 	topic: string
 	text: string
@@ -17,7 +19,8 @@ export interface IPost extends Document {
 const PostSchema = new Schema<IPost>(
 	{
 		authorId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
-		authorName:    { type: String, required: true },
+		authorName:    { type: String, default: '' },
+		authorDeleted: { type: Boolean, default: false },
 		authorSurname: { type: String, default: '' },
 		topic:         { type: String, default: '', maxlength: 100, trim: true },
 		text:          { type: String, required: true, maxlength: 1000 },

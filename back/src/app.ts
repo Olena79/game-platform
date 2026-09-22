@@ -39,6 +39,7 @@ import authRoutes from './routes/auth'
 import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
 import recordingRoutes, { finalizeStaleUploads } from './routes/recordings'
+import accountRoutes from './routes/account'
 import uploadRoutes from './routes/upload'
 import telegramRoutes from './routes/telegram'
 import { registerGameRoom } from './socket/gameRoom'
@@ -137,6 +138,7 @@ app.get('/health', (_req, res) => res.status(200).send('OK'))
 app.use('/api/auth/login',  loginLimiter)
 app.use('/api/auth',        authLimiter, authRoutes)
 app.use('/api/telegram',    telegramRoutes)
+app.use('/api/account',     authLimiter, accountRoutes)
 app.use('/api/upload',      uploadLimiter, uploadRoutes)
 app.use('/api/games',       gamesLimiter, gameRoutes)
 app.use('/api/livekit',     livekitLimiter, livekitRoutes)

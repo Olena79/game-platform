@@ -197,6 +197,14 @@ export const Header = () => {
 										border: '1px solid var(--border-subtle)',
 									}}
 								>
+									<Link
+										to='/account'
+										onClick={() => setDropdownOpen(false)}
+										className='block w-full px-[16px] py-[10px] text-[13px] transition-all cursor-pointer text-left rounded-[8px] hover:bg-[rgba(120,160,255,0.08)]'
+										style={{ color: 'var(--text-secondary)' }}
+									>
+										{t('account.menu_link')}
+									</Link>
 									<button
 										onClick={() => { setDropdownOpen(false); setLogoutModal(true) }}
 										className='w-full px-[16px] py-[10px] text-[13px] text-[rgba(255,105,175,0.95)] hover:text-[#ff5fa0] hover:bg-[rgba(255,90,160,0.08)] transition-all cursor-pointer text-left rounded-[8px]'
