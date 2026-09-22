@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import type { Request } from 'express'
 
 /**
@@ -14,7 +14,12 @@ export const loginLimiter = rateLimit({
 	max: 10,
 	standardHeaders: true,
 	legacyHeaders: false,
-	keyGenerator: (req: Request) => String((req.body?.email ?? '').toLowerCase() || req.ip),
+	keyGenerator: (req: Request) => {
+		const email = String(req.body?.email ?? '').toLowerCase()
+		// Falling back to the address needs the helper: an IPv6 client owns a
+		// whole subnet and would otherwise get a fresh bucket per request.
+		return email || ipKeyGenerator(req.ip ?? '')
+	},
 	skipSuccessfulRequests: true,
 	message: { message: 'Too many sign-in attempts. Please wait 15 minutes.' },
 })

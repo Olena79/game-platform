@@ -18,8 +18,10 @@ const UserSchema = new Schema<IUser>(
 		surname:         { type: String, default: '', trim: true },
 		email:           { type: String, required: true, unique: true, lowercase: true, trim: true },
 		password:        { type: String, default: '' },
-		googleId:        { type: String, default: null, sparse: true, trim: true },
-		telegramChatId:  { type: String, default: null, sparse: true, trim: true },
+		// `sparse` here would declare an index of its own, and the explicit
+		// ones below then make it a duplicate — which Mongoose warns about.
+		googleId:        { type: String, default: null, trim: true },
+		telegramChatId:  { type: String, default: null, trim: true },
 		language:        { type: String, default: 'uk', enum: ['uk', 'en'], trim: true },
 	},
 	{ timestamps: true }
