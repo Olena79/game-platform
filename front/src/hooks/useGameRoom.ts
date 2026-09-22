@@ -12,7 +12,7 @@ export interface BreakoutInvite { roomId: string; roomName: string; imageUrl: st
 
 // rawCode is whatever is in the URL — could be gameCode or spectatorCode
 export function useGameRoom(rawCode: string) {
-	const { user, token: authToken } = useAuth()
+	const { user, token: authToken, forceRefresh } = useAuth()
 	const socketRef = useRef<Socket | null>(null)
 	const [state, setState]                   = useState<GameRoomState | null>(null)
 	const [connected, setConnected]           = useState(false)
@@ -90,7 +90,14 @@ export function useGameRoom(rawCode: string) {
 
 		const { gameCode, isSpectatorJoin } = resolved
 
-		const socket = io(API, { transports: ['websocket', 'polling'], auth: { token: authToken } })
+		// The auth callback runs on every (re)connect, so a token refreshed
+		// mid-game is picked up instead of the stale one this effect closed over.
+		const socket = io(API, {
+			transports: ['websocket', 'polling'],
+			auth: cb => cb({ token: localStorage.getItem('mindflow_access_token') ?? authToken }),
+			reconnectionAttempts: Infinity,
+			reconnectionDelayMax: 10000,
+		})
 		socketRef.current = socket
 
 		socket.on('connect', async () => {
@@ -121,6 +128,15 @@ export function useGameRoom(rawCode: string) {
 			prevStatusRef.current = s.status
 			setState(s)
 		})
+		// An expired access token makes the handshake fail forever: the socket
+		// keeps retrying with the same dead token and the room becomes a wall.
+		socket.on('connect_error', async (err: Error) => {
+			if (err.message !== 'Authentication error') return
+			const fresh = await forceRefresh()
+			if (fresh) socket.connect()
+			else setConnStatus('failed')
+		})
+
 		socket.on('gr:error', (msg: string) => setError(msg))
 		// A refused command: say so for a moment, keep the room
 		socket.on('gr:action-error', (msg: string) => {

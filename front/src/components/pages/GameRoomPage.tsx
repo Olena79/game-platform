@@ -8,7 +8,7 @@ import React, {
 	ReactNode,
 } from 'react'
 import * as Sentry from '@sentry/react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import {
 	LiveKitRoom as LKRoom,
 	RoomAudioRenderer as LKAudioRenderer,
@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext'
 import { sfx } from '../../utils/sounds'
 import { useMockParticipants } from '../../hooks/useMockParticipants'
 import { useImmersiveMode } from '../../hooks/useImmersiveMode'
+import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
 import { useTelegramLink } from '../../hooks/useTelegramLink'
 import { DevToolbar } from '../gameroom/DevToolbar'
 
@@ -933,7 +934,14 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 					)}
 					{mobilePanelOpen === 'chat' && (
 						<div className='fixed left-0 right-0 z-[55] flex flex-col'
-							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', height: '72vh', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
+							style={{
+								bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+								// --vvh follows the visual viewport, which is what shrinks when
+								// the on-screen keyboard opens; vh on iOS does not.
+								height: 'min(72dvh, calc(var(--vvh, 100dvh) - 140px))',
+								background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)',
+								animation: 'slideUpPanel 0.18s ease-out',
+							}}>
 							<ChatPanel
 								state={panelState} myId={myId} isGM={isGM} isSpectator={isSpectator}
 								notes={notes} onNotesChange={setNotes} scenario={scenario} telegramLinked={telegramLinked}
@@ -1341,6 +1349,8 @@ function GameRoomInner() {
 	// Immersive mode — locks page scrolling and hides the browser chrome
 	// (URL bar + Android nav bar) for as long as the room is open.
 	const requestImmersive = useImmersiveMode(true)
+	// Keeps --vvh in step with the on-screen keyboard
+	useVisualViewportHeight()
 
 	if (isLoading) {
 		return (
@@ -1355,17 +1365,11 @@ function GameRoomInner() {
 		)
 	}
 
+	// Someone following a game link from Telegram without being signed in
+	// used to hit a wall with no way through and no way back.
 	if (!user) {
-		return (
-			<div
-				className='w-screen h-screen flex items-center justify-center'
-				style={{ background: '#07080f' }}
-			>
-				<span style={{ color: 'rgba(100,140,220,0.6)', fontSize: '14px' }}>
-					{t('room.auth_required')}
-				</span>
-			</div>
-		)
+		const next = encodeURIComponent(window.location.pathname + window.location.search)
+		return <Navigate to={`/auth?next=${next}`} replace />
 	}
 
 	if (error) {
@@ -1417,6 +1421,16 @@ function GameRoomInner() {
 				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '11px' }}>
 					{t('room.room_code')}{code}
 				</span>
+				{/* A dead end otherwise: there was no way back from here but F5 */}
+				{connStatus === 'failed' && (
+					<button
+						onClick={() => window.location.reload()}
+						className='px-[18px] py-[7px] rounded-[9px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-125'
+						style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}
+					>
+						{t('room.retry')}
+					</button>
+				)}
 			</div>
 		)
 	}

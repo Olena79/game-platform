@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useParams, Navigate } from 'react-router-dom'
 import {
 	LiveKitRoom as LKRoom,
 	RoomAudioRenderer as LKAudioRenderer,
@@ -47,11 +47,8 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 	}, [recordSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (!user) {
-		return (
-			<div className='w-screen h-screen flex items-center justify-center' style={{ background: '#07080f' }}>
-				<span style={{ color: 'rgba(100,140,220,0.6)', fontSize: '14px' }}>{t('room.auth_required')}</span>
-			</div>
-		)
+		const next = encodeURIComponent(window.location.pathname + window.location.search)
+		return <Navigate to={`/auth?next=${next}`} replace />
 	}
 
 	if (error) {

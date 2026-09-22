@@ -268,6 +268,7 @@
     "auth_required": "Authorization required",
     "not_found": "Room not found",
     "conn_failed": "Failed to connect to server",
+    "retry": "Try again",
     "getting_token": "Getting LiveKit token...",
     "connecting_server": "Connecting to server...",
     "room_code": "Room code:",

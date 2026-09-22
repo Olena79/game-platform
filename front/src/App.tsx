@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { RequireAuth } from './components/RequireAuth'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { MobileBottomNav } from './components/layout/MobileBottomNav'
@@ -73,8 +74,8 @@ const SiteLayout = () => (
 				<Route path='/auth' element={<AuthPage />} />
 				<Route path='/game' element={<GamePage />} />
 				<Route path='/games' element={<OurGamesPage />} />
-				<Route path='/create-game' element={<CreateGamePage />} />
-				<Route path='/create-game/:id' element={<CreateGamePage />} />
+				<Route path='/create-game' element={<RequireAuth><CreateGamePage /></RequireAuth>} />
+				<Route path='/create-game/:id' element={<RequireAuth><CreateGamePage /></RequireAuth>} />
 				<Route path='/community' element={<CommunityPage />} />
 				<Route path='/privacy-policy' element={<PrivacyPolicyPage />} />
 				<Route path='/terms-of-service' element={<TermsOfServicePage />} />

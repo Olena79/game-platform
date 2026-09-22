@@ -13,6 +13,8 @@ interface AuthContextType {
 	isLoading: boolean
 	login: (accessToken: string, refreshToken: string, user: AuthUser) => void
 	logout: () => void
+	/** Refreshes the access token now and returns it, or null if that failed */
+	forceRefresh: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -117,6 +119,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	}
 
 	const logout = () => {
+		// Tell the server as well: refresh tokens live for 30 days, and
+		// clearing localStorage alone left them valid for all of it.
+		const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+		if (accessToken) {
+			fetch(`${API_URL}/api/auth/logout`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+				body: JSON.stringify({ refreshToken }),
+				keepalive: true,
+			}).catch(() => { /* leaving anyway */ })
+		}
 		localStorage.removeItem(ACCESS_TOKEN_KEY)
 		localStorage.removeItem(REFRESH_TOKEN_KEY)
 		setToken(null)
@@ -124,8 +138,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		if (refreshIntervalRef.current) clearTimeout(refreshIntervalRef.current)
 	}
 
+	/**
+	 * Refresh on demand and hand back the new access token.
+	 *
+	 * The scheduled refresh is a setTimeout, and browsers throttle timers in
+	 * background tabs — which is exactly where the observer window sits for a
+	 * whole game. When that timer runs late the socket starts reconnecting
+	 * with a dead token and never recovers on its own.
+	 */
+	const forceRefresh = async (): Promise<string | null> => {
+		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+		if (!refreshToken) { logout(); return null }
+		const ok = await refreshAccessToken(refreshToken)
+		return ok ? localStorage.getItem(ACCESS_TOKEN_KEY) : null
+	}
+
 	return (
-		<AuthContext.Provider value={{ user, token, isLoggedIn: !!user, isLoading, login, logout }}>
+		<AuthContext.Provider value={{ user, token, isLoggedIn: !!user, isLoading, login, logout, forceRefresh }}>
 			{children}
 		</AuthContext.Provider>
 	)

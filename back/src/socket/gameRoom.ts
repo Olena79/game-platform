@@ -83,6 +83,51 @@ async function closeOutSession(
 		const delivered = await deliverGameNotes(gameCode, notes, state.gamemasterId, state.title, reason)
 		if (delivered) gmNotes.delete(gameCode)
 	}
+
+	// The game deliberately stays open for the others when the gamemaster
+	// drops out, but an empty room must not sit in memory forever.
+	scheduleRoomRelease(gameCode)
+}
+
+/**
+ * Drops a room once nobody is left in it.
+ *
+ * Checked again after the delay, because players reconnect — and rechecked
+ * later if someone is still there, so a room is never released underneath an
+ * active game.
+ */
+function scheduleRoomRelease(gameCode: string, delayMs = 10 * 60 * 1000): void {
+	const existing = endTimers.get(gameCode)
+	if (existing) clearTimeout(existing)
+
+	const timer = setTimeout(() => {
+		endTimers.delete(gameCode)
+		const state = rooms.get(gameCode)
+		if (!state) return
+		if (state.players.some(p => p.connected)) {
+			scheduleRoomRelease(gameCode)   // still in use, look again later
+			return
+		}
+		releaseRoom(gameCode)
+		logger.info(`[cleanup] released empty room ${gameCode}`)
+	}, delayMs)
+	endTimers.set(gameCode, timer)
+}
+
+/** Forgets every trace of a room, so a long-lived process doesn't leak. */
+function releaseRoom(gameCode: string): void {
+	const state = rooms.get(gameCode)
+	state?.breakoutRooms.forEach(br => {
+		const tid = breakoutTimers.get(`${gameCode}:${br.id}`)
+		if (tid) { clearTimeout(tid); breakoutTimers.delete(`${gameCode}:${br.id}`) }
+	})
+	for (const key of [...userSockets.keys()]) {
+		if (key.startsWith(`${gameCode}:`)) userSockets.delete(key)
+	}
+	rooms.delete(gameCode)
+	gmNotes.delete(gameCode)
+	gmAwayTimers.delete(gameCode)
+	observerSockets.delete(gameCode)
 }
 
 /**
@@ -469,7 +514,7 @@ export function registerGameRoom(io: Server) {
 			void closeOutSession(io, state, 'ended')
 			// Delete all messages for this game from DB
 			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
-			const t = setTimeout(() => rooms.delete(d.gameCode), 60_000)
+			const t = setTimeout(() => releaseRoom(d.gameCode), 60_000)
 			endTimers.set(d.gameCode, t)
 		}, socket))
 

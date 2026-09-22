@@ -8,7 +8,7 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 export interface LKData { token: string; url: string; roomName: string }
 
 export function useObserverRoom(gameCode: string) {
-	const { user, token: authToken } = useAuth()
+	const { user, token: authToken, forceRefresh } = useAuth()
 	const socketRef = useRef<Socket | null>(null)
 	const [state, setState] = useState<GameRoomState | null>(null)
 	const [lk, setLk] = useState<LKData | null>(null)
@@ -36,9 +36,13 @@ export function useObserverRoom(gameCode: string) {
 			.then(d => { if (mounted) setLk({ token: d.token, url: d.url, roomName: `mindflow-${gameCode}` }) })
 			.catch(err => { if (mounted && err.name !== 'AbortError') setError('Не вдалося отримати токен LiveKit') })
 
+		// Same as the room: losing this socket mid-game means losing the
+		// recording, so it reconnects with a token read fresh each time.
 		const socket = io(API, {
 			transports: ['websocket', 'polling'],
-			auth: { token: authToken },
+			auth: cb => cb({ token: localStorage.getItem('mindflow_access_token') ?? authToken }),
+			reconnectionAttempts: Infinity,
+			reconnectionDelayMax: 10000,
 		})
 		socketRef.current = socket
 
@@ -54,6 +58,13 @@ export function useObserverRoom(gameCode: string) {
 			prevStatusRef.current = s.status
 			setState(s)
 		})
+		socket.on('connect_error', async (err: Error) => {
+			if (err.message !== 'Authentication error') return
+			const fresh = await forceRefresh()
+			if (fresh) socket.connect()
+			else setConnStatus('failed')
+		})
+
 		socket.on('gr:error', (msg: string) => setError(msg))
 		socket.on('gr:chat', (msg: ChatMessage) => {
 			if (!msg.recipients?.length) {

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { User, Mail, Lock, X } from 'lucide-react'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { useAuth } from '../../context/AuthContext'
@@ -92,6 +92,7 @@ const isStrongPassword = (v: string) =>
 export const AuthPage = () => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
+	const location = useLocation()
 	const { login } = useAuth()
 	const { isDark } = useTheme()
 
@@ -116,10 +117,18 @@ export const AuthPage = () => {
 		userId: string
 	}>({ open: false, userId: '' })
 
+	// A visitor sent here from a protected page (or a game link) carries
+	// ?next=, so signing in returns them to where they were going.
+	const nextPath = new URLSearchParams(location.search).get('next')
+	const goBackAfterAuth = () => {
+		if (nextPath) navigate(decodeURIComponent(nextPath), { replace: true })
+		else navigate(-1)
+	}
+
 	const closeModal = () => {
 		if (modal.success) {
 			setModal(m => ({ ...m, open: false }))
-			navigate(-1)
+			goBackAfterAuth()
 		} else {
 			setModal(m => ({ ...m, open: false }))
 		}

@@ -54,9 +54,16 @@ export function useRecording(
 	const localChunksRef = useRef<Blob[]>([])
 	const recordingIdRef = useRef('')
 
-	// Release the fallback object URL when the observer window goes away
+	// Leaving the page has to release everything: navigating away used to
+	// leave the screen capture running, with the browser still showing
+	// "sharing your screen" and MediaRecorder still collecting data.
 	const localUrlRef = useRef<string | null>(null)
 	useEffect(() => () => {
+		try {
+			if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+		} catch { /* already gone */ }
+		streamRef.current?.getTracks().forEach(t => t.stop())
+		streamRef.current = null
 		if (localUrlRef.current) URL.revokeObjectURL(localUrlRef.current)
 	}, [])
 
@@ -150,13 +157,33 @@ export function useRecording(
 		return data as { complete?: boolean; shareLink?: string; bytes?: number }
 	}, [authToken])
 
-	/** One chunk, with retries — a flaky minute of wifi shouldn't end a game. */
+	/**
+	 * One chunk, with retries — a flaky minute of wifi shouldn't end a game.
+	 *
+	 * A chunk the server accepted whose response was lost would otherwise be
+	 * resent at the same offset, rejected with 409 forever, and the rest of
+	 * the recording dropped. The 409 carries the byte the server expects, so
+	 * the already-accepted part is trimmed off and the retry continues.
+	 */
 	const postChunkWithRetry = useCallback(async (body: Blob, offset: number, final: boolean) => {
 		const delays = [2000, 5000, 10000]
+		let at = offset
+		let payload = body
 		for (let attempt = 0; ; attempt++) {
 			try {
-				return await postChunk(body, offset, final)
+				return await postChunk(payload, at, final)
 			} catch (err) {
+				const expected = (err as Error & { expected?: number }).expected
+				if (typeof expected === 'number' && expected >= at && expected <= at + payload.size) {
+					const skip = expected - at
+					payload = payload.slice(skip)
+					at = expected
+					offsetRef.current = expected
+					setUploadedBytes(expected)
+					console.warn(`[recording] resynced to byte ${expected}`)
+					if (payload.size === 0 && !final) return { complete: false, bytes: expected }
+					continue   // resend what the server has not seen, without burning a retry
+				}
 				if (attempt >= delays.length) throw err
 				console.warn(`[recording] chunk retry ${attempt + 1}:`, err)
 				await new Promise(r => setTimeout(r, delays[attempt]))
