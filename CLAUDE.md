@@ -56,8 +56,11 @@ survives a closed tab, and needs no observer window at all.
 What already exists and should be kept: the Recording model, the 7-day
 expiry and its cleanup cron, the Telegram message with the link, and the
 gamemaster's start/stop controls — only the source of the video changes.
-Egress needs an output target (S3-compatible storage or LiveKit Cloud's own),
-so that is the first thing to settle.
+**Output target: LiveKit Cloud's built-in storage** (decided 2026-09-23). No
+S3 bucket to set up, and no Google Drive in this path at all — the file lives
+with LiveKit, and the link goes to the gamemaster's Telegram as it does now.
+Worth checking on day one: how long LiveKit keeps a recording and what the
+plan includes, since our own 7-day expiry must not outlive theirs.
 
 The echo the live test found is already fixed separately: the observer window
 no longer plays the room aloud, it mixes the recording from the tracks.
