@@ -36,6 +36,32 @@ never built, which is part of how those blockers survived to release.
   What must never come back: granting a token for a room the caller merely
   named, without presenting any code.
 
+### Next piece of work: server-side recording (LiveKit Egress)
+
+Decided 2026-09-23, after a live test. Recording today is a browser screen
+capture running in the observer window, and that approach has hit its limit:
+
+- **Phones cannot record at all.** No mobile browser exposes
+  `getDisplayMedia` — neither Chrome on Android nor Safari on iOS. The room
+  says so plainly ("Цей браузер не вміє записувати екран"), but most of this
+  club plays from a phone, so in practice the gamemaster cannot record.
+- **The observer window is fragile.** It must stay open for the whole game,
+  keeps a second LiveKit connection on the same machine, and drains the
+  battery of whatever device holds it.
+
+The replacement is LiveKit Egress: the server tells LiveKit to record the
+room, and LiveKit writes the file. Recording then works from any device,
+survives a closed tab, and needs no observer window at all.
+
+What already exists and should be kept: the Recording model, the 7-day
+expiry and its cleanup cron, the Telegram message with the link, and the
+gamemaster's start/stop controls — only the source of the video changes.
+Egress needs an output target (S3-compatible storage or LiveKit Cloud's own),
+so that is the first thing to settle.
+
+The echo the live test found is already fixed separately: the observer window
+no longer plays the room aloud, it mixes the recording from the tracks.
+
 ### Not implemented (do not assume otherwise)
 - No email of any kind. No `services/email.ts`.
 - No scheduled game reminders: `sendGameReminderToTelegram` exists but nothing
