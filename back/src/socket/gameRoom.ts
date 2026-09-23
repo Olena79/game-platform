@@ -312,8 +312,21 @@ export function registerGameRoom(io: Server) {
 			const userId = socket.data.userId as string | null
 			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
 
+			const knownBefore = rooms.has(d.gameCode)
 			const state = await getOrLoadRoom(d.gameCode)
 			if (!state) { socket.emit('gr:error', 'Room not found'); return }
+
+			// The room was rebuilt from nothing — after a restart, or once it had
+			// been released — while other people were still sitting in it. Their
+			// sockets are alive but the roster has forgotten them, so everyone's
+			// tiles vanish until they reload. Ask them to announce themselves.
+			if (!knownBefore) {
+				const others = io.sockets.adapter.rooms.get(`gr-${d.gameCode}`)
+				if (others && others.size > 0) {
+					logger.info(`[gr:join] room rebuilt, asking ${others.size} connected socket(s) to re-announce gameCode=${d.gameCode}`)
+					io.to(`gr-${d.gameCode}`).emit('gr:rejoin')
+				}
+			}
 
 			curCode = d.gameCode
 			curUser = userId

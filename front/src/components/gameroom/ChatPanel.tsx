@@ -270,6 +270,7 @@ export const ChatPanel = ({
 							<VotingPanel
 								vote={state.activeVote}
 								myVote={myVote}
+								players={state.players}
 								myId={myId}
 								isGM={isGM}
 								onCast={onCastVote}
@@ -282,6 +283,7 @@ export const ChatPanel = ({
 							<VotingPanel
 								vote={state.spectatorVote}
 								myVote={myVote}
+								players={state.players}
 								myId={myId}
 								isGM={isGM}
 								onCast={onCastSpectatorVote}

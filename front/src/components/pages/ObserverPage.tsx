@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, Navigate } from 'react-router-dom'
 import {
@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useObserverRoom } from '../../hooks/useObserverRoom'
 import { useRecording } from '../../hooks/useRecording'
 import { ObserverView } from '../gameroom/ObserverView'
+import { RoomAudioCapture } from '../gameroom/RoomAudioCapture'
 
 function ObserverInner({ gameCode }: { gameCode: string }) {
 	const { t } = useTranslation()
@@ -24,9 +25,18 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 	} = useObserverRoom(gameCode)
 
 	const gameTitle = state?.title ?? ''
-	const recording = useRecording(gameCode, gameTitle, authToken ?? null, status => {
-		sendStatus(status)
-	})
+	// The room's voices, collected from the tracks so the window itself can
+	// stay silent — playing them here fed the gamemaster's microphone.
+	const roomAudioRef = useRef<MediaStreamTrack[]>([])
+	const handleRoomAudio = useCallback((tracks: MediaStreamTrack[]) => { roomAudioRef.current = tracks }, [])
+
+	const recording = useRecording(
+		gameCode,
+		gameTitle,
+		authToken ?? null,
+		status => { sendStatus(status) },
+		() => roomAudioRef.current,
+	)
 
 	// React to record signals from GM.
 	//
@@ -80,7 +90,9 @@ function ObserverInner({ gameCode }: { gameCode: string }) {
 			video={false}
 			style={{ height: '100dvh', background: '#07080f' }}
 		>
-			<RoomAudioRenderer />
+			{/* Deliberately no RoomAudioRenderer: this window records the room,
+			    it does not listen to it. See RoomAudioCapture. */}
+			<RoomAudioCapture onTracks={handleRoomAudio} />
 			<ObserverView
 				state={state}
 				myId={myId}

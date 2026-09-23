@@ -486,6 +486,7 @@
       "prepare": "Prepare recording",
       "waiting_gm": "Waiting for GM signal...",
       "stop_rec": "■ Stop recording",
+      "close_window": "✕ Close window",
       "chat_title": "Chat",
       "msg_placeholder": "Message...",
       "err_denied": "Screen access was not granted. Press “Prepare recording” again, pick a screen or tab and confirm “Share”",

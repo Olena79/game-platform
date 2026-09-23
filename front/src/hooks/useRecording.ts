@@ -41,6 +41,8 @@ export function useRecording(
 	gameTitle: string,
 	authToken: string | null,
 	onStatusChange?: (status: RecordingStatus) => void,
+	/** The room's voices, taken from the tracks rather than the speakers */
+	getRoomAudio?: () => MediaStreamTrack[],
 ) {
 	const [status, setStatusRaw] = useState<RecordingStatus>('idle')
 	/** Bytes already accepted by the server — shown live while recording */
@@ -58,12 +60,15 @@ export function useRecording(
 	// leave the screen capture running, with the browser still showing
 	// "sharing your screen" and MediaRecorder still collecting data.
 	const localUrlRef = useRef<string | null>(null)
+	const audioCtxRef = useRef<AudioContext | null>(null)
 	useEffect(() => () => {
 		try {
 			if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
 		} catch { /* already gone */ }
 		streamRef.current?.getTracks().forEach(t => t.stop())
 		streamRef.current = null
+		void audioCtxRef.current?.close().catch(() => undefined)
+		audioCtxRef.current = null
 		if (localUrlRef.current) URL.revokeObjectURL(localUrlRef.current)
 	}, [])
 
@@ -84,7 +89,10 @@ export function useRecording(
 			setErrorMsg('')
 			const stream = await navigator.mediaDevices.getDisplayMedia({
 				video: { width: 1920, height: 1080, frameRate: 30 } as MediaTrackConstraints,
-				audio: supportsScreenAudio(),
+				// Tab audio is only worth asking for when nobody hands us the
+				// room's tracks — otherwise it would record the speakers, which
+				// is how the gamemaster's own voice came back as an echo.
+				audio: getRoomAudio ? false : supportsScreenAudio(),
 			})
 			streamRef.current = stream
 			// Only the video track ends the session: an audio track the browser
@@ -270,7 +278,27 @@ export function useRecording(
 				? 'video/webm;codecs=vp9,opus'
 				: 'video/webm'
 
-			const recorder = new MediaRecorder(streamRef.current, {
+			// Mix every voice in the room into one track for the recording
+			const recorded = new MediaStream(streamRef.current.getVideoTracks())
+			const roomAudio = getRoomAudio?.() ?? []
+			if (roomAudio.length > 0) {
+				const ctx = new AudioContext()
+				audioCtxRef.current = ctx
+				const destination = ctx.createMediaStreamDestination()
+				for (const track of roomAudio) {
+					try {
+						ctx.createMediaStreamSource(new MediaStream([track])).connect(destination)
+					} catch (err) {
+						console.warn('[recording] could not mix a voice in:', err)
+					}
+				}
+				destination.stream.getAudioTracks().forEach(t => recorded.addTrack(t))
+			} else {
+				// No room tracks offered: fall back to whatever the capture gave us
+				streamRef.current.getAudioTracks().forEach(t => recorded.addTrack(t))
+			}
+
+			const recorder = new MediaRecorder(recorded, {
 				mimeType,
 				// 2 Mbps — about 0.9 GB per hour. VP9 handles a screen full of
 				// video tiles well at this rate, and the account only has 15 GB
@@ -290,6 +318,8 @@ export function useRecording(
 			recorder.onstop = () => {
 				streamRef.current?.getTracks().forEach(t => t.stop())
 				streamRef.current = null
+				void audioCtxRef.current?.close().catch(() => undefined)
+				audioCtxRef.current = null
 				if (localModeRef.current) {
 					offerLocalFile(new Blob(localChunksRef.current, { type: 'video/webm' }))
 					localChunksRef.current = []

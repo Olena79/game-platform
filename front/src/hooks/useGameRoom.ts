@@ -43,6 +43,7 @@ export function useGameRoom(rawCode: string) {
 	const lkRef = useRef<LKData | null>(null)
 	const lkBreakoutRef = useRef<LKData | null>(null)
 	const currentBreakoutRoomIdRef = useRef<string | null>(null)
+	const lastJoinRef = useRef(0)
 
 	useEffect(() => { lkRef.current = lk }, [lk])
 	useEffect(() => { lkBreakoutRef.current = lkBreakout }, [lkBreakout])
@@ -137,6 +138,9 @@ export function useGameRoom(rawCode: string) {
 			// The room's clock, so a device with the wrong time still counts down
 			// the same round as everyone else.
 			if (typeof s.serverNow === 'number') setClockOffset(s.serverNow - Date.now())
+			// Our seat is missing from the roster: claim it back rather than sit
+			// invisible to everyone until someone reloads.
+			if (user && !s.players.some(p => p.userId === user.id)) announce()
 			if ((prevStatusRef.current === 'lobby' || prevStatusRef.current === 'ended') && s.status === 'started') setStartAnim(true)
 			prevStatusRef.current = s.status
 			setState(s)
@@ -149,6 +153,22 @@ export function useGameRoom(rawCode: string) {
 			if (fresh) socket.connect()
 			else setConnStatus('failed')
 		})
+
+		// Either the room asked, or a state arrived without us in it: announce
+		// ourselves again. A roster that has forgotten someone shows everyone
+		// else an empty seat where that person is still sitting.
+		const announce = () => {
+			const now = Date.now()
+			if (now - lastJoinRef.current < 4000) return
+			lastJoinRef.current = now
+			socket.emit('gr:join', {
+				gameCode,
+				userId: user.id,
+				name: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
+				isSpectatorJoin,
+			})
+		}
+		socket.on('gr:rejoin', announce)
 
 		socket.on('gr:my-vote', (d: { voteId: string; optionIds: string[] }) => setMyVote(d))
 		socket.on('gr:error', (msg: string) => setError(msg))

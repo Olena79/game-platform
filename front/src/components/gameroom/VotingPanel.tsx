@@ -5,6 +5,8 @@ import type { ActiveVote } from './types'
 interface Props {
 	vote: ActiveVote
 	myId: string
+	/** Needed to say who voted for what in an open vote */
+	players?: Array<{ userId: string; name: string }>
 	/** This viewer's own choice, sent privately for anonymous votes */
 	myVote?: { voteId: string; optionIds: string[] } | null
 	isGM: boolean
@@ -13,7 +15,7 @@ interface Props {
 	onClear: () => void
 }
 
-export const VotingPanel = ({ vote, myId, myVote, isGM, onCast, onClose, onClear }: Props) => {
+export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, onClose, onClear }: Props) => {
 	const [selected, setSelected] = useState<string[]>([])
 
 	const totalVotes = vote.options.reduce((s, o) => s + o.voterIds.length, 0)
@@ -85,7 +87,9 @@ export const VotingPanel = ({ vote, myId, myVote, isGM, onCast, onClose, onClear
 				{vote.options.map(opt => {
 					const p    = pct(opt.voterIds.length)
 					const mine = activeVoteIds.includes(opt.id)
-					const showResults = hasVoted || vote.closed
+					// The gamemaster runs the vote and rarely takes part in it, so
+					// waiting for them to cast one left them staring at a blank tally.
+					const showResults = hasVoted || vote.closed || isGM
 					return (
 						<button
 							key={opt.id}
@@ -116,6 +120,17 @@ export const VotingPanel = ({ vote, myId, myVote, isGM, onCast, onClose, onClear
 								)}
 								{mine && !showResults && <CheckCircle2 size={12} style={{ color: '#0fffc8', flexShrink: 0 }} />}
 							</div>
+
+							{/* An open vote is open: it should say who chose what.
+							    An anonymous one carries blanks and shows nothing. */}
+							{showResults && !vote.isAnonymous && opt.voterIds.length > 0 && (
+								<div className='relative mt-[4px] text-[11px] leading-[1.4]' style={{ color: 'rgba(150,175,235,0.7)' }}>
+									{opt.voterIds
+										.map(id => players.find(p => p.userId === id)?.name ?? '')
+										.filter(Boolean)
+										.join(', ')}
+								</div>
+							)}
 						</button>
 					)
 				})}

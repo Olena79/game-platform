@@ -107,6 +107,16 @@ export const ObserverView = ({
 						{t('room.observer.waiting_gm')}
 					</span>
 				)}
+				{/* Always reachable: there was no way to shut this window down
+				    once it was open, and a stuck recorder kept the room's audio
+				    running with it. */}
+				<button
+					onClick={() => { if (isRecording) onStop(); setTimeout(() => window.close(), isRecording ? 1500 : 0) }}
+					className='px-[10px] py-[4px] rounded-[6px] text-[11px] font-[600] cursor-pointer transition-all hover:brightness-125'
+					style={{ background: 'rgba(120,135,185,0.12)', border: '1px solid rgba(120,135,185,0.3)', color: 'rgba(180,195,235,0.9)' }}>
+					{t('room.observer.close_window')}
+				</button>
+
 				{isRecording && (
 					<button onClick={onStop}
 						className='px-[12px] py-[4px] rounded-[6px] text-[11px] font-[600] cursor-pointer transition-all hover:brightness-125'
