@@ -96,6 +96,8 @@ export class RoomRecorder {
 	private mixDestination: MediaStreamAudioDestinationNode | null = null
 	private sources = new Map<string, Source>()   // by MediaStreamTrack id
 	private tiles: Tile[] = []
+	/** Someone is showing their screen: it takes the big part of the picture */
+	private screen: Tile | null = null
 
 	private recorder: MediaRecorder | null = null
 	private drawTimer: number | null = null
@@ -148,6 +150,7 @@ export class RoomRecorder {
 		const participants: Participant[] = [this.room.localParticipant, ...this.room.remoteParticipants.values()]
 		const wanted = new Set<string>()
 		const tiles: Tile[] = []
+		let screen: Tile | null = null
 
 		for (const p of participants) {
 			let video: HTMLVideoElement | undefined
@@ -155,7 +158,10 @@ export class RoomRecorder {
 			for (const pub of p.trackPublications.values()) {
 				const track = pub.track?.mediaStreamTrack
 				if (!track || track.readyState === 'ended') continue
-				if (pub.source === Track.Source.Camera && !pub.isMuted && !this.snap.audioOnly) {
+				if (pub.source === Track.Source.ScreenShare && !pub.isMuted && !this.snap.audioOnly) {
+					wanted.add(track.id)
+					if (!screen) screen = { identity: p.identity, name: p.name || p.identity, video: this.ensureSource(track, 'video').element as HTMLVideoElement }
+				} else if (pub.source === Track.Source.Camera && !pub.isMuted && !this.snap.audioOnly) {
 					wanted.add(track.id)
 					video = this.ensureSource(track, 'video').element as HTMLVideoElement
 					hasMedia = true
@@ -172,6 +178,7 @@ export class RoomRecorder {
 		}
 		this.dropSources(wanted)
 		this.tiles = tiles
+		this.screen = screen
 	}
 
 	private ensureSource(track: MediaStreamTrack, kind: 'video' | 'audio'): Source {
@@ -221,11 +228,25 @@ export class RoomRecorder {
 		ctx.fillStyle = '#07080f'
 		ctx.fillRect(0, 0, W, H)
 
+		const gap = 4
+		if (this.screen) {
+			// A shared screen gets most of the frame; cameras line up on the right
+			const stripW = Math.round(W * 0.22)
+			this.drawVideo(ctx, this.screen, gap, gap, W - stripW - gap * 3, H - gap * 2, 'contain')
+			const n = this.tiles.length
+			if (n > 0) {
+				const th = Math.min((H - gap * (n + 1)) / n, stripW * 9 / 16)
+				this.tiles.forEach((tile, i) => {
+					this.drawTile(ctx, tile, W - stripW - gap, gap + i * (th + gap), stripW, th)
+				})
+			}
+			return
+		}
+
 		const tiles = this.tiles
 		const n = Math.max(tiles.length, 1)
 		const cols = Math.ceil(Math.sqrt(n * (W / H) / (16 / 9)))
 		const rows = Math.ceil(n / cols)
-		const gap = 4
 		const tw = (W - gap * (cols + 1)) / cols
 		const th = (H - gap * (rows + 1)) / rows
 
@@ -235,39 +256,50 @@ export class RoomRecorder {
 			// Centre an incomplete last row
 			const inRow = row === rows - 1 ? n - cols * (rows - 1) : cols
 			const offset = (cols - inRow) * (tw + gap) / 2
-			const x = gap + offset + col * (tw + gap)
-			const y = gap + row * (th + gap)
-
-			ctx.fillStyle = '#10131f'
-			ctx.fillRect(x, y, tw, th)
-
-			const v = tile.video
-			if (v && v.readyState >= 2 && v.videoWidth > 0) {
-				// "cover": fill the tile, crop what does not fit
-				const scale = Math.max(tw / v.videoWidth, th / v.videoHeight)
-				const sw = tw / scale
-				const sh = th / scale
-				ctx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, x, y, tw, th)
-			} else {
-				ctx.fillStyle = '#0fffc8'
-				ctx.font = `600 ${Math.round(th / 5)}px sans-serif`
-				ctx.textAlign = 'center'
-				ctx.textBaseline = 'middle'
-				ctx.fillText(initials(tile.name), x + tw / 2, y + th / 2)
-			}
-
-			// Name plate
-			const fs = Math.max(12, Math.round(th / 16))
-			ctx.font = `500 ${fs}px sans-serif`
-			ctx.textAlign = 'left'
-			ctx.textBaseline = 'bottom'
-			const label = tile.name.length > 40 ? tile.name.slice(0, 39) + '…' : tile.name
-			const lw = ctx.measureText(label).width + fs
-			ctx.fillStyle = 'rgba(0,0,0,0.55)'
-			ctx.fillRect(x + 6, y + th - fs * 1.8, lw, fs * 1.5)
-			ctx.fillStyle = '#ffffff'
-			ctx.fillText(label, x + 6 + fs / 2, y + th - fs * 0.5)
+			this.drawTile(ctx, tile, gap + offset + col * (tw + gap), gap + row * (th + gap), tw, th)
 		})
+	}
+
+	private drawTile(ctx: CanvasRenderingContext2D, tile: Tile, x: number, y: number, tw: number, th: number): void {
+		ctx.fillStyle = '#10131f'
+		ctx.fillRect(x, y, tw, th)
+		if (!this.drawVideo(ctx, tile, x, y, tw, th, 'cover')) {
+			ctx.fillStyle = '#0fffc8'
+			ctx.font = `600 ${Math.round(th / 5)}px sans-serif`
+			ctx.textAlign = 'center'
+			ctx.textBaseline = 'middle'
+			ctx.fillText(initials(tile.name), x + tw / 2, y + th / 2)
+		}
+
+		// Name plate
+		const fs = Math.max(11, Math.round(th / 16))
+		ctx.font = `500 ${fs}px sans-serif`
+		ctx.textAlign = 'left'
+		ctx.textBaseline = 'bottom'
+		const label = tile.name.length > 40 ? tile.name.slice(0, 39) + '…' : tile.name
+		const lw = Math.min(ctx.measureText(label).width + fs, tw - 12)
+		ctx.fillStyle = 'rgba(0,0,0,0.55)'
+		ctx.fillRect(x + 6, y + th - fs * 1.8, lw, fs * 1.5)
+		ctx.fillStyle = '#ffffff'
+		ctx.fillText(label, x + 6 + fs / 2, y + th - fs * 0.5, tw - 12 - fs)
+	}
+
+	/** Draws a tile's video: 'cover' fills and crops, 'contain' shows all of it. */
+	private drawVideo(ctx: CanvasRenderingContext2D, tile: Tile, x: number, y: number, w: number, h: number, fit: 'cover' | 'contain'): boolean {
+		const v = tile.video
+		if (!v || v.readyState < 2 || v.videoWidth === 0) return false
+		if (fit === 'cover') {
+			const scale = Math.max(w / v.videoWidth, h / v.videoHeight)
+			const sw = w / scale
+			const sh = h / scale
+			ctx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, x, y, w, h)
+		} else {
+			const scale = Math.min(w / v.videoWidth, h / v.videoHeight)
+			const dw = v.videoWidth * scale
+			const dh = v.videoHeight * scale
+			ctx.drawImage(v, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
+		}
+		return true
 	}
 
 	// ── Start / stop ─────────────────────────────────────────────────────────
@@ -398,6 +430,7 @@ export class RoomRecorder {
 		window.removeEventListener('beforeunload', this.warnOnLeave)
 		this.dropSources(new Set())
 		this.tiles = []
+		this.screen = null
 		this.canvas?.remove()
 		this.canvas = null
 		this.ctx2d = null

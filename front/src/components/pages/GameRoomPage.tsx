@@ -15,8 +15,9 @@ import {
 	useLocalParticipant,
 	useConnectionState,
 	useRoomContext,
+	useTracks,
 } from '@livekit/components-react'
-import { ConnectionState } from 'livekit-client'
+import { ConnectionState, Track } from 'livekit-client'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
 const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
@@ -137,6 +138,17 @@ function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 	)
 }
 
+/** Screen sharing exists on desktop browsers only — no phone browser offers it. */
+function canShareScreen(): boolean {
+	return typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getDisplayMedia === 'function'
+}
+
+/** Only Chromium can send a shared tab's sound; Safari refuses the whole call if asked. */
+function supportsScreenAudio(): boolean {
+	const ua = navigator.userAgent
+	return /Chrome|Chromium|Edg\//.test(ua) && !/Firefox|FxiOS|Android|Mobile/.test(ua)
+}
+
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
 function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap }: {
 	room: RoomHook; gameCode: string
@@ -236,13 +248,16 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		recorder.attachRoom(lkRoom)
 		return () => recorder.attachRoom(null)
 	}, [lkRoom, isGM, recorder])
-	const { localParticipant } = useLocalParticipant()
+	const { localParticipant, isScreenShareEnabled } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
 	const [panelOpen, setPanelOpen] = useState(true)
 	const [localImageHidden, setLocalImageHidden] = useState(false)
 	const [micOn, setMicOn] = useState(initMic)
 	const [camOn, setCamOn] = useState(initCam)
-	const [screenOn, setScreenOn] = useState(false)
+	// Read from LiveKit, not kept by hand: stopping from the browser's own
+	// "Stop sharing" bar used to leave the button out of step
+	const screenOn = isScreenShareEnabled
+	const [screenError, setScreenError] = useState('')
 	const [showCoinModal, setShowCoin] = useState(false)
 	const [showVoteModal, setShowVote] = useState(false)
 	const [showTimerModal, setShowTimer] = useState(false)
@@ -450,16 +465,53 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		}
 	}, [localParticipant])
 
+	/**
+	 * Any player or the gamemaster may show their screen; spectators never see
+	 * the button, and their media token could not publish it anyway.
+	 *
+	 * Phones cannot share a screen at all (no browser there offers it), and
+	 * failures used to be swallowed — the button did nothing and nobody knew
+	 * why. Now the reason is said out loud.
+	 */
 	const toggleScreen = useCallback(async () => {
 		if (!localParticipant) return
-		const enabled = !screenOn
-		try {
-			await localParticipant.setScreenShareEnabled(enabled)
-			setScreenOn(enabled)
-		} catch {
-			// user cancelled the screen picker dialog
+		const enabled = !localParticipant.isScreenShareEnabled
+		if (enabled && !canShareScreen()) {
+			showScreenError(t('room.screen_err_unsupported'))
+			return
 		}
-	}, [localParticipant, screenOn])
+		try {
+			await localParticipant.setScreenShareEnabled(enabled, enabled
+				// The shared tab's sound too, where the browser can (Chrome, Edge)
+				? { audio: supportsScreenAudio(), selfBrowserSurface: 'exclude', surfaceSwitching: 'include' }
+				: undefined)
+		} catch (err) {
+			const e = err as { name?: string; message?: string }
+			// Closing the picker is a choice, not an error
+			if (e.name === 'NotAllowedError' && !/system/i.test(e.message ?? '')) return
+			if (e.name === 'NotAllowedError') showScreenError(t('room.screen_err_system'))
+			else if (e.name === 'NotSupportedError' || e.name === 'TypeError') showScreenError(t('room.screen_err_unsupported'))
+			else showScreenError(t('room.screen_err_generic', { reason: e.message || e.name || '' }))
+			console.warn('[room] screen share failed:', err)
+		}
+	}, [localParticipant, t]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const screenErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	function showScreenError(message: string) {
+		setScreenError(message)
+		if (screenErrorTimer.current) clearTimeout(screenErrorTimer.current)
+		screenErrorTimer.current = setTimeout(() => setScreenError(''), 8000)
+	}
+
+	// Somebody started showing their screen: bring it to the big view. The
+	// grid has no room for a screen, and people waited on a banner instead.
+	const screenTracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: false })
+	const sharingKey = screenTracks.map(tr => tr.participant.identity).sort().join('|')
+	const prevSharingRef = useRef('')
+	useEffect(() => {
+		if (sharingKey && sharingKey !== prevSharingRef.current) setView('speaker')
+		prevSharingRef.current = sharingKey
+	}, [sharingKey])
 
 	useEffect(() => { setLocalImageHidden(false) }, [activeShownImageUrl])
 
@@ -558,6 +610,14 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 						style={{ color: 'rgba(255,175,90,0.6)' }}>
 						✕
 					</button>
+				</div>
+			)}
+
+			{/* Screen sharing did not start, and why */}
+			{screenError && (
+				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px] text-center'
+					style={{ background: 'rgba(68,170,255,0.10)', borderBottom: '1px solid rgba(68,170,255,0.25)' }}>
+					<span style={{ color: 'rgba(150,200,255,0.95)', fontSize: '12px' }}>{screenError}</span>
 				</div>
 			)}
 

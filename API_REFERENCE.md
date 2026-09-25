@@ -50,6 +50,11 @@ comments stay, anonymised.
 
 The chat is attached when the person presses **Start** in the bot.
 
+The bot answers `/start` (welcome, or confirmation when the link token is
+valid), `/stop` (no new-game announcements), `/news` (announcements back on)
+and `/help`; anything else gets "I only send news". Creating a game
+(`POST /api/games`) announces it to every linked member except its creator.
+
 ## Games — `/api/games`
 
 | Method | Path | Auth | Returns |

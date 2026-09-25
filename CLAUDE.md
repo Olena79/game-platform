@@ -14,7 +14,7 @@ Telegram link that could never connect anyone, unauthorised recording
 uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
-Tests: backend 8 suites / 114 tests, frontend 2 files / 27 tests.
+Tests: backend 9 suites / 119 tests, frontend 2 files / 27 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -22,9 +22,17 @@ Tests: backend 8 suites / 114 tests, frontend 2 files / 27 tests.
   (bumped by a password reset — older access tokens are refused), password
   recovery over **Telegram** (there is no email service; do not add one
   without being asked).
-- **Telegram bot**: linked with a 32-char single-use `/start` token (Telegram
-  drops longer or non-`[A-Za-z0-9_-]` payloads). Sends game codes on
-  registration, GM notes after a game, recording links, reset links.
+- **Telegram bot** — news only, not for conversation (it says so to anyone
+  who writes to it). Linked with a 32-char single-use `/start` token
+  (Telegram drops longer or non-`[A-Za-z0-9_-]` payloads). Sends: an
+  **announcement of every new game** to all linked members except its GM
+  (title, full description, date/time in Kyiv, paid/free, GM; with the cover
+  as a photo when it fits), entry codes on registration (player or spectator
+  code), GM notes after a game, recording links, reset links. `/stop` turns
+  announcements off (`User.newsOptOut`), `/news` back on; personal messages
+  always come. A chat that blocked the bot is unlinked. The bot's
+  description, short description and command menu are set on every start
+  (`describeBot`).
 - **Game room**: Socket.IO state machine + LiveKit media. See "Access" below.
 - **Recording** — into a **Cloudflare R2** bucket, 7 days, link to the GM's
   Telegram. Two modes, `RECORDING_MODE`:
@@ -41,12 +49,17 @@ Tests: backend 8 suites / 114 tests, frontend 2 files / 27 tests.
   - **`egress`** — LiveKit Egress (room composite, grid, MP4) straight to R2.
     Needs a paid LiveKit plan: the free Build plan allows 60 min/month and
     refuses beyond (checked 2026-09-25: Ship $50/mo includes 600 min).
+  A shared screen is recorded large with the cameras in a strip beside it.
   Everyone sees a marker while recording (`isRecording` in room state).
   GMs are told what recording asks of their device on the create-game page
   (`RecordingInfoCard`) and once per device before the first recording.
 - **Account**: data export and deletion (`routes/account.ts`,
   `services/accountDeletion.ts`). Deletion removes games, recordings, likes;
   posts/comments stay anonymised.
+- **Screen sharing**: players and the GM (never spectators — their token
+  cannot publish). Desktop browsers only; phones are told it cannot work
+  there. Starting a share switches everyone to the speaker view, where the
+  screen is shown; failures (macOS permission, unsupported) are explained.
 - **Community feed** with live updates.
 
 ### Deliberate decisions (do not "fix" these)
@@ -126,7 +139,7 @@ back/src/
     livekit.ts            RoomServiceClient/EgressClient, roomNameFor(), server-side mute
     recording.ts          both modes: start, parts, finish, silence/egress sync, Telegram link, 7-day cleanup
     storage.ts            R2: multipart parts, Egress upload target, presigned links, deletion, startup probe
-    telegramBot.ts        long-polling bot and all outgoing messages
+    telegramBot.ts        long-polling bot: commands, all outgoing messages, new-game announcements
     notesDelivery.ts      GM notes → Telegram
     accountDeletion.ts    export + delete
   socket/

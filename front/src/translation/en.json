@@ -501,7 +501,10 @@
       "cancel": "Cancel",
       "default_label": "Timer",
       "set": "Set"
-    }
+    },
+    "screen_err_unsupported": "Screen sharing works from a computer or laptop only — phones cannot do it.",
+    "screen_err_system": "The system did not let the browser share the screen. On a Mac: System Settings → Privacy & Security → Screen Recording → turn on your browser and restart it.",
+    "screen_err_generic": "Could not share the screen: {{reason}}"
   },
   "legal": {
     "last_updated": "Last updated",
