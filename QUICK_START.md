@@ -158,7 +158,7 @@ socket.on('*', (event, data) => console.log('Socket event:', event, data))
 ### "Cannot find module 'express'"
 ```bash
 cd back
-npm install
+npm ci
 npm run dev
 ```
 
@@ -190,9 +190,9 @@ netstat -ano | findstr :5000  # Windows
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](README.md) | Project overview, setup, deployment |
-| [CLAUDE.md](CLAUDE.md) | Complete project context for Claude (database schema, API routes, Socket.IO events) |
-| [PROJECT_AUDIT.md](PROJECT_AUDIT.md) | Security audit, issues found, deployment checklist |
+| [README.md](README.md) | Project overview, checks, deployment |
+| [CLAUDE.md](CLAUDE.md) | How the code works and the decisions behind it (access, recording, bot, security) |
+| [API_REFERENCE.md](API_REFERENCE.md) | Every HTTP endpoint and Socket.IO event |
 | [QUICK_START.md](QUICK_START.md) | This file — get running in 10 minutes |
 
 ---
@@ -222,7 +222,7 @@ After startup, test the app end-to-end:
 
 ## 🚢 When Ready to Deploy
 
-See [README.md → Deployment](README.md#%EF%B8%8F-deployment) section.
+See the «Развёртывание» section of [README.md](README.md).
 
 ---
 
