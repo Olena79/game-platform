@@ -104,3 +104,13 @@ describe('Logger Configuration', () => {
 		})
 	})
 })
+
+describe('database connection log', () => {
+	it('names the host and never the credentials', () => {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		const { mongoHost } = require('../src/config/db')
+		const host = mongoHost('mongodb+srv://gameAdmin:s3cr3t-P@ss@cluster0.abcde.mongodb.net/game?retryWrites=true')
+		expect(host).toBe('cluster0.abcde.mongodb.net')
+		expect(mongoHost('mongodb://localhost:27017/game')).toBe('localhost:27017')
+	})
+})

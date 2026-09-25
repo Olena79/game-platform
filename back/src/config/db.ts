@@ -6,7 +6,9 @@ export const connectDB = async (): Promise<void> => {
 	if (!uri) {
 		throw new Error('MONGO_URI is not defined in .env')
 	}
-	logger.info('Connecting to MongoDB...', { uri: uri.substring(0, 50) + '...' })
+	// Only the host: the connection string carries the database password, and
+	// logs are read by more people and kept longer than secrets should be.
+	logger.info('Connecting to MongoDB...', { host: mongoHost(uri) })
 
 	mongoose.connection.on('connected',    () => logger.info('[db] MongoDB connected'))
 	mongoose.connection.on('disconnected', () => logger.info('[db] MongoDB disconnected — will retry'))
@@ -29,4 +31,11 @@ export const connectDB = async (): Promise<void> => {
 	} catch {
 		// Index already gone — nothing to do
 	}
+}
+
+/** "cluster0.abcde.mongodb.net" out of a connection string — never the credentials. */
+export function mongoHost(uri: string): string {
+	const afterScheme = uri.replace(/^mongodb(\+srv)?:\/\//, '')
+	const hostPart = afterScheme.slice(afterScheme.lastIndexOf('@') + 1)
+	return hostPart.split(/[/?]/)[0] || 'unknown'
 }
