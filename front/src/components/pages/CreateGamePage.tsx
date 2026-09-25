@@ -9,6 +9,7 @@ import { InputField } from '../minicomponents/InputField'
 import { AuthButton } from '../minicomponents/AuthButton'
 import { Modal } from '../minicomponents/Modal'
 import { createGame, updateGame, getGameForEdit } from '../../actions/games'
+import { RecordingInfoCard } from '../RecordingInfoCard'
 
 // ─── Local mini-components ───────────────────────────────────────────────────
 
@@ -762,6 +763,13 @@ export const CreateGamePage = () => {
 									Номер буде показано гравцям лише після натискання кнопки «Донат»
 								</span>
 							</div>
+						</section>
+
+						<Divider />
+
+						{/* ── Запис гри: що варто знати ведучому ── */}
+						<section className='flex flex-col gap-[12px]'>
+							<RecordingInfoCard />
 						</section>
 
 						{/* ── Submit ── */}

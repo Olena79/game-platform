@@ -45,6 +45,8 @@ import { ModPanel } from '../gameroom/ModPanel'
 import { PreJoinScreen } from '../gameroom/PreJoinScreen'
 import { IosInstallHint } from '../gameroom/IosInstallHint'
 import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
+import type { RecordingControlsProps } from '../gameroom/RecordingControls'
+import { RoomRecorder, RecorderSnapshot } from '../../recording/RoomRecorder'
 import { useTranslation } from 'react-i18next'
 
 type RoomHook = ReturnType<typeof useGameRoom>
@@ -136,9 +138,10 @@ function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
 }
 
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
-function RoomContent({ room, gameCode, initMic, initCam }: {
+function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap }: {
 	room: RoomHook; gameCode: string
 	initMic: boolean; initCam: boolean
+	recorder: RoomRecorder; recorderSnap: RecorderSnapshot
 }) {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
@@ -195,6 +198,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		recordStatus,
 		recordError,
 		notesDelivered,
+		recordingMode,
 		scenario,
 		actionError,
 		myVote,
@@ -225,6 +229,13 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 
 	const { token: authToken, user: authUser } = useAuth()
 	const lkRoom = useRoomContext()
+
+	// The recorder follows the gamemaster into whichever LiveKit room this is
+	useEffect(() => {
+		if (!isGM) return
+		recorder.attachRoom(lkRoom)
+		return () => recorder.attachRoom(null)
+	}, [lkRoom, isGM, recorder])
 	const { localParticipant } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
 	const [panelOpen, setPanelOpen] = useState(true)
@@ -453,6 +464,18 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 	useEffect(() => { setLocalImageHidden(false) }, [activeShownImageUrl])
 
 	const handleLeave = () => navigate('/games')
+
+	const recordingProps: RecordingControlsProps = {
+		mode: recordingMode,
+		roomIsRecording: Boolean(state?.isRecording),
+		snapshot: recorderSnap,
+		onBrowserStart: audioOnly => { void recorder.start(audioOnly) },
+		onBrowserStop: () => { void recorder.stop() },
+		egressStatus: recordStatus,
+		egressError: recordError,
+		onEgressStart: () => recordControl('start'),
+		onEgressStop: () => recordControl('stop'),
+	}
 
 	// State with room-scoped timer/image for panel components (ChatPanel, ModPanel).
 	// Memoized to avoid re-rendering panels on every state update that doesn't
@@ -831,9 +854,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							onTimerStop={stopTimer}
 							onTimerClear={clearTimer}
 							onBreakout={() => setShowBreakout(true)}
-							onRecordStart={() => recordControl('start')}
-							onRecordStop={() => recordControl('stop')}
-							recordStatus={recordStatus} recordError={recordError} clockOffset={clockOffset}
+							recording={recordingProps} clockOffset={clockOffset}
 							privateChats={privateChats}
 							unreadDMs={unreadDMs}
 							onMarkDMRead={markDMRead}
@@ -987,9 +1008,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 								onTimerStop={stopTimer}
 								onTimerClear={clearTimer}
 								onBreakout={() => { setShowBreakout(true); setMobilePanelOpen(null) }}
-									onRecordStart={() => recordControl('start')}
-								onRecordStop={() => recordControl('stop')}
-								recordStatus={recordStatus} recordError={recordError} clockOffset={clockOffset}
+								recording={recordingProps} clockOffset={clockOffset}
 							/>
 						</div>
 					)}
@@ -1349,6 +1368,21 @@ function GameRoomInner() {
 	const { user, isLoading } = useAuth()
 	const room = useGameRoom(code)
 	const { lk, lkBreakout, inBreakout, error, connStatus } = room
+	const { forceRefresh } = useAuth()
+
+	// The recorder outlives LiveKitRoom remounts (breakout rooms), so it is
+	// made here once and handed down
+	const [recorderSnap, setRecorderSnap] = useState<RecorderSnapshot>({ status: 'idle', uploadedBytes: 0, message: '', audioOnly: false })
+	const recorderRef = useRef<RoomRecorder | null>(null)
+	if (!recorderRef.current) {
+		recorderRef.current = new RoomRecorder({ code, refreshToken: forceRefresh, onChange: setRecorderSnap })
+	}
+	const recorder = recorderRef.current
+	useEffect(() => () => recorder.dispose(), [recorder])
+	// Game over (the GM ended it, or the server is closing the session)
+	useEffect(() => {
+		if (room.recordStopSignal > 0) void recorder.stop()
+	}, [room.recordStopSignal, recorder])
 	const containerRef = useRef<HTMLDivElement>(null)
 
 	const activeLk = inBreakout ? lkBreakout : lk
@@ -1481,7 +1515,7 @@ function GameRoomInner() {
 				options={LK_ROOM_OPTS}
 				style={{ height: '100dvh', background: '#07080f' }}
 			>
-				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} />
+				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} recorder={recorder} recorderSnap={recorderSnap} />
 			</LiveKitRoom>
 		</div>
 	)

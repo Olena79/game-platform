@@ -41,6 +41,7 @@ import livekitRoutes from './routes/livekit'
 import accountRoutes from './routes/account'
 import uploadRoutes from './routes/upload'
 import telegramRoutes from './routes/telegram'
+import recordingRoutes from './routes/recordings'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
@@ -54,6 +55,7 @@ import {
 	communityLimiter,
 	uploadLimiter,
 	livekitLimiter,
+	recordingsLimiter,
 	loginLimiter,
 } from './middleware/rateLimitMiddleware'
 
@@ -136,6 +138,7 @@ app.use('/api/account',     authLimiter, accountRoutes)
 app.use('/api/upload',      uploadLimiter, uploadRoutes)
 app.use('/api/games',       gamesLimiter, gameRoutes)
 app.use('/api/livekit',     livekitLimiter, livekitRoutes)
+app.use('/api/recordings',  recordingsLimiter, recordingRoutes)
 app.use('/api/community',   communityLimiter, makeCommunityRouter(io))
 
 registerGameRoom(io)
@@ -144,8 +147,8 @@ registerCommunity(io)
 // ── Sentry error handler (must be after all other middleware and routes) ───────
 app.use(getSentryMiddleware()[1])
 
-// Recordings: LiveKit Egress writes them to R2; this follows each one to the
-// end (link to the GM's Telegram) and deletes them after 7 days.
+// Recordings: closes recordings whose browser went quiet, follows LiveKit
+// egress jobs to the end, and deletes files after 7 days.
 cron.schedule('* * * * *', () => { void syncRecordings() })
 cron.schedule('0 */6 * * *', () => {
 	cleanupExpiredRecordings().catch(err => logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err }))

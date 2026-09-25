@@ -48,7 +48,8 @@ import {
 	recordingEvents,
 	RecordingError,
 	RecordingEvent,
-	startRecording,
+	recordingMode,
+	startEgressRecording,
 	stopRecording,
 } from '../services/recording'
 
@@ -269,9 +270,9 @@ function pushState(io: Server, state: GameRoomState) {
 	sendGmState(state)
 }
 
-/** The gamemaster's own view: scenario and image deck, to their sockets only. */
+/** The gamemaster's own view: scenario, image deck and how recording works, to their sockets only. */
 function sendGmState(state: GameRoomState) {
-	toGamemaster(state, 'gr:gm-state', { scenario: state.scenario, images: state.images })
+	toGamemaster(state, 'gr:gm-state', { scenario: state.scenario, images: state.images, recordingMode: recordingMode() })
 }
 
 function makeDefaultTimer(seconds: number | null): RoomTimer | null {
@@ -363,6 +364,12 @@ function onRecordingEvent(io: Server, event: RecordingEvent): void {
 export function registerGameRoom(io: Server) {
 	ioRef = io
 	recordingEvents.on('status', (event: RecordingEvent) => onRecordingEvent(io, event))
+	// The game is over: the gamemaster's browser, if it is recording, finishes
+	// the file. If it is gone, the server closes it from the parts it has.
+	recordingEvents.on('stop-request', ({ gameId }: { gameId: string }) => {
+		const state = [...rooms.values()].find(s => s.gameId === gameId)
+		if (state) toGamemaster(state, 'gr:record-stop', {})
+	})
 
 	io.on('connection', (socket: Socket) => {
 		// The room this socket joined. Every event after gr:join acts on it,
@@ -926,15 +933,20 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		}, socket))
 
-		// ── Recording (GM only) ─────────────────────────────────────────────
-		// LiveKit records the main room on its own servers; nothing runs in any
-		// browser. Progress comes back through recordingEvents.
+		// ── Recording (GM only, RECORDING_MODE=egress) ──────────────────────
+		// LiveKit records the main room on its own servers. In browser mode the
+		// gamemaster's browser records and talks to /api/recordings instead.
+		// Progress comes back through recordingEvents either way.
 		socket.on('gr:record-control', validateSocketEvent(grRecordControlSchema, async (d: any) => {
 			const state = hereAsGM()
 			if (!state || !curUser) return
+			if (recordingMode() !== 'egress') {
+				socket.emit('gr:record-status', { status: 'error', detail: 'Recording runs in the browser on this server' })
+				return
+			}
 			try {
 				if (d.action === 'start') {
-					await startRecording({ gameId: state.gameId, gameCode: state.gameCode, gameTitle: state.title, gmId: curUser })
+					await startEgressRecording({ gameId: state.gameId, gameCode: state.gameCode, gameTitle: state.title, gmId: curUser })
 				} else {
 					const stopped = await stopRecording(state.gameId)
 					if (!stopped) socket.emit('gr:record-status', { status: 'idle' })

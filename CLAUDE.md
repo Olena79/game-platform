@@ -12,9 +12,9 @@ honest when you change the code. Endpoint and event details live in
 Second audit (2026-09-25) fixed: spectators taking a voiced seat, the
 Telegram link that could never connect anyone, unauthorised recording
 uploads, Google sign-in trusting unverified emails, reset links working as
-sessions, sessions dying on a token refresh, and the browser recorder
-(replaced by LiveKit Egress). Tests: backend 7 suites / 104 tests, frontend
-2 files / 27 tests.
+sessions, sessions dying on a token refresh. Recording was then rebuilt to
+run in the gamemaster's browser for free, phones included (see below).
+Tests: backend 8 suites / 114 tests, frontend 2 files / 27 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -26,12 +26,24 @@ sessions, sessions dying on a token refresh, and the browser recorder
   drops longer or non-`[A-Za-z0-9_-]` payloads). Sends game codes on
   registration, GM notes after a game, recording links, reset links.
 - **Game room**: Socket.IO state machine + LiveKit media. See "Access" below.
-- **Recording**: LiveKit Egress (room composite, `grid` layout, MP4) straight
-  into a **Cloudflare R2** bucket. GM presses start/stop in the room; the
-  server polls LiveKit every minute (`syncRecordings`), sends the GM a
-  Telegram link (presigned, valid until expiry), deletes file + row 7 days
-  after the start (`cleanupExpiredRecordings`). Survives a closed tab and a
-  server restart. Only the main room is recorded, not breakout rooms.
+- **Recording** — into a **Cloudflare R2** bucket, 7 days, link to the GM's
+  Telegram. Two modes, `RECORDING_MODE`:
+  - **`browser` (default, free)** — `front/src/recording/RoomRecorder.ts`:
+    the GM's browser draws everyone's camera into a grid on a canvas, mixes
+    voices with WebAudio, records with MediaRecorder (webm, or mp4 on
+    Safari) and uploads **8 MiB parts** in order to `/api/recordings`
+    (R2 multipart upload). No screen capture, so it works on phones. The
+    recorder lives outside `LiveKitRoom` and follows the GM into breakout
+    rooms. Parts sit in R2 as they arrive; a browser silent for 3 min (a
+    heartbeat is sent every minute) is closed from its parts by
+    `syncRecordings`, marked interrupted. "Voice only" mode for weak phones
+    (default on low-power mobiles). The room tab must stay open and in front.
+  - **`egress`** — LiveKit Egress (room composite, grid, MP4) straight to R2.
+    Needs a paid LiveKit plan: the free Build plan allows 60 min/month and
+    refuses beyond (checked 2026-09-25: Ship $50/mo includes 600 min).
+  Everyone sees a marker while recording (`isRecording` in room state).
+  GMs are told what recording asks of their device on the create-game page
+  (`RecordingInfoCard`) and once per device before the first recording.
 - **Account**: data export and deletion (`routes/account.ts`,
   `services/accountDeletion.ts`). Deletion removes games, recordings, likes;
   posts/comments stay anonymised.
@@ -51,6 +63,10 @@ sessions, sessions dying on a token refresh, and the browser recorder
   (`/games/:id/payment-details`) and its last 4 digits publicly. Intended.
 - **Recording links open for anyone holding them** (7 days) — the GM forwards
   them to players. Decided 2026-09-25.
+- **Recording runs in the GM's browser**, not on LiveKit, because the club
+  cannot pay for LiveKit Egress yet. Its costs (warm phone, tab in front,
+  quality of the GM's connection) are told to GMs up front. Switch with
+  `RECORDING_MODE=egress` once there is a paid plan — no code change.
 - **`EMAIL_EXISTS` on registration** tells whether an address has an account.
   Accepted: without an email service there is no "check your inbox" flow.
 - **One backend instance.** Room state, GM notes drafts, the user-check
@@ -103,13 +119,13 @@ back/src/
     validationMiddleware.ts zod body/params/query
     requestLogger.ts      morgan → winston
   models/                 User, Game, GameLike, GameMessage, Post, Comment, Recording, RefreshToken
-  routes/                 auth, account, telegram, games, livekit, upload, community
+  routes/                 auth, account, telegram, games, livekit, recordings, upload, community
   services/
     tokenService.ts       access/refresh tokens, reset tokens (bound to the password hash), Telegram link tokens
     roomAccess.ts         resolveSeat() — who may sit where
     livekit.ts            RoomServiceClient/EgressClient, roomNameFor(), server-side mute
-    recording.ts          Egress start/stop/sync, Telegram link, 7-day cleanup
-    storage.ts            R2: Egress upload target, presigned links, deletion, startup probe
+    recording.ts          both modes: start, parts, finish, silence/egress sync, Telegram link, 7-day cleanup
+    storage.ts            R2: multipart parts, Egress upload target, presigned links, deletion, startup probe
     telegramBot.ts        long-polling bot and all outgoing messages
     notesDelivery.ts      GM notes → Telegram
     accountDeletion.ts    export + delete
@@ -125,8 +141,10 @@ front/src/
   context/AuthContext.tsx tokens, refresh scheduled from the token's real expiry, cross-tab sync
   hooks/useGameRoom.ts    socket + LiveKit tokens for the room
   hooks/useTelegramLink.ts bot deep link
+  recording/RoomRecorder.ts the in-browser recorder (canvas grid + audio mix → parts)
   components/pages/       Home, Auth, ResetPassword, Account, Game, OurGames, CreateGame, GameRoom, Community, legal
-  components/gameroom/    GridView, SpeakerView, ChatPanel, ModPanel (incl. recording controls), modals, overlays
+  components/gameroom/    GridView, SpeakerView, ChatPanel, ModPanel, RecordingControls (+ explainer), modals, overlays
+  components/RecordingInfoCard.tsx  recording notes for GMs on the create-game page
   translation/{ua,en}.json
 ```
 
@@ -136,7 +154,8 @@ front/src/
    socket `gr:join { gameCode: code }` → `POST /livekit/token { code }`.
 2. GM runs the game (`gr:start`, votes, timers, breakouts, images, coins…).
 3. End: `gr:end`, or the GM gone for 90 s (`scheduleGmAwayCloseOut`). Both
-   run `closeOutSession`: stop the recording, deliver notes to Telegram
+   run `closeOutSession`: stop the recording (egress: stopped; browser: the
+   GM's browser gets `gr:record-stop` and uploads its last part), deliver notes to Telegram
    (`gr:notes-delivered` lets the browser drop its copy), release the room
    (60 s after a proper end; 10 min after the last person leaves otherwise).
 4. Deleting a game closes its room and stops its recording.
@@ -157,6 +176,8 @@ Backend env (see `back/.env.example`): `MONGO_URI`, `JWT_SECRET`,
 `CLIENT_URL` (comma-separated; first is used in reset links),
 `GOOGLE_CLIENT_ID`, `LIVEKIT_URL/API_KEY/API_SECRET`,
 `R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET`,
+`RECORDING_MODE` (`browser` default | `egress`), `R2_ENDPOINT` (local S3
+emulator only),
 `CLOUDINARY_*`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`,
 `TELEGRAM_POLLING`, `SENTRY_DSN_BACKEND`, `DEFAULT_LANGUAGE`.
 
@@ -164,8 +185,7 @@ Frontend env: `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`,
 `VITE_TELEGRAM_BOT_USERNAME`, `VITE_SENTRY_DSN_FRONTEND`.
 
 Startup logs say whether R2 is usable ("Recording storage ready / NOT
-usable"). Egress minutes are billed by LiveKit Cloud per plan — check the
-plan covers the club's weekly games.
+usable").
 
 ## 🛠️ Workflow
 
@@ -179,5 +199,7 @@ cd front && npx vitest run && npx tsc --noEmit && npm run build
 **Git: commit and push straight to `master`. Never create branches** — there
 is one developer on this project. Lockfiles must stay in sync (`npm ci` is
 what deploys run). Commits use a scope prefix (`fix(room):`, `feat(recording):`). Not covered by tests and
-checked by hand against a running server: the Egress recording chain, notes
-delivery, Telegram linking, the session close-out.
+checked by hand against a running server: recording on real devices
+(especially iPhone Safari), the Egress chain, notes delivery, Telegram
+linking, the session close-out. The recorder and the R2 calls were exercised
+in headless Chromium and against an S3 emulator when written (2026-09-25).

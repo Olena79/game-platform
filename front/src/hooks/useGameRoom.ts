@@ -35,6 +35,10 @@ export function useGameRoom(rawCode: string) {
 	const [gmImages, setGmImages] = useState<string[]>([])
 	const gmImagesRef = useRef<string[]>([])
 	const [notesDelivered, setNotesDelivered] = useState(0)
+	// How this server records ('browser' | 'egress'), and a nudge when the
+	// game is over and a browser recording should finish
+	const [recordingMode, setRecordingMode] = useState<'browser' | 'egress'>('browser')
+	const [recordStopSignal, setRecordStopSignal] = useState(0)
 	const [scenario, setScenario] = useState('')
 	const [actionError, setActionError] = useState('')
 	// How far this device's clock sits from the room's
@@ -227,8 +231,9 @@ export function useGameRoom(rawCode: string) {
 		})
 		socket.on('gr:end-anim', () => setEndAnim(true))
 		// Scenario and image deck arrive separately, addressed to the gamemaster
-		socket.on('gr:gm-state', (d: { scenario: string; images?: string[] }) => {
+		socket.on('gr:gm-state', (d: { scenario: string; images?: string[]; recordingMode?: 'browser' | 'egress' }) => {
 			setScenario(d.scenario ?? '')
+			if (d.recordingMode) setRecordingMode(d.recordingMode)
 			const images = d.images ?? []
 			gmImagesRef.current = images
 			setGmImages(images)
@@ -239,6 +244,7 @@ export function useGameRoom(rawCode: string) {
 			setRecordError(d.status === 'error' ? d.detail ?? '' : '')
 		})
 		socket.on('gr:notes-delivered', () => setNotesDelivered(n => n + 1))
+		socket.on('gr:record-stop', () => setRecordStopSignal(n => n + 1))
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
 
 		return () => {
@@ -297,6 +303,8 @@ export function useGameRoom(rawCode: string) {
 		recordError,
 		gmImages,
 		notesDelivered,
+		recordingMode,
+		recordStopSignal,
 		scenario,
 		actionError,
 		clockOffset,

@@ -4,6 +4,7 @@ import { Send } from 'lucide-react'
 import type { GameRoomState, RoomPlayer, ChatMessage } from './types'
 import { VotingPanel } from './VotingPanel'
 import { ModPanel } from './ModPanel'
+import type { RecordingControlsProps } from './RecordingControls'
 
 interface Props {
 	state: GameRoomState
@@ -35,10 +36,7 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
-	onRecordStart?: () => void
-	onRecordStop?: () => void
-	recordStatus?: string
-	recordError?: string
+	recording?: RecordingControlsProps
 	/** Passed down so the gamemaster's timer matches the room's clock */
 	clockOffset?: number
 	showMod?: boolean
@@ -54,7 +52,7 @@ export const ChatPanel = ({
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
-	onRecordStart, onRecordStop, recordStatus = '', recordError = '', clockOffset = 0,
+	recording, clockOffset = 0,
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
@@ -501,10 +499,7 @@ export const ChatPanel = ({
 					onTimerStop={onTimerStop}
 					onTimerClear={onTimerClear}
 					onBreakout={onBreakout}
-					onRecordStart={onRecordStart ?? (() => {})}
-					onRecordStop={onRecordStop ?? (() => {})}
-					recordStatus={recordStatus}
-					recordError={recordError}
+					recording={recording!}
 					clockOffset={clockOffset}
 				/>
 			)}

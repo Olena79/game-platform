@@ -84,3 +84,12 @@ export const livekitLimiter = rateLimit({
 	legacyHeaders: false,
 	message: { message: 'Too many LiveKit token requests, please try again in 15 minutes.' },
 })
+
+// ─ Recordings Limiter (the browser recorder sends one 8 MiB part every ~30 s)
+export const recordingsLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 300,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { message: 'Too many recording requests, please try again in 15 minutes.' },
+})

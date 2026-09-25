@@ -423,8 +423,16 @@
       "rec_idle": "Not recording",
       "rec_starting": "Starting the recording…",
       "rec_stopping": "Saving the file…",
-      "rec_error": "✕ Recording failed",
-      "rec_hint": "Records the main room as a grid. Works from any device, no observer window needed. The file and link last 7 days."
+      "rec_error": "✕ Recording stopped",
+      "rec_active_audio": "● Recording voices",
+      "rec_elsewhere": "● Recording from another tab",
+      "rec_uploaded": "Saved on the server: {{mb}} MB",
+      "rec_retrying": "No connection — trying again…",
+      "rec_err_unsupported": "This browser cannot record. Try Chrome, or update Safari.",
+      "rec_err_interrupted": "The connection dropped. Everything uploaded so far is saved — the link will come to Telegram. You can start a new recording.",
+      "rec_audio_only": "Voice only (for a weak phone)",
+      "rec_hint_browser": "Your device records. How it works and what matters →",
+      "rec_hint": "LiveKit records the main room (grid) on its servers. The file and link last 7 days."
     },
     "prejoin": {
       "title": "Joining room",
@@ -585,7 +593,7 @@
     "content_rights_grant": "By uploading content, you grant the platform a license to display and distribute it for platform operation.",
     "content_rights_removal": "You can delete your content at any time, or we can delete content that violates this agreement.",
     "recordings_title": "Session recordings",
-    "recordings_text": "Games are recorded by LiveKit on its servers; the file is kept in Cloudflare R2 storage and deleted automatically after 7 days. The gamemaster receives the link. Participants see a marker in the room while recording is on.",
+    "recordings_text": "The gamemaster may record a game: their browser combines the participants' video and voices and uploads the recording to Cloudflare R2 storage, where it is deleted automatically after 7 days. The gamemaster receives the link. Participants see a marker in the room while recording is on.",
     "recordings_storage": "Recordings are stored for 7 days, then automatically deleted",
     "recordings_deletion": "GMs and participants can delete recordings earlier",
     "recordings_consent": "All participants must consent to recording before the game",
@@ -597,5 +605,39 @@
     "termination_text": "We may terminate your platform access without notice if you violate these terms. You may delete your account at any time.",
     "disputes_title": "Dispute resolution",
     "disputes_text": "Disputes are resolved through negotiation. If negotiation is unsuccessful, disputes are resolved in accordance with the laws of Ukraine. You agree to the jurisdiction of the courts of Ukraine to resolve disputes related to the platform."
+  },
+  "recording_info": {
+    "title": "🎥 How game recording works",
+    "lead": "Your device does the recording: it puts everyone’s video into a grid, mixes the voices and sends it to the server piece by piece. It costs the club nothing, but it asks something of your device.",
+    "points": [
+      {
+        "title": "Best from a computer or laptop",
+        "text": "Plugged in. Recording is light there and the quality is better."
+      },
+      {
+        "title": "Keep the room tab open and on screen",
+        "text": "Don’t minimise the browser or lock the phone: a phone pauses recording the moment the room leaves the screen. The screen won’t turn off by itself while you are in the room."
+      },
+      {
+        "title": "A phone may get warm and drain faster",
+        "text": "It shows the game and records it at the same time. Keep it charging. On a weak phone, switch on “Voice only”: the file is dozens of times smaller and the load is almost nothing."
+      },
+      {
+        "title": "What your device sees is what gets recorded",
+        "text": "The room you are in (in a breakout room, that one). Video quality depends on your internet."
+      },
+      {
+        "title": "If something breaks off, the recording survives",
+        "text": "Battery dead, internet gone, tab closed — everything uploaded so far is kept. The file and link reach Telegram within a few minutes."
+      },
+      {
+        "title": "The link goes to your Telegram, for 7 days",
+        "text": "Anyone you forward it to can open it. After 7 days the file is deleted. Participants see a marker in the room while recording is on."
+      }
+    ],
+    "accept": "Got it, start recording",
+    "close": "Got it",
+    "card_title": "Game recording",
+    "card_more": "Details"
   }
 }

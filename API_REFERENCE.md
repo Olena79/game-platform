@@ -85,6 +85,23 @@ code, a registered spectator the spectator code.
 after the game id) and whether the seat may publish: the spectator code gives
 a subscribe-only token. A breakout token needs an invitation from the GM.
 
+## Recordings — `/api/recordings` (RECORDING_MODE=browser)
+
+The gamemaster's browser records the room and uploads it here while the game
+runs. Only the game's creator may record it.
+
+| Method | Path | Auth | Body | Returns |
+|---|---|---|---|---|
+| POST | `/initiate` | JWT (GM) | `{ code, contentType }` (`video/webm`, `video/mp4`, `audio/webm`, `audio/mp4`, …) | `{ recordingId, partSize }` — an open recording of the same game is closed first |
+| POST | `/:id/parts/:n` | JWT (GM) | raw bytes; header `X-Final: 1` on the last part | `{ bytes, complete }` · `400 { message, expectedPart }` · `409` closed |
+| POST | `/:id/alive` | JWT (GM) | — | `{ ok }` · `409` closed — send every minute |
+
+Parts are numbered from 1, sent in order, each exactly `partSize` (8 MiB)
+except the last, which may be shorter or empty. Resending a stored part is
+acknowledged. The final part closes the file and sends the Telegram link.
+After 3 minutes without a part or heartbeat the server closes the file from
+the parts it has (marked interrupted). Limit: 8 GB per recording.
+
 ## Upload — `/api/upload`
 
 `POST /` (JWT, `multipart/form-data`, field `file`, images ≤ 10 MB) → `{ url }` (Cloudinary).
@@ -128,20 +145,21 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:coins-transfer` / `gr:coins-bank` | players | `{ toUserId, amount }` / `{ amount }` |
 | `gr:vote-cast` / `gr:spectator-vote-cast` | players / spectators | `{ optionIds }` |
 | `gr:breakout-join` / `gr:breakout-leave` | invited | `{ roomId }` / — |
-| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:record-control { action: 'start'\|'stop' }` | GM | |
+| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:record-control { action: 'start'\|'stop' }` (egress mode) | GM | |
 
 ### Server → client
 
 | Event | To | Payload |
 |---|---|---|
 | `gr:state` | room | public state — no entry code, no scenario, no image deck; anonymous votes without voter ids; `isRecording`, `serverNow` |
-| `gr:gm-state` | GM | `{ scenario, images }` |
+| `gr:gm-state` | GM | `{ scenario, images, recordingMode: 'browser'\|'egress' }` |
 | `gr:chat`, `gr:chat-history` | room / sender+recipients | message(s) |
 | `gr:my-vote` | voter | `{ voteId, optionIds }` |
 | `gr:reactions`, `gr:player-reacted` | room | |
 | `gr:breakout-invited`, `gr:breakout-return` | player | |
 | `gr:mute-all`, `gr:mute-player` | room / player | the media server mutes as well |
 | `gr:record-status` | GM | `{ status: 'recording'\|'stopping'\|'done'\|'error'\|'idle', detail? }` |
+| `gr:record-stop` | GM | browser mode: the game is over, finish the recording |
 | `gr:notes-delivered` | GM | the server sent the notes to Telegram |
 | `gr:end-anim`, `gr:rejoin` | room | |
 | `gr:error` | socket | the room cannot be used (`Room not found`, `Unauthorized`) |
@@ -149,7 +167,10 @@ and ignores the field. At most 20 events per second per socket.
 
 ### Recording
 
-`gr:record-control start` asks LiveKit Egress to record the main room (grid
-layout) into the R2 bucket. The server follows it to the end and sends the GM
-a Telegram message with a link valid until the file is deleted, 7 days after
-the recording started. Breakout rooms are not recorded.
+`RECORDING_MODE=browser` (default): the GM's browser records (see
+`/api/recordings` above); `gr:record-control` is refused.
+`RECORDING_MODE=egress`: `gr:record-control start` asks LiveKit Egress to
+record the main room (grid) into R2; the server follows the job to the end.
+
+Either way the GM gets a Telegram message with a link valid until the file is
+deleted, 7 days after the recording started, and everyone sees `isRecording`.
