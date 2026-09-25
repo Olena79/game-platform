@@ -10,6 +10,8 @@ export interface IUser extends Document {
 	language?: string
 	/** Bumped when the password is reset: access tokens carrying an older one are refused */
 	tokenVersion: number
+	/** Sent /stop to the bot: no new-game announcements (personal messages still come) */
+	newsOptOut?: boolean
 	/** sha256 of the pending Telegram deep-link token, and when it lapses */
 	telegramLinkTokenHash?: string
 	telegramLinkExpiresAt?: Date
@@ -31,6 +33,7 @@ const UserSchema = new Schema<IUser>(
 		telegramChatId:  { type: String, trim: true },
 		language:        { type: String, default: 'uk', enum: ['uk', 'en'], trim: true },
 		tokenVersion:    { type: Number, default: 0 },
+		newsOptOut:      { type: Boolean, default: false },
 		telegramLinkTokenHash: { type: String },
 		telegramLinkExpiresAt: { type: Date },
 	},

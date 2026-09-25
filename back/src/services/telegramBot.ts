@@ -83,57 +83,115 @@ async function getUpdates(): Promise<PollResult> {
 	}
 }
 
-async function sendMessage(chatId: number, text: string, attempt = 0): Promise<boolean> {
+interface TelegramResult {
+	ok: boolean
+	/** The person blocked the bot or deleted their account: nothing will ever reach them */
+	unreachable: boolean
+}
+
+/**
+ * One Bot API call, with a single retry when Telegram asks us to slow down
+ * (about one message a second per chat, thirty a second overall).
+ */
+async function callTelegram(method: string, payload: Record<string, unknown>, attempt = 0): Promise<TelegramResult> {
 	try {
-		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/sendMessage`, {
+		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/${method}`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				chat_id: chatId,
-				text,
-				parse_mode: 'HTML',
-			}),
+			body: JSON.stringify(payload),
 		})
 		const data = await response.json()
-		if (!data.ok) {
-			// Telegram allows roughly one message per second per chat, and a
-			// burst of registrations used to lose the overflow with no retry.
-			const retryAfter = data.parameters?.retry_after
-			if (retryAfter && attempt === 0) {
-				logger.warn('[telegram] rate limited, retrying', { chatId, retryAfter })
-				await sleep((retryAfter + 1) * 1000)
-				return sendMessage(chatId, text, attempt + 1)
-			}
-			logger.error('[telegram] sendMessage failed', { chatId, error: data.description })
-			return false
+		if (data.ok) return { ok: true, unreachable: false }
+
+		const retryAfter = data.parameters?.retry_after
+		if (retryAfter && attempt === 0) {
+			logger.warn('[telegram] rate limited, retrying', { method, retryAfter })
+			await sleep((retryAfter + 1) * 1000)
+			return callTelegram(method, payload, attempt + 1)
 		}
-		return true
+		const unreachable = data.error_code === 403 || /chat not found|user is deactivated/i.test(String(data.description ?? ''))
+		logger.error(`[telegram] ${method} failed`, { chatId: payload.chat_id, error: data.description })
+		return { ok: false, unreachable }
 	} catch (err) {
-		logger.error('[telegram] sendMessage error', { chatId, error: err instanceof Error ? err.message : String(err) })
-		return false
+		logger.error(`[telegram] ${method} error`, { chatId: payload.chat_id, error: err instanceof Error ? err.message : String(err) })
+		return { ok: false, unreachable: false }
 	}
 }
 
+async function sendMessage(chatId: number, text: string): Promise<boolean> {
+	const res = await callTelegram('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true })
+	return res.ok
+}
+
+type Lang = 'uk' | 'en'
+
+function langOf(value: string | undefined | null): Lang {
+	return value === 'en' ? 'en' : value === 'uk' ? 'uk' : ((process.env.DEFAULT_LANGUAGE === 'en' ? 'en' : 'uk'))
+}
+
+function siteUrl(): string {
+	return (process.env.CLIENT_URL?.split(',')[0] ?? '').trim().replace(/\/$/, '')
+}
+
+/**
+ * What the bot says. It is not there to talk: it carries news — new games,
+ * entry codes, a gamemaster's notes and recordings, reset links — and every
+ * message says so, so nobody waits for an answer that will not come.
+ */
 const messages = {
 	uk: {
-		userNotFound: '❌ Посилання застаріло або вже використане. Відкрийте нове посилання на сайті.',
-		success: (firstName: string) =>
+		welcome: () =>
+			`👋 <b>Вітаю! Я бот клубу «Ігри Сенсів».</b>\n\n` +
+			`Я не веду розмов — я надсилаю новини:\n` +
+			`🎲 анонси нових ігор на платформі;\n` +
+			`🔑 коди для входу в гру — щойно ви зареєструєтесь гравцем чи глядачем;\n` +
+			`📝 ведучим — нотатки після гри та посилання на запис;\n` +
+			`🔐 посилання для відновлення пароля.\n\n` +
+			`Щоб усе це приходило сюди, підключіть Telegram у своєму акаунті на сайті` +
+			(siteUrl() ? `: ${siteUrl()}/account` : '.') +
+			`\n\nНе хочете анонсів нових ігор? Надішліть /stop — коди й особисті повідомлення все одно приходитимуть. Повернути анонси — /news.`,
+		linked: (firstName: string) =>
 			`✅ <b>Telegram підключено!</b>\n\n` +
 			`Привіт, <b>${escapeHtml(firstName)}</b>! 👋\n\n` +
-			`Сюди приходитимуть коди ігор, нотатки після гри, посилання на записи та посилання для відновлення пароля.`,
-		invalidLink: '❌ Посилання застаріло або некоректне. Будь ласка, відкрийте нове посилання на сайті Games of Senses.',
-		helpMessage: 'Я надсилаю коди ігор, нотатки, записи та посилання для відновлення пароля. 🎮\n\nІнших команд поки немає.',
-		noDirectLink: '👋 Привіт! Схоже, ви відкрили бота напряму.\n\nЩоб підключити Telegram, натисніть «Підключити Telegram» у своєму акаунті на сайті Games of Senses.',
+			`Тепер сюди приходитимуть:\n` +
+			`🎲 анонси нових ігор;\n` +
+			`🔑 коди входу в ігри, на які ви зареєструвались (гравцем чи глядачем);\n` +
+			`📝 якщо ви ведете гру — нотатки й посилання на запис;\n` +
+			`🔐 посилання для відновлення пароля.\n\n` +
+			`Відповідати мені не потрібно — я лише надсилаю новини. Не хочете анонсів? /stop`,
+		alreadyLinked: '✅ Ваш Telegram уже підключено до акаунта — новини приходитимуть сюди.\n\nНе хочете анонсів нових ігор? /stop · Повернути — /news',
+		invalidLink: '❌ Посилання застаріло або вже використане. Відкрийте нове в розділі «Акаунт» на сайті — воно діє 15 хвилин.',
+		notTalking: '🤖 Я не відповідаю на повідомлення — я лише надсилаю новини клубу: анонси ігор, коди входу, нотатки й записи.\n\n/stop — вимкнути анонси нових ігор\n/news — увімкнути їх знову',
+		notLinked: 'Цей чат ще не підключено до акаунта. Підключіть Telegram у своєму акаунті на сайті' + (siteUrl() ? `: ${siteUrl()}/account` : '.'),
+		newsOff: '🔕 Анонси нових ігор вимкнено. Коди входу, нотатки й записи приходитимуть як і раніше.\n\nУвімкнути знову — /news',
+		newsOn: '🔔 Анонси нових ігор увімкнено.',
 	},
 	en: {
-		userNotFound: '❌ This link has expired or was already used. Please open a new one on the website.',
-		success: (firstName: string) =>
+		welcome: () =>
+			`👋 <b>Hi! I am the Games of Senses club bot.</b>\n\n` +
+			`I don’t chat — I send news:\n` +
+			`🎲 announcements of new games on the platform;\n` +
+			`🔑 entry codes — as soon as you register as a player or a spectator;\n` +
+			`📝 for gamemasters — notes after a game and recording links;\n` +
+			`🔐 password reset links.\n\n` +
+			`To get all this here, connect Telegram in your account on the website` +
+			(siteUrl() ? `: ${siteUrl()}/account` : '.') +
+			`\n\nDon’t want new-game announcements? Send /stop — codes and personal messages still arrive. Turn them back on with /news.`,
+		linked: (firstName: string) =>
 			`✅ <b>Telegram connected!</b>\n\n` +
 			`Hi, <b>${escapeHtml(firstName)}</b>! 👋\n\n` +
-			`Game codes, notes after a game, recording links and password reset links will arrive here.`,
-		invalidLink: '❌ This link has expired or is invalid. Please open a new link on the Games of Senses website.',
-		helpMessage: 'I send game codes, notes, recordings and password reset links. 🎮\n\nNo other commands yet.',
-		noDirectLink: '👋 Hi! It looks like you opened the bot directly.\n\nTo connect Telegram, press “Connect Telegram” in your account on the Games of Senses website.',
+			`From now on you will get here:\n` +
+			`🎲 announcements of new games;\n` +
+			`🔑 entry codes for games you register for (as a player or spectator);\n` +
+			`📝 if you run a game — notes and the recording link;\n` +
+			`🔐 password reset links.\n\n` +
+			`No need to reply — I only send news. Don’t want announcements? /stop`,
+		alreadyLinked: '✅ Your Telegram is already connected — news will arrive here.\n\nDon’t want new-game announcements? /stop · Back on — /news',
+		invalidLink: '❌ This link has expired or was already used. Open a new one under “Account” on the website — it works for 15 minutes.',
+		notTalking: '🤖 I don’t answer messages — I only send the club’s news: game announcements, entry codes, notes and recordings.\n\n/stop — turn off new-game announcements\n/news — turn them back on',
+		notLinked: 'This chat is not connected to an account yet. Connect Telegram in your account on the website' + (siteUrl() ? `: ${siteUrl()}/account` : '.'),
+		newsOff: '🔕 New-game announcements are off. Entry codes, notes and recordings still arrive.\n\nTurn them back on — /news',
+		newsOn: '🔔 New-game announcements are on.',
 	},
 }
 
@@ -146,21 +204,17 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		)
 
 		if (!user) {
-			const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
-			await sendMessage(chatId, messages[lang].userNotFound)
+			await sendMessage(chatId, messages[langOf(null)].invalidLink)
 			logger.warn('[telegram] Start command for non-existent user', { userId })
 			return
 		}
 
-		// Use user's language
-		const userLang = (user.language || 'uk') as 'uk' | 'en'
-		const successMsg = messages[userLang].success(firstName)
-
-		await sendMessage(chatId, successMsg)
-		logger.info('[telegram] User linked successfully', { userId, language: userLang })
+		const lang = langOf(user.language)
+		await sendMessage(chatId, messages[lang].linked(firstName))
+		logger.info('[telegram] User linked successfully', { userId, language: lang })
 	} catch (err) {
-		const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
-		logger.error('[telegram] handleStartCommand error', { userId, chatId, error: err instanceof Error ? err.message : String(err) })
+		const lang = langOf(null)
+		logger.error('[telegram] handleStartCommand error', { userId, error: err instanceof Error ? err.message : String(err) })
 		await sendMessage(chatId, `⚠️ ${lang === 'uk' ? 'Сталась помилка. Спробуйте пізніше.' : 'An error occurred. Please try again later.'}`)
 	}
 }
@@ -171,16 +225,19 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 	const { chat, from, text } = update.message
 	const chatId = chat.id
 	const firstName = from.first_name
-	const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
+	// The account this chat belongs to, if any: its language and settings apply
+	const account = await User.findOne({ telegramChatId: String(chatId) }).select('language newsOptOut')
+	const lang = langOf(account?.language)
+	const command = text.trim().split(/\s+/)[0].split('@')[0].toLowerCase()
 
 	// /start <token>, where the token is a short-lived, single-use value the
 	// website issued to the account owner. A raw id would be enough to attach
 	// this chat to somebody else's account — and ids are easy to come by.
-	if (text.startsWith('/start')) {
-		const payload = (text.split(' ')[1] || '').trim()
+	if (command === '/start') {
+		const payload = (text.trim().split(/\s+/)[1] || '').trim()
 
 		if (!payload) {
-			await sendMessage(chatId, messages[lang].noDirectLink)
+			await sendMessage(chatId, account ? messages[lang].alreadyLinked : messages[lang].welcome())
 			return
 		}
 
@@ -191,10 +248,158 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 		}
 
 		await handleStartCommand(userId, chatId, firstName)
-	} else {
-		// Any other message
-		await sendMessage(chatId, messages[lang].helpMessage)
+		return
 	}
+
+	if (command === '/stop' || command === '/news') {
+		if (!account) {
+			await sendMessage(chatId, messages[lang].notLinked)
+			return
+		}
+		const optOut = command === '/stop'
+		await User.updateOne({ _id: account._id }, { newsOptOut: optOut })
+		await sendMessage(chatId, optOut ? messages[lang].newsOff : messages[lang].newsOn)
+		return
+	}
+
+	if (command === '/help') {
+		await sendMessage(chatId, account ? messages[lang].notTalking : messages[lang].welcome())
+		return
+	}
+
+	// Anything else: say plainly that nobody reads it
+	await sendMessage(chatId, messages[lang].notTalking)
+}
+
+/**
+ * What people see in the bot before pressing Start, in its profile, and in
+ * the command menu. Set on every start, so the texts here stay the truth.
+ */
+async function describeBot(): Promise<void> {
+	const texts = {
+		uk: {
+			description: 'Бот клубу «Ігри Сенсів». Не для розмов — лише новини: анонси нових ігор, коди входу для гравців і глядачів, нотатки й записи для ведучих, посилання для відновлення пароля. Щоб підключити, натисніть «Підключити Telegram» у своєму акаунті на сайті.',
+			short: 'Новини клубу «Ігри Сенсів»: анонси ігор, коди входу, нотатки й записи.',
+			commands: [
+				{ command: 'stop', description: 'Вимкнути анонси нових ігор' },
+				{ command: 'news', description: 'Увімкнути анонси нових ігор' },
+				{ command: 'help', description: 'Що вміє цей бот' },
+			],
+		},
+		en: {
+			description: 'The Games of Senses club bot. Not for chatting — news only: new game announcements, entry codes for players and spectators, notes and recordings for gamemasters, password reset links. To connect, press “Connect Telegram” in your account on the website.',
+			short: 'Games of Senses club news: game announcements, entry codes, notes and recordings.',
+			commands: [
+				{ command: 'stop', description: 'Turn off new-game announcements' },
+				{ command: 'news', description: 'Turn on new-game announcements' },
+				{ command: 'help', description: 'What this bot does' },
+			],
+		},
+	}
+	const def = langOf(null)
+	// No language_code: the default everyone sees; then the English variant
+	await callTelegram('setMyDescription', { description: texts[def].description })
+	await callTelegram('setMyShortDescription', { short_description: texts[def].short })
+	await callTelegram('setMyCommands', { commands: texts[def].commands })
+	const other: Lang = def === 'uk' ? 'en' : 'uk'
+	const otherCode = other === 'uk' ? 'uk' : 'en'
+	await callTelegram('setMyDescription', { description: texts[other].description, language_code: otherCode })
+	await callTelegram('setMyShortDescription', { short_description: texts[other].short, language_code: otherCode })
+	await callTelegram('setMyCommands', { commands: texts[other].commands, language_code: otherCode })
+}
+
+// ── New game announcements ──────────────────────────────────────────────────
+
+export interface GameAnnouncement {
+	title: string
+	description: string
+	scheduledAt?: Date | null
+	participationCost?: number
+	creatorName: string
+	coverImage?: string
+}
+
+/** "25 вересня 2026, 19:00 (за Києвом)" — the club lives in Kyiv time. */
+export function formatGameDate(date: Date | null | undefined, lang: Lang): string {
+	if (!date || isNaN(date.getTime())) return lang === 'uk' ? 'дату буде оголошено' : 'date to be announced'
+	const locale = lang === 'uk' ? 'uk-UA' : 'en-GB'
+	const day = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long', timeZone: 'Europe/Kyiv' }).format(date)
+	const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' }).format(date)
+	return lang === 'uk' ? `${day}, ${time} (за Києвом)` : `${day}, ${time} (Kyiv time)`
+}
+
+/** The announcement text; the same for the photo caption and the plain message. */
+export function announcementText(game: GameAnnouncement, lang: Lang): string {
+	const cost = Number(game.participationCost ?? 0)
+	const price = cost > 0
+		? (lang === 'uk' ? `💰 Платна: ${cost} грн` : `💰 Paid: ${cost} UAH`)
+		: (lang === 'uk' ? '🎁 Безкоштовна' : '🎁 Free')
+	const link = siteUrl() ? `${siteUrl()}/games` : ''
+	const lines = [
+		lang === 'uk' ? '🎲 <b>Нова гра на платформі!</b>' : '🎲 <b>A new game on the platform!</b>',
+		'',
+		`<b>${escapeHtml(game.title)}</b>`,
+		game.description ? `\n${escapeHtml(game.description)}\n` : '',
+		`📅 ${escapeHtml(formatGameDate(game.scheduledAt, lang))}`,
+		price,
+		`🎭 ${lang === 'uk' ? 'Ігромастер' : 'Gamemaster'}: ${escapeHtml(game.creatorName)}`,
+		'',
+		link
+			? (lang === 'uk' ? `Зареєструватися: ${link}` : `Register: ${link}`)
+			: '',
+		lang === 'uk' ? '<i>Вимкнути анонси — /stop</i>' : '<i>Turn off announcements — /stop</i>',
+	]
+	return lines.filter((l, i, all) => !(l === '' && all[i - 1] === '')).join('\n').trim()
+}
+
+let announcing: Promise<void> = Promise.resolve()
+
+/**
+ * Tells every linked member about a new game — except its own gamemaster and
+ * anyone who sent /stop. Queued, so two games created at once do not
+ * interleave, and paced under Telegram's limit. A chat that blocked the bot
+ * is unlinked: it would fail forever, and the site should show it as not
+ * connected.
+ */
+export function announceNewGame(game: GameAnnouncement & { creatorId: string }): Promise<void> {
+	if (!BOT_TOKEN) return Promise.resolve()
+	announcing = announcing.then(() => sendAnnouncements(game)).catch(err => {
+		logger.error('[telegram] announcement failed', { error: err instanceof Error ? err.message : String(err) })
+	})
+	return announcing
+}
+
+async function sendAnnouncements(game: GameAnnouncement & { creatorId: string }): Promise<void> {
+	const recipients = await User.find({
+		telegramChatId: { $exists: true, $nin: [null, ''] },
+		newsOptOut: { $ne: true },
+		_id: { $ne: game.creatorId },
+	}).select('telegramChatId language').lean()
+
+	let sent = 0
+	let unlinked = 0
+	for (const r of recipients) {
+		const chatId = parseInt(String(r.telegramChatId), 10)
+		if (!Number.isFinite(chatId)) continue
+		const text = announcementText(game, langOf(r.language))
+
+		// A picture when the game has one and the text fits a caption (1024)
+		let res: TelegramResult | null = null
+		if (game.coverImage && /^https:\/\//.test(game.coverImage) && text.length <= 1024) {
+			res = await callTelegram('sendPhoto', { chat_id: chatId, photo: game.coverImage, caption: text, parse_mode: 'HTML' })
+		}
+		if (!res?.ok && !res?.unreachable) {
+			res = await callTelegram('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true })
+		}
+
+		if (res.ok) sent++
+		else if (res.unreachable) {
+			await User.updateOne({ _id: r._id }, { $unset: { telegramChatId: 1 } })
+			unlinked++
+		}
+		await sleep(60)   // ~16 a second, well under Telegram's 30
+	}
+	logger.info('[telegram] new game announced', { recipients: recipients.length, sent, unlinked })
 }
 
 export async function startTelegramPolling(): Promise<void> {
@@ -232,6 +437,8 @@ export async function startTelegramPolling(): Promise<void> {
 		logger.error('[telegram] Failed to connect to bot', { error: err instanceof Error ? err.message : String(err) })
 		return
 	}
+
+	void describeBot()
 
 	pollingActive = true
 	pollLoop().catch(err => {

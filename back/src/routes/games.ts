@@ -8,7 +8,7 @@ import { GameMessage } from '../models/GameMessage'
 import { closeDeletedGame } from '../socket/gameRoom'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
-import { sendGameCodeToTelegram, sendNotesToTelegram } from '../services/telegramBot'
+import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
@@ -43,6 +43,8 @@ function publicGameView(game: GameDoc, viewerId?: string) {
 
 	const out: Record<string, unknown> = {}
 	for (const field of PUBLIC_GAME_FIELDS) out[field] = obj[field]
+	// Older games stored the creator's email when they had no name
+	out.creatorName = String(obj.creatorName ?? '').split('@')[0]
 
 	// Counts are public; who exactly is playing is not. The arrays stay
 	// present but empty for everyone else, so callers can keep reading them.
@@ -206,12 +208,25 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			...rest,
 			title:       title.trim(),
 			creatorId:   req.userId,
-			creatorName: user.name || user.email,
+			// Shown to everyone and sent to every member: never the email address
+			creatorName: [user.name, user.surname].filter(Boolean).join(' ') || user.email.split('@')[0],
 			gameCode,
 			spectatorCode,
 		})
 
 		res.status(201).json(publicGameView(game, req.userId))
+
+		// Everyone linked to the bot hears about it (after the response: the
+		// creator does not wait for fifty messages to go out)
+		void announceNewGame({
+			title: game.title,
+			description: game.description,
+			scheduledAt: game.scheduledAt,
+			participationCost: game.participationCost,
+			creatorName: game.creatorName.split('@')[0],
+			coverImage: game.coverImage,
+			creatorId: String(game.creatorId),
+		})
 	} catch (err: any) {
 		logger.error('[games POST]', err)
 		res.status(500).json({ message: 'Server error' })
