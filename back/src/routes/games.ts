@@ -1,11 +1,14 @@
 import logger from '../config/logger'
 import { Router, Response } from 'express'
+import { randomInt } from 'crypto'
 import { Types } from 'mongoose'
 import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
+import { GameMessage } from '../models/GameMessage'
+import { closeDeletedGame } from '../socket/gameRoom'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
-import { sendGameCodeToTelegram, sendGameReminderToTelegram, sendNotesToTelegram } from '../services/telegramBot'
+import { sendGameCodeToTelegram, sendNotesToTelegram } from '../services/telegramBot'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
@@ -72,24 +75,32 @@ function publicGameView(game: GameDoc, viewerId?: string) {
 }
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+/**
+ * A code is the pass into a game (CLAUDE.md), so it comes from the system's
+ * cryptographic generator: Math.random is predictable enough that codes seen
+ * on your own games could hint at others'. Entry and spectator codes share one
+ * namespace — a code resolves to exactly one game and one kind of seat.
+ */
 async function generateUniqueCode(): Promise<string> {
 	for (let attempt = 0; attempt < 20; attempt++) {
-		const code = Array.from({ length: 6 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('')
-		const exists = await Game.findOne({ gameCode: code })
+		const code = Array.from({ length: 6 }, () => CHARS[randomInt(CHARS.length)]).join('')
+		const exists = await Game.exists({ $or: [{ gameCode: code }, { spectatorCode: code }] })
 		if (!exists) return code
 	}
 	throw new Error('Could not generate a unique code after 20 attempts')
 }
 
-// GET /api/games/resolve/:code — resolve any code (player or spectator) to gameCode
+// GET /api/games/resolve/:code — does this code open a room, and which seat?
+//
+// Deliberately says nothing else. It used to answer a spectator code with the
+// entry code, which turned every spectator into a player with a microphone.
 router.get('/resolve/:code', validateParams(gameCodeSchema), async (req, res: Response): Promise<void> => {
 	try {
 		const code = req.params.code.toUpperCase()
-		const byGameCode = await Game.findOne({ gameCode: code })
-		if (byGameCode) { res.json({ gameCode: byGameCode.gameCode, isSpectator: false }); return }
-		const bySpectatorCode = await Game.findOne({ spectatorCode: code })
-		if (bySpectatorCode) { res.json({ gameCode: bySpectatorCode.gameCode, isSpectator: true }); return }
-		res.status(404).json({ message: 'Code not found' })
+		const game = await Game.findOne({ $or: [{ gameCode: code }, { spectatorCode: code }] }).select('gameCode spectatorCode title')
+		if (!game) { res.status(404).json({ message: 'Code not found' }); return }
+		res.json({ isSpectator: game.gameCode !== code, title: game.title })
 	} catch (err: any) {
 		logger.error('[games/resolve]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -113,18 +124,6 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 		})))
 	} catch (err: any) {
 		logger.error('[games GET]', err)
-		res.status(500).json({ message: 'Server error' })
-	}
-})
-
-// GET /api/games/code/:code — get game by gameCode (public — card number stripped)
-router.get('/code/:code', optionalAuth, validateParams(gameCodeSchema), async (req: AuthRequest, res: Response): Promise<void> => {
-	try {
-		const game = await Game.findOne({ gameCode: req.params.code })
-		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(publicGameView(game, req.userId))
-	} catch (err: any) {
-		logger.error('[games/code]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })
@@ -235,6 +234,17 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		}
 		if (typeof game.title === 'string') game.title = game.title.trim()
 
+		// Checked against the stored values too: sending only one of the two
+		// used to be able to leave the game with min > max.
+		if (game.maxPlayers < game.minPlayers) {
+			res.status(400).json({ message: 'maxPlayers must be greater than or equal to minPlayers' })
+			return
+		}
+		if (game.maxPlayers < game.registeredPlayers.length) {
+			res.status(400).json({ message: 'MAX_BELOW_REGISTERED' })
+			return
+		}
+
 		await game.save()
 		res.json(publicGameView(game, req.userId))
 	} catch (err: any) {
@@ -254,6 +264,12 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 			return
 		}
 		await Game.deleteOne({ _id: game._id })
+		// Nothing of the game may outlive it: likes, chat, a room still open
+		await Promise.all([
+			GameLike.deleteMany({ gameId: game._id }),
+			GameMessage.deleteMany({ gameId: String(game._id) }),
+			closeDeletedGame(game.gameCode, String(game._id)),
+		])
 		res.json({ ok: true })
 	} catch (err: any) {
 		logger.error('[games/:id DELETE]', err)
@@ -282,20 +298,25 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			return
 		}
 
-		if (game.registeredPlayers.length >= game.maxPlayers) {
+		// One atomic step: two people taking the last seat at the same moment
+		// used to both get it, and the game went over its limit.
+		const updated = await Game.findOneAndUpdate(
+			{
+				_id: game._id,
+				'registeredPlayers.userId': { $ne: user._id },
+				$expr: { $lt: [{ $size: '$registeredPlayers' }, '$maxPlayers'] },
+			},
+			{
+				$push: { registeredPlayers: { userId: user._id, name: user.name || 'User', surname: user.surname || '', registeredAt: new Date() } },
+				// A player is not also a spectator
+				$pull: { spectators: { userId: user._id } },
+			},
+			{ new: true },
+		)
+		if (!updated) {
 			res.status(400).json({ message: 'MAX_PLAYERS_REACHED' })
 			return
 		}
-
-		game.registeredPlayers.push({
-			userId: user._id as unknown as Types.ObjectId,
-			name: user.name || 'User',
-			surname: user.surname || '',
-			registeredAt: new Date(),
-		})
-		await game.save()
-
-		const gmUser = await User.findById(game.creatorId)
 
 		// Send Telegram notification if user has Telegram connected
 		if (user.telegramChatId) {
@@ -308,8 +329,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			).catch(err => logger.error('[telegram game code]', err))
 		}
 
-
-		res.json({ gameCode: game.gameCode, registeredPlayers: game.registeredPlayers })
+		res.json({ gameCode: updated.gameCode, registeredPlayers: updated.registeredPlayers })
 	} catch (err: any) {
 		logger.error('[games/:id/register]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -365,8 +385,6 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 			registeredAt: new Date(),
 		})
 		await game.save()
-
-		const gmUser = await User.findById(game.creatorId)
 
 		// Send Telegram notification if user has Telegram connected
 		if (user.telegramChatId) {

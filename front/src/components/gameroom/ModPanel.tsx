@@ -37,28 +37,36 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
-	onOpenObserver: () => void
 	onRecordStart: () => void
 	onRecordStop: () => void
+	/** Last recording status the server reported: starting | recording | stopping | done | error | idle */
 	recordStatus: string
+	recordError?: string
 	clockOffset?: number
 }
 
 export const ModPanel = ({
 	state, onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
-	onOpenObserver, onRecordStart, onRecordStop, recordStatus, clockOffset = 0,
+	onRecordStart, onRecordStop, recordStatus, recordError = '', clockOffset = 0,
 }: Props) => {
 	const { t } = useTranslation()
 	const remaining = useTimer(state.timer, clockOffset)
 	const timer = state.timer
 
-	const hasObserver = state.hasObserver ?? false
-	const isRecording = recordStatus === 'recording'
-	const isPrepared = recordStatus === 'prepared'
-	const isUploading = recordStatus === 'uploading'
-	const isDone = recordStatus === 'done'
-	const isRecError = recordStatus === 'error'
+	// The room state says whether LiveKit is recording — right after a reload
+	// too; the status adds what happened since this person pressed a button.
+	const isStarting = recordStatus === 'starting'
+	const isRecording = state.isRecording || recordStatus === 'recording'
+	const isStopping = !isRecording && recordStatus === 'stopping'
+	const isDone = !isRecording && recordStatus === 'done'
+	const isRecError = !isRecording && recordStatus === 'error'
+	const recLabel = isRecording ? t('room.mod.rec_active')
+		: isStarting ? t('room.mod.rec_starting')
+		: isStopping ? t('room.mod.rec_stopping')
+		: isDone ? t('room.mod.rec_saved')
+		: isRecError ? t('room.mod.rec_error')
+		: t('room.mod.rec_idle')
 
 	const toolBtn = (
 		icon: React.ReactNode, label: string,
@@ -121,47 +129,42 @@ export const ModPanel = ({
 				{toolBtn(<Square size={14} />, t('room.mod.stop_game'), onEndGame, 'danger')}
 			</div>
 
-			{/* Observer / Recording section */}
+			{/* Recording — LiveKit records the room on its servers */}
 			<div className='mt-[2px] flex flex-col gap-[5px]' style={{ borderTop: '1px solid #1c1f35', paddingTop: '8px' }}>
 				<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>{t('room.mod.recording')}</span>
 
-				{!hasObserver ? (
-					<button onClick={onOpenObserver}
-						className='flex items-center justify-center gap-[6px] rounded-[8px] p-[8px] cursor-pointer transition-all hover:brightness-125'
-						style={{ background: '#0f1120', border: '1px solid #1c1f35', color: 'rgba(115,128,175,1)' }}>
-						<Video size={13} />
-						<span className='text-[12px]'>{t('room.mod.open_observer')}</span>
-					</button>
-				) : (
-					<div className='flex flex-col gap-[5px]'>
-						<div className='flex items-center gap-[6px] px-[8px] py-[5px] rounded-[8px]'
-							style={{
-								background: isRecording ? 'rgba(255,56,80,0.08)' : 'rgba(15,255,200,0.06)',
-								border: isRecording ? '1px solid rgba(255,56,80,0.25)' : '1px solid rgba(15,255,200,0.2)',
-							}}>
-							<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
-							<span className='text-[12px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
-								{isRecording ? t('room.mod.rec_active') : isUploading ? t('room.mod.rec_uploading') : isDone ? t('room.mod.rec_saved') : isPrepared ? t('room.mod.rec_ready') : isRecError ? t('room.mod.rec_not_ready') : t('room.mod.observer_connected')}
-							</span>
-						</div>
-						<div className='grid grid-cols-2 gap-[5px]'>
-							<button
-								onClick={onRecordStart}
-								disabled={!isPrepared}
-								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
-								style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
-								<span className='text-[11px]'>{t('room.mod.rec_start')}</span>
-							</button>
-							<button
-								onClick={onRecordStop}
-								disabled={!isRecording}
-								className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
-								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
-								<span className='text-[11px]'>{t('room.mod.rec_stop')}</span>
-							</button>
-						</div>
+				<div className='flex flex-col gap-[5px]'>
+					<div className='flex items-center gap-[6px] px-[8px] py-[5px] rounded-[8px]'
+						style={{
+							background: isRecording ? 'rgba(255,56,80,0.08)' : 'rgba(15,255,200,0.06)',
+							border: isRecording ? '1px solid rgba(255,56,80,0.25)' : '1px solid rgba(15,255,200,0.2)',
+						}}>
+						<Video size={12} style={{ color: isRecording ? '#ff3850' : '#0fffc8' }} />
+						<span className='text-[12px] font-[500]' style={{ color: isRecording ? '#ff3850' : '#0fffc8' }}>
+							{recLabel}
+						</span>
 					</div>
-				)}
+					{isRecError && recordError && (
+						<span className='text-[11px] leading-[1.35]' style={{ color: 'rgba(255,120,140,0.9)' }}>{recordError}</span>
+					)}
+					<div className='grid grid-cols-2 gap-[5px]'>
+						<button
+							onClick={onRecordStart}
+							disabled={isRecording || isStarting || isStopping}
+							className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
+							style={{ background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.25)', color: '#0fffc8' }}>
+							<span className='text-[11px]'>{t('room.mod.rec_start')}</span>
+						</button>
+						<button
+							onClick={onRecordStop}
+							disabled={!isRecording}
+							className='rounded-[8px] p-[7px] cursor-pointer flex items-center justify-center gap-[4px] transition-all hover:brightness-125 disabled:opacity-40 disabled:cursor-not-allowed'
+							style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
+							<span className='text-[11px]'>{t('room.mod.rec_stop')}</span>
+						</button>
+					</div>
+					<span className='text-[11px] leading-[1.35]' style={{ color: '#7a88b0' }}>{t('room.mod.rec_hint')}</span>
+				</div>
 			</div>
 		</div>
 	)

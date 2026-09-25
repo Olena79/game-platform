@@ -6,6 +6,11 @@ const ACCESS_TOKEN_KEY = 'mindflow_access_token'
 const REFRESH_TOKEN_KEY = 'mindflow_refresh_token'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
+/** Refresh this long before the access token runs out */
+const REFRESH_AHEAD_MS = 5 * 60 * 1000
+/** After a network failure, try again this soon rather than signing out */
+const RETRY_AFTER_ERROR_MS = 30 * 1000
+
 interface AuthContextType {
 	user: AuthUser | null
 	token: string | null
@@ -19,138 +24,198 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+function readStorage(key: string): string | null {
+	try { return localStorage.getItem(key) } catch { return null }
+}
+
+/** Milliseconds until the token's own expiry claim, or 0 if unreadable. */
+function msUntilExpiry(accessToken: string): number {
+	try {
+		const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+		return payload.exp * 1000 - Date.now()
+	} catch {
+		return 0
+	}
+}
+
+type RefreshOutcome = 'ok' | 'rejected' | 'network'
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [user, setUser] = useState<AuthUser | null>(null)
-	const [token, setToken] = useState<string | null>(localStorage.getItem(ACCESS_TOKEN_KEY))
+	const [token, setToken] = useState<string | null>(readStorage(ACCESS_TOKEN_KEY))
 	const [isLoading, setIsLoading] = useState(true)
-	const refreshIntervalRef = useRef<number | null>(null)
+	const refreshTimerRef = useRef<number | null>(null)
+	// One refresh at a time per tab: the refresh token is single-use
+	const inFlightRef = useRef<Promise<RefreshOutcome> | null>(null)
 
-	// Auto-refresh token 5 minutes before expiry
-	const setupTokenRefresh = (accessToken: string) => {
-		try {
-			const payload = JSON.parse(atob(accessToken.split('.')[1]))
-			const expiresIn = (payload.exp - payload.iat) * 1000
-			const refreshBefore = 5 * 60 * 1000 // 5 minutes
-
-			if (refreshIntervalRef.current) clearTimeout(refreshIntervalRef.current)
-
-			refreshIntervalRef.current = setTimeout(() => {
-				const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-				if (refreshToken) {
-					refreshAccessToken(refreshToken).catch(() => {
-						logout()
-					})
-				}
-			}, expiresIn - refreshBefore)
-		} catch (err) {
-			Sentry.captureException(err, { tags: { context: 'token-refresh-setup' } })
-		}
+	/**
+	 * Schedules the next refresh from the time the token actually has left.
+	 *
+	 * It used to count the token's whole lifetime from the moment the page
+	 * loaded, so a reload with a half-spent token left the page on an expired
+	 * one for up to 55 minutes — every request failing with 401.
+	 */
+	const scheduleRefresh = (accessToken: string, delayOverride?: number) => {
+		if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+		const delay = delayOverride ?? Math.max(0, msUntilExpiry(accessToken) - REFRESH_AHEAD_MS)
+		refreshTimerRef.current = window.setTimeout(() => { void runRefresh() }, delay)
 	}
 
-	const refreshAccessToken = async (refreshToken: string): Promise<boolean> => {
+	const clearLocal = () => {
 		try {
-			const response = await fetch(`${API_URL}/api/auth/refresh`, {
+			localStorage.removeItem(ACCESS_TOKEN_KEY)
+			localStorage.removeItem(REFRESH_TOKEN_KEY)
+		} catch { /* ignore */ }
+		setToken(null)
+		setUser(null)
+		if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+	}
+
+	const doRefresh = async (): Promise<RefreshOutcome> => {
+		const refreshToken = readStorage(REFRESH_TOKEN_KEY)
+		if (!refreshToken) return 'rejected'
+		let response: Response
+		try {
+			response = await fetch(`${API_URL}/api/auth/refresh`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ refreshToken }),
 			})
-
-			if (!response.ok) {
-				logout()
-				return false
-			}
-
-			const data = await response.json()
-			localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
-			localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
-			setToken(data.accessToken)
-
-			setupTokenRefresh(data.accessToken)
-			return true
 		} catch (err) {
 			Sentry.captureException(err, { tags: { context: 'token-refresh' } })
-			logout()
-			return false
+			return 'network'
 		}
+		if (response.status >= 500) return 'network'
+		if (!response.ok) {
+			// Another tab (the game room and its second window share storage)
+			// may have spent this refresh token a moment ago and saved the new
+			// pair: adopt it instead of treating the session as over.
+			const current = readStorage(REFRESH_TOKEN_KEY)
+			if (current && current !== refreshToken) {
+				const access = readStorage(ACCESS_TOKEN_KEY)
+				if (access && msUntilExpiry(access) > 0) {
+					setToken(access)
+					scheduleRefresh(access)
+					return 'ok'
+				}
+			}
+			return 'rejected'
+		}
+		const data = await response.json()
+		try {
+			localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
+			localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
+		} catch { /* private mode: the session lasts as long as the tab */ }
+		setToken(data.accessToken)
+		scheduleRefresh(data.accessToken)
+		return 'ok'
+	}
+
+	/**
+	 * A refresh whose failure is handled proportionately: a rejected refresh
+	 * token ends this session here, a network hiccup is retried shortly.
+	 *
+	 * It used to call logout() on any error — and logout revokes the refresh
+	 * tokens on the server, so a dropped Wi-Fi signal signed the person out of
+	 * every device they had.
+	 */
+	const runRefresh = async (): Promise<RefreshOutcome> => {
+		if (!inFlightRef.current) {
+			inFlightRef.current = doRefresh().finally(() => { inFlightRef.current = null })
+		}
+		const outcome = await inFlightRef.current
+		if (outcome === 'rejected') clearLocal()
+		if (outcome === 'network') {
+			const access = readStorage(ACCESS_TOKEN_KEY)
+			if (access) scheduleRefresh(access, RETRY_AFTER_ERROR_MS)
+		}
+		return outcome
 	}
 
 	useEffect(() => {
-		const savedAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
-		const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+		const savedAccessToken = readStorage(ACCESS_TOKEN_KEY)
 
 		if (!savedAccessToken) {
 			setIsLoading(false)
 			return
 		}
 
-		getMeRequest(savedAccessToken)
-			.then(u => {
-				setUser(u)
-				setToken(savedAccessToken)
-				setupTokenRefresh(savedAccessToken)
-			})
-			.catch(() => {
-				// Try to refresh if access token expired
-				if (savedRefreshToken) {
-					refreshAccessToken(savedRefreshToken).then(success => {
-						if (success) {
-							getMeRequest(localStorage.getItem(ACCESS_TOKEN_KEY)!).then(setUser)
-						}
-					})
-				} else {
-					localStorage.removeItem(ACCESS_TOKEN_KEY)
-					localStorage.removeItem(REFRESH_TOKEN_KEY)
-					setToken(null)
+		const load = async () => {
+			try {
+				let access = savedAccessToken
+				if (msUntilExpiry(access) <= 0) {
+					if (await runRefresh() !== 'ok') return
+					access = readStorage(ACCESS_TOKEN_KEY) ?? ''
 				}
-			})
-			.finally(() => setIsLoading(false))
+				setUser(await getMeRequest(access))
+				setToken(access)
+				scheduleRefresh(access)
+			} catch {
+				// Rejected (password changed, account gone) or unreachable: one
+				// refresh decides which, without throwing the tokens away first.
+				if (await runRefresh() === 'ok') {
+					const access = readStorage(ACCESS_TOKEN_KEY)
+					if (access) await getMeRequest(access).then(setUser).catch(() => undefined)
+				}
+			} finally {
+				setIsLoading(false)
+			}
+		}
+		void load()
+
+		// Other tabs refresh too: follow their tokens instead of spending the
+		// same single-use refresh token twice.
+		const onStorage = (e: StorageEvent) => {
+			if (e.key !== ACCESS_TOKEN_KEY) return
+			if (e.newValue) {
+				setToken(e.newValue)
+				scheduleRefresh(e.newValue)
+			} else {
+				setToken(null)
+				setUser(null)
+				if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+			}
+		}
+		window.addEventListener('storage', onStorage)
 
 		return () => {
-			if (refreshIntervalRef.current) clearTimeout(refreshIntervalRef.current)
+			window.removeEventListener('storage', onStorage)
+			if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
 		}
-	}, [])
+	}, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const login = (accessToken: string, refreshToken: string, userData: AuthUser) => {
-		localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-		localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+		try {
+			localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+			localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+		} catch { /* ignore */ }
 		setToken(accessToken)
 		setUser(userData)
-		setupTokenRefresh(accessToken)
+		scheduleRefresh(accessToken)
 	}
 
+	/** Signing out on purpose: the server revokes this account's refresh tokens. */
 	const logout = () => {
-		// Tell the server as well: refresh tokens live for 30 days, and
-		// clearing localStorage alone left them valid for all of it.
-		const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
-		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+		const accessToken = readStorage(ACCESS_TOKEN_KEY)
 		if (accessToken) {
 			fetch(`${API_URL}/api/auth/logout`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-				body: JSON.stringify({ refreshToken }),
 				keepalive: true,
 			}).catch(() => { /* leaving anyway */ })
 		}
-		localStorage.removeItem(ACCESS_TOKEN_KEY)
-		localStorage.removeItem(REFRESH_TOKEN_KEY)
-		setToken(null)
-		setUser(null)
-		if (refreshIntervalRef.current) clearTimeout(refreshIntervalRef.current)
+		clearLocal()
 	}
 
 	/**
 	 * Refresh on demand and hand back the new access token.
 	 *
-	 * The scheduled refresh is a setTimeout, and browsers throttle timers in
-	 * background tabs — which is exactly where the observer window sits for a
-	 * whole game. When that timer runs late the socket starts reconnecting
-	 * with a dead token and never recovers on its own.
+	 * Browsers throttle timers in background tabs, so the scheduled refresh can
+	 * run late; the socket calls this when its handshake is refused.
 	 */
 	const forceRefresh = async (): Promise<string | null> => {
-		const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-		if (!refreshToken) { logout(); return null }
-		const ok = await refreshAccessToken(refreshToken)
-		return ok ? localStorage.getItem(ACCESS_TOKEN_KEY) : null
+		const outcome = await runRefresh()
+		return outcome === 'ok' ? readStorage(ACCESS_TOKEN_KEY) : null
 	}
 
 	return (

@@ -22,11 +22,11 @@ cd game-platform
 
 # Install backend
 cd back
-npm install
+npm ci
 
 # Install frontend (in new terminal window)
 cd front
-npm install
+npm ci
 ```
 
 ---
@@ -45,11 +45,19 @@ PORT=5000
 NODE_ENV=development
 MONGO_URI=mongodb+srv://testuser:testpass@cluster0.xxxxx.mongodb.net/game?retryWrites=true
 JWT_SECRET=your-secret-key-min-32-chars-long-here-abc123xyz
-CLIENT_URL=http://localhost:3000
-EMAIL_ENABLED=false
-LIVEKIT_URL=https://your-livekit.example.com
+CLIENT_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=your-key
 LIVEKIT_API_SECRET=your-secret
+# Optional locally — without them "record" reports that storage is not configured
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+# Optional: a separate test bot, or TELEGRAM_POLLING=off to leave the real one alone
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_POLLING=off
 ```
 
 **For local MongoDB** (instead of Atlas):
@@ -193,7 +201,7 @@ netstat -ano | findstr :5000  # Windows
 
 After startup, test the app end-to-end:
 
-1. **Go to home page**: http://localhost:3000
+1. **Go to home page**: http://localhost:5173
 2. **Sign up**: Register with email (or Google)
 3. **Create a game**: Click "Create Game" button
 4. **Share room code**: Copy URL and open in another browser window

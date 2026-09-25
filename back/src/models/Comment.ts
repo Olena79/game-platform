@@ -2,7 +2,6 @@ import mongoose, { Document, Schema, Types } from 'mongoose'
 
 export interface IComment extends Document {
 	postId: Types.ObjectId
-	parentId: Types.ObjectId | null
 	authorId: Types.ObjectId
 	authorName: string
 	/** The author deleted their account */
@@ -19,7 +18,6 @@ export interface IComment extends Document {
 const CommentSchema = new Schema<IComment>(
 	{
 		postId:        { type: Schema.Types.ObjectId, ref: 'Post', required: true },
-		parentId:      { type: Schema.Types.ObjectId, ref: 'Comment', default: null },
 		authorId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
 		authorName:    { type: String, default: '' },
 		authorDeleted: { type: Boolean, default: false },
@@ -31,5 +29,6 @@ const CommentSchema = new Schema<IComment>(
 	},
 	{ timestamps: true, collection: 'community_comments' }
 )
+CommentSchema.index({ postId: 1, createdAt: 1 })
 
 export const Comment = mongoose.model<IComment>('Comment', CommentSchema)

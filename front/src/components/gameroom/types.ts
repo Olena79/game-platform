@@ -10,7 +10,6 @@ export interface RoomPlayer {
 	breakoutRoomId: string | null
 	isGamemaster: boolean
 	isSpectator: boolean
-	isObserver?: boolean
 	connected: boolean
 }
 
@@ -60,7 +59,6 @@ export interface RoomTimer {
 }
 
 export interface GameRoomState {
-	gameCode: string
 	gameId: string
 	status: 'lobby' | 'started' | 'ended'
 	coinsPerPlayer: number
@@ -74,6 +72,7 @@ export interface GameRoomState {
 	activeVote: ActiveVote | null
 	spectatorVote: ActiveVote | null
 	breakoutRooms: BreakoutRoom[]
+	/** The GM's image deck — filled for the gamemaster only (it arrives in gr:gm-state) */
 	images: string[]
 	coverImage: string
 	/** Never sent in gr:state — the gamemaster gets it via gr:gm-state */
@@ -84,5 +83,6 @@ export interface GameRoomState {
 	gamemasterId: string
 	shownImageUrl: string | null
 	defaultTimerSeconds: number | null
-	hasObserver?: boolean
+	/** LiveKit is recording the main room */
+	isRecording?: boolean
 }

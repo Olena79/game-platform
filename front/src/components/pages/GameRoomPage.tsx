@@ -193,25 +193,23 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 		showImage,
 		isSpectatorJoin,
 		recordStatus,
+		recordError,
+		notesDelivered,
 		scenario,
 		actionError,
 		myVote,
 		clockOffset,
 		recordControl,
 		syncNotes,
-		recordingActive,
 	} = room
 
-	const isSpectator = (me?.isSpectator ?? false) || isSpectatorJoin
+	// The server's word once we are in the roster; the code's kind until then
+	const isSpectator = me ? me.isSpectator : isSpectatorJoin
 
 	const {
 		isDev, mockPlayers, mockSpeakingId, mockCount, mocksByRoom,
 		addMockPlayers, moveAllMocksToRoom, clearMocksInRoom, clearMockPlayers,
 	} = useMockParticipants()
-
-	const handleOpenObserver = () => {
-		window.open(`/room/${gameCode}/observe`, 'observer', 'width=1280,height=720,menubar=no,toolbar=no')
-	}
 
 	// Resolve timer and image for the current room context.
 	// When in a breakout room, read from that room's own timer/image; otherwise main room.
@@ -456,7 +454,25 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 
 	const handleLeave = () => navigate('/games')
 
-	if (!state) {
+	// State with room-scoped timer/image for panel components (ChatPanel, ModPanel).
+	// Memoized to avoid re-rendering panels on every state update that doesn't
+	// affect them — and computed before the early return below: a hook after
+	// it crashed the room whenever the media token arrived before the state.
+	const panelState = useMemo(
+		() => (state ? { ...state, timer: activeTimer, shownImageUrl: activeShownImageUrl } : null),
+		[state, activeTimer, activeShownImageUrl],
+	)
+
+	// The server delivered the notes itself (the tab closed, or the HTTP
+	// send failed): this browser's copy is no longer needed.
+	useEffect(() => {
+		if (notesDelivered === 0) return
+		try { localStorage.removeItem(notesKey) } catch { /* ignore */ }
+		setNotes('')
+		setNotesDeliveryError('')
+	}, [notesDelivered]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	if (!state || !panelState) {
 		return (
 			<div
 				className='w-screen h-screen flex items-center justify-center flex-col gap-3'
@@ -475,12 +491,6 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId)
 	const imageToShow = !isGM && localImageHidden ? null : activeShownImageUrl
-	// State with room-scoped timer/image for panel components (ChatPanel, ModPanel).
-	// Memoized to avoid re-rendering panels on every state update that doesn't affect them.
-	const panelState = useMemo(
-		() => ({ ...state, timer: activeTimer, shownImageUrl: activeShownImageUrl }),
-		[state, activeTimer, activeShownImageUrl],
-	)
 
 	return (
 		<div
@@ -558,7 +568,7 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 			)}
 
 			{/* Recording active banner */}
-			{recordingActive && (
+			{state.isRecording && (
 				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px]'
 					style={{ background: 'rgba(255,56,80,0.12)', borderBottom: '1px solid rgba(255,56,80,0.25)' }}>
 					<span style={{ color: '#ff3850', fontSize: '11px' }}>●</span>
@@ -821,10 +831,9 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 							onTimerStop={stopTimer}
 							onTimerClear={clearTimer}
 							onBreakout={() => setShowBreakout(true)}
-							onOpenObserver={handleOpenObserver}
 							onRecordStart={() => recordControl('start')}
 							onRecordStop={() => recordControl('stop')}
-							recordStatus={recordStatus} clockOffset={clockOffset}
+							recordStatus={recordStatus} recordError={recordError} clockOffset={clockOffset}
 							privateChats={privateChats}
 							unreadDMs={unreadDMs}
 							onMarkDMRead={markDMRead}
@@ -978,10 +987,9 @@ function RoomContent({ room, gameCode, initMic, initCam }: {
 								onTimerStop={stopTimer}
 								onTimerClear={clearTimer}
 								onBreakout={() => { setShowBreakout(true); setMobilePanelOpen(null) }}
-								onOpenObserver={handleOpenObserver}
-								onRecordStart={() => recordControl('start')}
+									onRecordStart={() => recordControl('start')}
 								onRecordStop={() => recordControl('stop')}
-								recordStatus={recordStatus} clockOffset={clockOffset}
+								recordStatus={recordStatus} recordError={recordError} clockOffset={clockOffset}
 							/>
 						</div>
 					)}

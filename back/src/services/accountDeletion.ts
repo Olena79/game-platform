@@ -8,7 +8,8 @@ import { GameLike } from '../models/GameLike'
 import { GameMessage } from '../models/GameMessage'
 import { Recording } from '../models/Recording'
 import { RefreshToken } from '../models/RefreshToken'
-import { deleteFile } from './googleDrive'
+import { deleteRecordingsOf } from './recording'
+import { closeDeletedGame } from '../socket/gameRoom'
 import { forgetUser } from '../middleware/authMiddleware'
 
 /**
@@ -38,17 +39,18 @@ export async function exportAccountData(userId: string) {
 	const uid = new Types.ObjectId(userId)
 
 	const [user, games, posts, comments, recordings] = await Promise.all([
-		User.findById(uid).select('-password').lean(),
+		User.findById(uid).select('-password -telegramLinkTokenHash -telegramLinkExpiresAt -tokenVersion').lean(),
 		Game.find({ creatorId: uid }).select('title description scenario gameCode createdAt scheduledAt').lean(),
 		Post.find({ authorId: uid }).select('text topic createdAt likesCount commentsCount').lean(),
 		Comment.find({ authorId: uid }).select('text postId createdAt').lean(),
-		Recording.find({ gmEmail: (await User.findById(uid).select('email').lean())?.email ?? '' })
-			.select('gameCode gameTitle shareLink status createdAt expiresAt').lean(),
+		Recording.find({ gmId: uid })
+			.select('gameTitle shareLink status createdAt expiresAt').lean(),
 	])
 
 	const registeredIn = await Game.find({
 		$or: [{ 'registeredPlayers.userId': uid }, { 'spectators.userId': uid }],
-	}).select('title gameCode scheduledAt').lean()
+	// No codes here: a spectator must not learn the entry code from an export
+	}).select('title scheduledAt').lean()
 
 	return {
 		exportedAt: new Date().toISOString(),
@@ -70,35 +72,18 @@ export async function exportAccountData(userId: string) {
  */
 export async function deleteAccount(userId: string): Promise<DeletionSummary> {
 	const uid = new Types.ObjectId(userId)
-	const user = await User.findById(uid).select('email')
-	if (!user) throw new Error('User not found')
+	if (!(await User.exists({ _id: uid }))) throw new Error('User not found')
 
-	// ── their own games, and the recordings of those games ──────────────────
+	// ── their own games, and their recordings ─────────────────────────────
 	const ownGames = await Game.find({ creatorId: uid }).select('_id gameCode')
-	const recordings = await Recording.find({ gmEmail: user.email })
-
-	let recordingsDeleted = 0
-	for (const recording of recordings) {
-		if (recording.driveFileId) {
-			try {
-				await deleteFile(recording.driveFileId)
-			} catch (err) {
-				// The row goes regardless: a file we cannot reach must not keep
-				// the account alive.
-				logger.warn('[account] could not remove a recording from Drive', {
-					recordingId: String(recording._id),
-					error: err instanceof Error ? err.message : String(err),
-				})
-			}
-		}
-		await recording.deleteOne()
-		recordingsDeleted++
-	}
+	// Recordings are the GM's: file in the bucket and row both go
+	const recordingsDeleted = await deleteRecordingsOf(String(uid))
 
 	for (const game of ownGames) {
 		await GameMessage.deleteMany({ gameId: String(game._id) })
 		await GameLike.deleteMany({ gameId: game._id })
 		await game.deleteOne()
+		await closeDeletedGame(game.gameCode, String(game._id))
 	}
 
 	// ── their traces in other people's games ────────────────────────────────

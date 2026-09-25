@@ -136,7 +136,7 @@ export const PrivacyPolicyPage = () => {
                 <strong>Cloudinary</strong> - {t("legal.service_cloudinary")}
               </li>
               <li>
-                <strong>Google Drive</strong> - {t("legal.service_drive")}
+                <strong>Cloudflare R2</strong> - {t("legal.service_drive")}
               </li>
             </ul>
           </section>

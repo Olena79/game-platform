@@ -1,5 +1,5 @@
 import logger from '../config/logger'
-import { verifyTelegramLinkToken } from './tokenService'
+import { consumeTelegramLinkToken } from './tokenService'
 import { User } from '../models/User'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
@@ -116,32 +116,29 @@ async function sendMessage(chatId: number, text: string, attempt = 0): Promise<b
 
 const messages = {
 	uk: {
-		userNotFound: '❌ Користувача не знайдено. Спочатку зареєструйтесь на сайті.',
+		userNotFound: '❌ Посилання застаріло або вже використане. Відкрийте нове посилання на сайті.',
 		success: (firstName: string) =>
-			`✅ <b>Успішно підключено до Telegram!</b>\n\n` +
-			`Привіт, <b>${firstName}</b>! 👋\n\n` +
-			`Тепер ви будете отримувати коди ігр прямо в цей чат. ` +
-			`Це зручніше, ніж перевіряти email.`,
-		invalidLink: '❌ Некоректне посилання. Спожалуйста, використовуйте посилання з сайту Games of Senses.',
-		helpMessage: 'Я просто сповіщу вас про коди ігр. 🎮\n\nІнші команди поки недоступні.',
-		noDirectLink: `👋 Привіт! Схоже, ви відкрили бота напряму.\n\nСпожалуйста, <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">перейдіть за посиланням на сайті</a>, щоб підключити Telegram.`,
+			`✅ <b>Telegram підключено!</b>\n\n` +
+			`Привіт, <b>${escapeHtml(firstName)}</b>! 👋\n\n` +
+			`Сюди приходитимуть коди ігор, нотатки після гри, посилання на записи та посилання для відновлення пароля.`,
+		invalidLink: '❌ Посилання застаріло або некоректне. Будь ласка, відкрийте нове посилання на сайті Games of Senses.',
+		helpMessage: 'Я надсилаю коди ігор, нотатки, записи та посилання для відновлення пароля. 🎮\n\nІнших команд поки немає.',
+		noDirectLink: '👋 Привіт! Схоже, ви відкрили бота напряму.\n\nЩоб підключити Telegram, натисніть «Підключити Telegram» у своєму акаунті на сайті Games of Senses.',
 	},
 	en: {
-		userNotFound: '❌ User not found. Please register on the website first.',
+		userNotFound: '❌ This link has expired or was already used. Please open a new one on the website.',
 		success: (firstName: string) =>
-			`✅ <b>Successfully connected to Telegram!</b>\n\n` +
-			`Hi, <b>${firstName}</b>! 👋\n\n` +
-			`Now you will receive game codes directly in this chat. ` +
-			`It's more convenient than checking email.`,
-		invalidLink: '❌ Invalid link. Please use the link from the Games of Senses website.',
-		helpMessage: 'I just notify you about game codes. 🎮\n\nOther commands are not available yet.',
-		noDirectLink: `👋 Hi! It looks like you opened the bot directly.\n\nPlease <a href="https://t.me/${BOT_USERNAME}?start=YOUR_USER_ID">follow the link on the website</a> to connect Telegram.`,
+			`✅ <b>Telegram connected!</b>\n\n` +
+			`Hi, <b>${escapeHtml(firstName)}</b>! 👋\n\n` +
+			`Game codes, notes after a game, recording links and password reset links will arrive here.`,
+		invalidLink: '❌ This link has expired or is invalid. Please open a new link on the Games of Senses website.',
+		helpMessage: 'I send game codes, notes, recordings and password reset links. 🎮\n\nNo other commands yet.',
+		noDirectLink: '👋 Hi! It looks like you opened the bot directly.\n\nTo connect Telegram, press “Connect Telegram” in your account on the Games of Senses website.',
 	},
 }
 
 async function handleStartCommand(userId: string, chatId: number, firstName: string): Promise<void> {
 	try {
-		// Try to find user by ID and update telegram_chat_id
 		const user = await User.findByIdAndUpdate(
 			userId,
 			{ telegramChatId: String(chatId) },
@@ -151,7 +148,7 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		if (!user) {
 			const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 			await sendMessage(chatId, messages[lang].userNotFound)
-			logger.warn('[telegram] Start command for non-existent user', { userId, chatId })
+			logger.warn('[telegram] Start command for non-existent user', { userId })
 			return
 		}
 
@@ -160,7 +157,7 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		const successMsg = messages[userLang].success(firstName)
 
 		await sendMessage(chatId, successMsg)
-		logger.info('[telegram] User linked successfully', { userId, chatId, firstName, language: userLang })
+		logger.info('[telegram] User linked successfully', { userId, language: userLang })
 	} catch (err) {
 		const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 		logger.error('[telegram] handleStartCommand error', { userId, chatId, error: err instanceof Error ? err.message : String(err) })
@@ -176,18 +173,18 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
 	const firstName = from.first_name
 	const lang = (process.env.DEFAULT_LANGUAGE || 'uk') as 'uk' | 'en'
 
-	// /start <token>, where the token is a short-lived signature over the
-	// account id. A raw id would be enough to attach this chat to somebody
-	// else's account — and ids are easy to come by.
+	// /start <token>, where the token is a short-lived, single-use value the
+	// website issued to the account owner. A raw id would be enough to attach
+	// this chat to somebody else's account — and ids are easy to come by.
 	if (text.startsWith('/start')) {
-		const payload = text.split(' ')[1] || ''
+		const payload = (text.split(' ')[1] || '').trim()
 
 		if (!payload) {
 			await sendMessage(chatId, messages[lang].noDirectLink)
 			return
 		}
 
-		const userId = verifyTelegramLinkToken(payload)
+		const userId = await consumeTelegramLinkToken(payload)
 		if (!userId) {
 			await sendMessage(chatId, messages[lang].invalidLink)
 			return
@@ -284,14 +281,10 @@ const gameNotificationMessages = {
 	uk: {
 		playerCode: (code: string, name: string) => `🎮 <b>Код гри:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>\n👤 Роль: Гравець`,
 		spectatorCode: (code: string, name: string) => `👁️ <b>Код глядача:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>`,
-		reminder: (name: string, minutesUntil: number, timeStr: string) =>
-			`⏰ <b>Нагадування!</b>\n\n<b>${escapeHtml(name)}</b> починається через ${minutesUntil} хвилин\n⏱️ ${timeStr}`,
 	},
 	en: {
 		playerCode: (code: string, name: string) => `🎮 <b>Game code:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>\n👤 Role: Player`,
 		spectatorCode: (code: string, name: string) => `👁️ <b>Spectator code:</b> <code>${code}</code>\n\n<b>${escapeHtml(name)}</b>`,
-		reminder: (name: string, minutesUntil: number, timeStr: string) =>
-			`⏰ <b>Reminder!</b>\n\n<b>${escapeHtml(name)}</b> starts in ${minutesUntil} minutes\n⏱️ ${timeStr}`,
 	},
 }
 
@@ -401,20 +394,24 @@ export async function sendRecordingLinkToTelegram(
 	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
 	const titleLine = gameTitle ? '\n<b>' + escapeHtml(gameTitle) + '</b>' : ''
 
+	// A signed storage link is full of '&', which parse_mode HTML rejects as
+	// bare text — so it travels escaped, inside an anchor.
+	const link = (label: string) => `<a href="${escapeHtml(shareLink).replace(/"/g, '&quot;')}">${label}</a>`
+
 	const parts = lang === 'uk'
 		? [
 			'🎥 <b>Запис гри збережено</b>' + titleLine,
 			'',
-			shareLink,
-			interrupted ? '\n⚠️ Запис було перервано — збережено те, що встигло завантажитись.' : '',
-			'\n⚠️ Запис відкриє будь-хто, кому перешлеш це посилання.\n🗓 Файл видалиться через 7 днів.',
+			'▶️ ' + link('Відкрити / завантажити запис'),
+			interrupted ? '\n⚠️ Запис було перервано — збережено те, що встигло записатись.' : '',
+			'\n⚠️ Запис відкриє будь-хто, кому перешлеш це посилання.\n🗓 Посилання й файл діють 7 днів.',
 		]
 		: [
 			'🎥 <b>Recording saved</b>' + titleLine,
 			'',
-			shareLink,
-			interrupted ? '\n⚠️ The recording was interrupted — whatever had been uploaded is kept.' : '',
-			'\n⚠️ Anyone you forward this link to can open the recording.\n🗓 The file is deleted after 7 days.',
+			'▶️ ' + link('Open / download the recording'),
+			interrupted ? '\n⚠️ The recording was interrupted — whatever was recorded is kept.' : '',
+			'\n⚠️ Anyone you forward this link to can open the recording.\n🗓 The link and the file last 7 days.',
 		]
 
 	return sendMessage(chatId, parts.filter(Boolean).join('\n'))
@@ -436,22 +433,6 @@ export async function sendGameCodeToTelegram(
 		: msgs.playerCode(gameCode, gameName)
 
 	const chatId = parseInt(telegramChatId, 10)
-	return sendMessage(chatId, message)
-}
-
-export async function sendGameReminderToTelegram(
-	telegramChatId: string,
-	gameName: string,
-	minutesUntil: number,
-	gameTime: string,
-	language: string = 'uk',
-): Promise<boolean> {
-	if (!BOT_TOKEN || !telegramChatId) return false
-
-	const lang = (['uk', 'en'].includes(language) ? language : 'uk') as 'uk' | 'en'
-	const msgs = gameNotificationMessages[lang]
-	const message = msgs.reminder(gameName, minutesUntil, gameTime)
-
-	const chatId = parseInt(telegramChatId, 10)
+	if (!Number.isFinite(chatId)) return false
 	return sendMessage(chatId, message)
 }

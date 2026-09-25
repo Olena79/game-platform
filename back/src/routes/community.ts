@@ -41,8 +41,8 @@ export default function makeCommunityRouter(io: Server): Router {
 		try {
 			const isPopular = (req.query.sort as string) === 'popular'
 			const sortOpt   = isPopular ? { likesCount: -1, createdAt: -1 } : { createdAt: -1 }
-			const limit     = Math.min(Number(req.query.limit) || 20, 50)
-			const skip      = Number(req.query.skip) || 0
+			const limit     = Math.min(Math.max(Math.floor(Number(req.query.limit)) || 20, 1), 50)
+			const skip      = Math.max(Math.floor(Number(req.query.skip)) || 0, 0)
 
 			const [posts, total] = await Promise.all([
 				Post.find().sort(sortOpt as any).skip(skip).limit(limit),
@@ -93,8 +93,9 @@ export default function makeCommunityRouter(io: Server): Router {
 			if (!post) { res.status(404).json({ message: 'Not found' }); return }
 			if (String(post.authorId) !== req.userId) { res.status(403).json({ message: 'Forbidden' }); return }
 
-			const { text } = req.body
+			const { text, topic } = req.body
 			if (text !== undefined) post.text = text.trim()
+			if (topic !== undefined) post.topic = topic.trim().slice(0, 100)
 			post.editedAt = new Date()
 			await post.save()
 
@@ -126,14 +127,15 @@ export default function makeCommunityRouter(io: Server): Router {
 	// ── Like / unlike post ────────────────────────────────────────────────────
 	router.post('/posts/:id/like', authMiddleware, validateParams(postIdSchema), async (req: AuthRequest, res: Response) => {
 		try {
-			const post = await Post.findById(req.params.id)
+			// One atomic update each way: reading, changing and saving the
+			// whole list lost likes when two people pressed at the same moment.
+			const uid = new Types.ObjectId(req.userId)
+			const post = await Post.findOneAndUpdate(
+				{ _id: req.params.id, likedBy: { $ne: uid } },
+				{ $addToSet: { likedBy: uid }, $inc: { likesCount: 1 } },
+				{ new: true },
+			) ?? await Post.findById(req.params.id)
 			if (!post) { res.status(404).json({ message: 'Not found' }); return }
-
-			if (!post.likedBy.some(id => String(id) === req.userId)) {
-				post.likedBy.push(new Types.ObjectId(req.userId))
-				post.likesCount = post.likedBy.length
-				await post.save()
-			}
 			const data = { postId: req.params.id, likesCount: post.likesCount }
 			io.to(ROOM).emit('com:post-likes', data)
 			res.json({ ...data, isLiked: true })
@@ -145,12 +147,13 @@ export default function makeCommunityRouter(io: Server): Router {
 
 	router.delete('/posts/:id/like', authMiddleware, validateParams(postIdSchema), async (req: AuthRequest, res: Response) => {
 		try {
-			const post = await Post.findById(req.params.id)
+			const uid = new Types.ObjectId(req.userId)
+			const post = await Post.findOneAndUpdate(
+				{ _id: req.params.id, likedBy: uid },
+				{ $pull: { likedBy: uid }, $inc: { likesCount: -1 } },
+				{ new: true },
+			) ?? await Post.findById(req.params.id)
 			if (!post) { res.status(404).json({ message: 'Not found' }); return }
-
-			post.likedBy = post.likedBy.filter(id => String(id) !== req.userId) as any
-			post.likesCount = post.likedBy.length
-			await post.save()
 			const data = { postId: req.params.id, likesCount: post.likesCount }
 			io.to(ROOM).emit('com:post-likes', data)
 			res.json({ ...data, isLiked: false })
@@ -190,8 +193,8 @@ export default function makeCommunityRouter(io: Server): Router {
 				text:          text.trim(),
 			})
 
-			post.commentsCount += 1
-			await post.save()
+			const counted = await Post.findByIdAndUpdate(post._id, { $inc: { commentsCount: 1 } }, { new: true })
+			post.commentsCount = counted?.commentsCount ?? post.commentsCount + 1
 
 			const data = serializeComment(comment, req.userId)
 			io.to(ROOM).emit('com:comment-new', { comment: data, postId: req.params.id, commentsCount: post.commentsCount })
@@ -234,7 +237,7 @@ export default function makeCommunityRouter(io: Server): Router {
 			const commentId = String(comment._id)
 
 			await Comment.deleteOne({ _id: comment._id })
-			await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: -1 } })
+			await Post.updateOne({ _id: postId, commentsCount: { $gt: 0 } }, { $inc: { commentsCount: -1 } })
 
 			io.to(ROOM).emit('com:comment-deleted', { commentId, postId })
 			res.json({ ok: true })
@@ -247,14 +250,15 @@ export default function makeCommunityRouter(io: Server): Router {
 	// ── Like / unlike comment ─────────────────────────────────────────────────
 	router.post('/comments/:id/like', authMiddleware, validateParams(commentIdSchema), async (req: AuthRequest, res: Response) => {
 		try {
-			const comment = await Comment.findById(req.params.id)
+			// One atomic update each way: reading, changing and saving the
+			// whole list lost likes when two people pressed at the same moment.
+			const uid = new Types.ObjectId(req.userId)
+			const comment = await Comment.findOneAndUpdate(
+				{ _id: req.params.id, likedBy: { $ne: uid } },
+				{ $addToSet: { likedBy: uid }, $inc: { likesCount: 1 } },
+				{ new: true },
+			) ?? await Comment.findById(req.params.id)
 			if (!comment) { res.status(404).json({ message: 'Not found' }); return }
-
-			if (!comment.likedBy.some(id => String(id) === req.userId)) {
-				comment.likedBy.push(new Types.ObjectId(req.userId))
-				comment.likesCount = comment.likedBy.length
-				await comment.save()
-			}
 			const data = { commentId: req.params.id, likesCount: comment.likesCount }
 			io.to(ROOM).emit('com:comment-likes', data)
 			res.json({ ...data, isLiked: true })
@@ -266,12 +270,13 @@ export default function makeCommunityRouter(io: Server): Router {
 
 	router.delete('/comments/:id/like', authMiddleware, validateParams(commentIdSchema), async (req: AuthRequest, res: Response) => {
 		try {
-			const comment = await Comment.findById(req.params.id)
+			const uid = new Types.ObjectId(req.userId)
+			const comment = await Comment.findOneAndUpdate(
+				{ _id: req.params.id, likedBy: uid },
+				{ $pull: { likedBy: uid }, $inc: { likesCount: -1 } },
+				{ new: true },
+			) ?? await Comment.findById(req.params.id)
 			if (!comment) { res.status(404).json({ message: 'Not found' }); return }
-
-			comment.likedBy = comment.likedBy.filter(id => String(id) !== req.userId) as any
-			comment.likesCount = comment.likedBy.length
-			await comment.save()
 			const data = { commentId: req.params.id, likesCount: comment.likesCount }
 			io.to(ROOM).emit('com:comment-likes', data)
 			res.json({ ...data, isLiked: false })

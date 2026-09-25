@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io'
 import { Game } from '../models/Game'
 import { GameMessage } from '../models/GameMessage'
+import { User } from '../models/User'
 import {
 	RoomPlayer, GameRoomState, ChatMessage,
 	ActiveVote, BreakoutRoom, RoomTimer,
@@ -28,11 +29,8 @@ import {
 	grMutePlayerSchema,
 	grAnnounceSchema,
 	grBreakoutAssignSchema,
-	grBreakoutReturnSchema,
 	grImageShowSchema,
 	grRecordControlSchema,
-	grObserverConnectSchema,
-	grRecordStatusSchema,
 	grSpectatorVoteCreateSchema,
 	grSpectatorVoteCastSchema,
 	grSpectatorVoteCloseSchema,
@@ -43,10 +41,21 @@ import {
 } from '../validation/schemas'
 import logger from '../config/logger'
 import { deliverGameNotes } from '../services/notesDelivery'
+import { resolveSeat } from '../services/roomAccess'
+import { muteMicrophones, roomNameFor } from '../services/livekit'
+import {
+	activeRecording,
+	recordingEvents,
+	RecordingError,
+	RecordingEvent,
+	startRecording,
+	stopRecording,
+} from '../services/recording'
 
-const rooms = new Map<string, GameRoomState>()
+// All of this lives in one process's memory: the room state, who is connected,
+// the GM's notes draft. CLAUDE.md: exactly one backend instance.
+const rooms = new Map<string, GameRoomState>()          // gameCode → state
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
-const observerSockets = new Map<string, string>() // gameCode → socketId
 const loadingRooms = new Map<string, Promise<GameRoomState | null>>() // deduplicate concurrent loadRoom calls
 const breakoutTimers = new Map<string, ReturnType<typeof setTimeout>>() // `${gameCode}:${roomId}`
 const userSockets = new Map<string, Set<string>>() // `${gameCode}:${userId}` → active socket IDs
@@ -58,44 +67,57 @@ const gmAwayTimers = new Map<string, ReturnType<typeof setTimeout>>() // gameCod
 /** How long the gamemaster may be gone before the session counts as over. */
 const GM_AWAY_GRACE_MS = 90_000
 
+let ioRef: Server | null = null
+
+function socketsOf(gameCode: string, userId: string): string[] {
+	return [...(userSockets.get(`${gameCode}:${userId}`) ?? [])]
+}
+
+function toGamemaster(state: GameRoomState, event: string, data: unknown): void {
+	if (!ioRef) return
+	for (const sid of socketsOf(state.gameCode, state.gamemasterId)) ioRef.to(sid).emit(event, data)
+}
+
 /**
  * Everything that has to happen when a session is over, whichever way it
- * ended: the notes go to the gamemaster and the observer stops recording.
+ * ended: the recording stops and the notes go to the gamemaster.
  *
  * The GM pressing “end game” is only one of the ways out — hanging up,
- * closing the tab or losing the connection are just as final, and used to
- * leave both the notes and an open recording behind.
+ * closing the tab or losing the connection are just as final.
  */
 async function closeOutSession(
-	io: Server,
 	state: GameRoomState,
 	reason: 'ended' | 'gm_left',
 ): Promise<void> {
 	const gameCode = state.gameCode
 
-	// Stop the recording first: the observer finalises the upload properly,
-	// instead of the server having to salvage it minutes later.
-	const obsSocketId = observerSockets.get(gameCode)
-	if (obsSocketId) io.to(obsSocketId).emit('gr:record-signal', { action: 'stop' })
+	// LiveKit finishes the file and the link goes to the GM's Telegram
+	await stopRecording(state.gameId).catch(err => {
+		logger.warn('[closeout] could not stop the recording', { gameCode, error: err instanceof Error ? err.message : String(err) })
+	})
 
 	const notes = gmNotes.get(gameCode) ?? ''
 	if (notes.trim()) {
 		const delivered = await deliverGameNotes(gameCode, notes, state.gamemasterId, state.title, reason)
-		if (delivered) gmNotes.delete(gameCode)
+		if (delivered) {
+			gmNotes.delete(gameCode)
+			// The browser keeps its own copy until it hears the notes arrived
+			toGamemaster(state, 'gr:notes-delivered', {})
+		}
 	}
 
-	// The game deliberately stays open for the others when the gamemaster
-	// drops out, but an empty room must not sit in memory forever.
-	scheduleRoomRelease(gameCode)
+	// A properly ended game goes soon; one the GM walked away from stays open
+	// for the others, but an empty room must not sit in memory forever.
+	if (reason === 'ended') scheduleRoomRelease(gameCode, 60_000, true)
+	else scheduleRoomRelease(gameCode)
 }
 
 /**
  * May this person have the media for a breakout room?
  *
- * The socket refuses an uninvited join, but the video token was granted to
- * anyone holding the game code — so a private breakout could be listened to
- * by joining its LiveKit room directly. The invitation has to hold on both
- * sides of the room.
+ * The socket refuses an uninvited join, and the video token has to refuse it
+ * too — or a private breakout could be listened to by joining its LiveKit
+ * room directly.
  */
 export function canEnterBreakout(gameCode: string, roomId: string, userId: string): boolean {
 	const state = rooms.get(gameCode)
@@ -107,13 +129,13 @@ export function canEnterBreakout(gameCode: string, roomId: string, userId: strin
 }
 
 /**
- * Drops a room once nobody is left in it.
+ * Drops a room once nobody is left in it (or right away when `force`).
  *
  * Checked again after the delay, because players reconnect — and rechecked
  * later if someone is still there, so a room is never released underneath an
  * active game.
  */
-function scheduleRoomRelease(gameCode: string, delayMs = 10 * 60 * 1000): void {
+function scheduleRoomRelease(gameCode: string, delayMs = 10 * 60 * 1000, force = false): void {
 	const existing = endTimers.get(gameCode)
 	if (existing) clearTimeout(existing)
 
@@ -121,30 +143,55 @@ function scheduleRoomRelease(gameCode: string, delayMs = 10 * 60 * 1000): void {
 		endTimers.delete(gameCode)
 		const state = rooms.get(gameCode)
 		if (!state) return
-		if (state.players.some(p => p.connected)) {
+		if (!force && state.players.some(p => p.connected)) {
 			scheduleRoomRelease(gameCode)   // still in use, look again later
 			return
 		}
 		releaseRoom(gameCode)
-		logger.info(`[cleanup] released empty room ${gameCode}`)
+		logger.info(`[cleanup] released room ${gameCode}`)
 	}, delayMs)
 	endTimers.set(gameCode, timer)
+}
+
+function cancelRoomRelease(gameCode: string): void {
+	const existing = endTimers.get(gameCode)
+	if (existing) { clearTimeout(existing); endTimers.delete(gameCode) }
+}
+
+function clearBreakoutTimers(gameCode: string, state: GameRoomState | undefined): void {
+	state?.breakoutRooms.forEach(br => {
+		const key = `${gameCode}:${br.id}`
+		const tid = breakoutTimers.get(key)
+		if (tid) { clearTimeout(tid); breakoutTimers.delete(key) }
+	})
 }
 
 /** Forgets every trace of a room, so a long-lived process doesn't leak. */
 function releaseRoom(gameCode: string): void {
 	const state = rooms.get(gameCode)
-	state?.breakoutRooms.forEach(br => {
-		const tid = breakoutTimers.get(`${gameCode}:${br.id}`)
-		if (tid) { clearTimeout(tid); breakoutTimers.delete(`${gameCode}:${br.id}`) }
-	})
+	clearBreakoutTimers(gameCode, state)
+	cancelRoomRelease(gameCode)
 	for (const key of [...userSockets.keys()]) {
 		if (key.startsWith(`${gameCode}:`)) userSockets.delete(key)
 	}
+	const away = gmAwayTimers.get(gameCode)
+	if (away) clearTimeout(away)
 	rooms.delete(gameCode)
 	gmNotes.delete(gameCode)
 	gmAwayTimers.delete(gameCode)
-	observerSockets.delete(gameCode)
+}
+
+/**
+ * The game was deleted: whoever is still inside is told the room is gone,
+ * and the room is forgotten. Its recording, if any, is stopped.
+ */
+export async function closeDeletedGame(gameCode: string, gameId: string): Promise<void> {
+	await stopRecording(gameId).catch(() => undefined)
+	if (ioRef && rooms.has(gameCode)) {
+		ioRef.to(`gr-${gameCode}`).emit('gr:error', 'Room not found')
+		ioRef.in(`gr-${gameCode}`).socketsLeave(`gr-${gameCode}`)
+	}
+	releaseRoom(gameCode)
 }
 
 /**
@@ -163,7 +210,7 @@ function scheduleGmAwayCloseOut(io: Server, state: GameRoomState, gameCode: stri
 		const gmBack = current.players.some(p => p.userId === current.gamemasterId && p.connected)
 		if (gmBack) return
 		logger.info(`[disconnect] gamemaster gone for ${GM_AWAY_GRACE_MS / 1000}s, closing out gameCode=${gameCode}`)
-		void closeOutSession(io, current, 'gm_left')
+		void closeOutSession(current, 'gm_left')
 	}, GM_AWAY_GRACE_MS)
 	gmAwayTimers.set(gameCode, timer)
 }
@@ -182,14 +229,16 @@ function emit(io: Server, gameCode: string, event: string, data: unknown) {
 }
 
 /**
- * Everything in here reaches every participant, spectators included, so the
- * scenario cannot travel in it. Hiding the tab in the UI was never enough:
- * the payload is one DevTools tab away.
+ * Everything in here reaches every participant, spectators included. So it
+ * carries neither the scenario nor the GM's image deck (both spoilers, one
+ * DevTools tab away), nor the entry code — spectators hold only their own
+ * code, and must not learn the one that gives a voice.
  */
-function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> & { serverNow: number } {
-	const { scenario, ...rest } = state
+function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario' | 'gameCode' | 'images'> & { images: string[]; serverNow: number } {
+	const { scenario: _scenario, gameCode: _gameCode, images: _images, ...rest } = state
 	return {
 		...rest,
+		images: [],
 		// Timers end at a server timestamp, and every viewer used to compare it
 		// with their own clock. A device a few minutes off showed a different
 		// countdown to everyone else in the same round.
@@ -201,8 +250,7 @@ function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario'> & { 
 
 /**
  * A vote marked anonymous used to travel with the full list of who chose
- * what, and the lock icon in the interface was the only thing hiding it —
- * one DevTools tab away in a game built on not knowing.
+ * what, and the lock icon in the interface was the only thing hiding it.
  *
  * The tally still has to add up, so each voter is replaced by a blank: the
  * counts survive, the names do not. Voters learn their own choice from
@@ -218,13 +266,12 @@ function hideVoters<T extends { isAnonymous?: boolean; options: Array<{ voterIds
 
 function pushState(io: Server, state: GameRoomState) {
 	emit(io, state.gameCode, 'gr:state', publicState(state))
-	sendGmState(io, state)
+	sendGmState(state)
 }
 
-/** The gamemaster's own view: the scenario, addressed to their socket only. */
-function sendGmState(io: Server, state: GameRoomState) {
-	const gm = state.players.find(p => p.isGamemaster && p.connected)
-	if (gm?.socketId) io.to(gm.socketId).emit('gr:gm-state', { scenario: state.scenario })
+/** The gamemaster's own view: scenario and image deck, to their sockets only. */
+function sendGmState(state: GameRoomState) {
+	toGamemaster(state, 'gr:gm-state', { scenario: state.scenario, images: state.images })
 }
 
 function makeDefaultTimer(seconds: number | null): RoomTimer | null {
@@ -254,6 +301,9 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		spectatorChat: m.spectatorChat ?? false,
 	}))
 
+	// A recording keeps running in LiveKit across a restart of this server
+	const recording = await activeRecording(gameId).catch(() => null)
+
 	const state: GameRoomState = {
 		gameCode,
 		gameId,
@@ -276,7 +326,7 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		gamemasterId: String(game.creatorId),
 		shownImageUrl: game.coverImage || game.images?.[0] || null,
 		defaultTimerSeconds: game.defaultTimerSeconds ?? null,
-		hasObserver: false,
+		isRecording: recording?.status === 'recording',
 	}
 	rooms.set(gameCode, state)
 	// A draft left by a previous process (restart, redeploy) is still owed
@@ -297,13 +347,34 @@ async function getOrLoadRoom(gameCode: string): Promise<GameRoomState | null> {
 }
 
 function isGM(state: GameRoomState, userId: string): boolean {
-	return state.players.find(p => p.userId === userId)?.isGamemaster ?? false
+	return state.gamemasterId === userId
+}
+
+/** Recording progress from LiveKit reaches the room it belongs to. */
+function onRecordingEvent(io: Server, event: RecordingEvent): void {
+	const state = [...rooms.values()].find(s => s.gameId === event.gameId)
+	if (!state) return
+	const wasRecording = state.isRecording
+	state.isRecording = event.status === 'recording'
+	toGamemaster(state, 'gr:record-status', { status: event.status, detail: event.detail })
+	if (wasRecording !== state.isRecording) pushState(io, state)
 }
 
 export function registerGameRoom(io: Server) {
+	ioRef = io
+	recordingEvents.on('status', (event: RecordingEvent) => onRecordingEvent(io, event))
+
 	io.on('connection', (socket: Socket) => {
+		// The room this socket joined. Every event after gr:join acts on it,
+		// whatever room the payload names — the payload's code is ignored.
 		let curCode: string | null = null
 		let curUser: string | null = null
+
+		const here = (): GameRoomState | undefined => (curCode ? rooms.get(curCode) : undefined)
+		const hereAsGM = (): GameRoomState | undefined => {
+			const state = here()
+			return state && curUser && isGM(state, curUser) ? state : undefined
+		}
 
 		// ── Join ────────────────────────────────────────────────────────────
 		// userId is taken exclusively from the JWT verified at handshake (socket.data.userId),
@@ -312,60 +383,66 @@ export function registerGameRoom(io: Server) {
 			const userId = socket.data.userId as string | null
 			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
 
-			const knownBefore = rooms.has(d.gameCode)
-			const state = await getOrLoadRoom(d.gameCode)
+			// The code presented decides the seat — see resolveSeat
+			const seat = await resolveSeat(d.gameCode, userId)
+			if (!seat) { socket.emit('gr:error', 'Room not found'); return }
+			const gameCode = seat.gameCode
+
+			const knownBefore = rooms.has(gameCode)
+			const state = await getOrLoadRoom(gameCode)
 			if (!state) { socket.emit('gr:error', 'Room not found'); return }
 
 			// The room was rebuilt from nothing — after a restart, or once it had
-			// been released — while other people were still sitting in it. Their
-			// sockets are alive but the roster has forgotten them, so everyone's
-			// tiles vanish until they reload. Ask them to announce themselves.
+			// been released — while other people were still sitting in it. Ask
+			// them to announce themselves so their tiles come back.
 			if (!knownBefore) {
-				const others = io.sockets.adapter.rooms.get(`gr-${d.gameCode}`)
+				const others = io.sockets.adapter.rooms.get(`gr-${gameCode}`)
 				if (others && others.size > 0) {
-					logger.info(`[gr:join] room rebuilt, asking ${others.size} connected socket(s) to re-announce gameCode=${d.gameCode}`)
-					io.to(`gr-${d.gameCode}`).emit('gr:rejoin')
+					logger.info(`[gr:join] room rebuilt, asking ${others.size} connected socket(s) to re-announce gameCode=${gameCode}`)
+					io.to(`gr-${gameCode}`).emit('gr:rejoin')
 				}
 			}
 
-			curCode = d.gameCode
+			// One socket, one room: leaving an old one keeps the rosters honest
+			if (curCode && curCode !== gameCode) {
+				socket.leave(`gr-${curCode}`)
+				userSockets.get(`${curCode}:${userId}`)?.delete(socket.id)
+			}
+
+			curCode = gameCode
 			curUser = userId
-			socket.join(`gr-${d.gameCode}`)
+			socket.join(`gr-${gameCode}`)
+			// Someone is here again: a pending release must not pull the room away
+			if (state.status !== 'ended') cancelRoomRelease(gameCode)
 
 			// Track this socket for multi-tab / multi-connection deduplication
-			const uKey = `${d.gameCode}:${userId}`
+			const uKey = `${gameCode}:${userId}`
 			if (!userSockets.has(uKey)) userSockets.set(uKey, new Set())
 			userSockets.get(uKey)!.add(socket.id)
 
-			const isGamemaster = userId === state.gamemasterId
+			const isGamemaster = seat.isCreator
 			if (isGamemaster) {
 				// They reconnected (reload, flaky network) — the session goes on
-				const away = gmAwayTimers.get(d.gameCode)
+				const away = gmAwayTimers.get(gameCode)
 				if (away) {
 					clearTimeout(away)
-					gmAwayTimers.delete(d.gameCode)
-					logger.info(`[gr:join] gamemaster returned, session continues gameCode=${d.gameCode}`)
+					gmAwayTimers.delete(gameCode)
+					logger.info(`[gr:join] gamemaster returned, session continues gameCode=${gameCode}`)
 				}
 			}
+			const isSpectator = seat.asSpectator
 
-			// Determine spectator status: the code type is authoritative.
-			// A registered player always keeps player status regardless of code used.
-			// Anyone else: spectator iff they explicitly used the spectator code.
-			let isSpectator = false
-			if (!isGamemaster) {
-				try {
-					const game = await Game.findOne({ gameCode: d.gameCode })
-					const inPlayers = game?.registeredPlayers?.some(s => String(s.userId) === userId) ?? false
-					isSpectator = !inPlayers && d.isSpectatorJoin === true
-				} catch { /* ignore */ }
-			}
+			// The name everybody sees is the account's, not whatever the browser sent
+			const account = await User.findById(userId).select('name surname email').lean()
+			const name = ([account?.name, account?.surname].filter(Boolean).join(' ') || account?.email?.split('@')[0] || 'User').slice(0, 100)
 
 			const existing = state.players.find(p => p.userId === userId)
 			if (existing) {
-				logger.info(`[gr:join] reconnect userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} prevSocketId=${existing.socketId}`)
 				existing.socketId = socket.id
 				existing.connected = true
-				// Fix: update role if user rejoined with a different code (spectator → player or vice versa)
+				existing.name = name
+				existing.initials = initials(name)
+				// They came back with a different code (spectator → player or the reverse)
 				if (existing.isSpectator !== isSpectator || existing.isGamemaster !== isGamemaster) {
 					existing.isSpectator = isSpectator
 					existing.isGamemaster = isGamemaster
@@ -375,15 +452,16 @@ export function registerGameRoom(io: Server) {
 					} else {
 						existing.coins = 0
 						existing.influence = 0
+						existing.handRaised = false
 					}
 				}
 			} else {
-				logger.info(`[gr:join] new player userId=${userId} gameCode=${d.gameCode} socketId=${socket.id} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
+				logger.info(`[gr:join] new player userId=${userId} gameCode=${gameCode} isGamemaster=${isGamemaster} isSpectator=${isSpectator}`)
 				const p: RoomPlayer = {
 					socketId: socket.id,
 					userId,
-					name: d.name,
-					initials: initials(d.name),
+					name,
+					initials: initials(name),
 					role: '',
 					coins: isGamemaster || isSpectator ? 0 : state.coinsPerPlayer,
 					influence: isGamemaster || isSpectator ? 0 : state.influencePerPlayer,
@@ -424,7 +502,7 @@ export function registerGameRoom(io: Server) {
 
 		// ── Chat ────────────────────────────────────────────────────────────
 		socket.on('gr:chat', validateSocketEvent(grChatSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player) return
@@ -433,9 +511,9 @@ export function registerGameRoom(io: Server) {
 			if (!text) return
 
 			// Spectators can only send public messages; filter out spectator recipients too
-			const recipientIds = (player.isSpectator || !d.recipients?.length)
+			const recipientIds: string[] = (player.isSpectator || !d.recipients?.length)
 				? []
-				: d.recipients.filter((id: any) => {
+				: [...new Set<string>(d.recipients)].filter(id => {
 					if (id === curUser) return false
 					const target = state.players.find(p => p.userId === id)
 					return target && !target.isSpectator
@@ -444,7 +522,7 @@ export function registerGameRoom(io: Server) {
 			const isPrivate = recipientIds.length > 0
 			const spectatorChat = player.isSpectator && !isPrivate
 			const recipientNames = isPrivate
-				? recipientIds.map((id: any) => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
+				? recipientIds.map(id => state.players.find(p => p.userId === id)?.name ?? '').filter(Boolean)
 				: []
 
 			const msg: ChatMessage = {
@@ -461,13 +539,12 @@ export function registerGameRoom(io: Server) {
 				// Public: store in room history and broadcast to all
 				state.messages.push(msg)
 				if (state.messages.length > 100) state.messages.shift()
-				emit(io, d.gameCode, 'gr:chat', msg)
+				emit(io, state.gameCode, 'gr:chat', msg)
 			} else {
-				// Private: deliver only to sender + recipients (not stored in shared history)
-				socket.emit('gr:chat', msg)
-				recipientIds.forEach((recipientId: any) => {
-					const target = state.players.find(p => p.userId === recipientId)
-					if (target?.socketId) io.to(target.socketId).emit('gr:chat', msg)
+				// Private: deliver only to sender + recipients (every tab of each)
+				for (const sid of socketsOf(state.gameCode, curUser)) io.to(sid).emit('gr:chat', msg)
+				recipientIds.forEach(recipientId => {
+					for (const sid of socketsOf(state.gameCode, recipientId)) io.to(sid).emit('gr:chat', msg)
 				})
 			}
 
@@ -485,16 +562,19 @@ export function registerGameRoom(io: Server) {
 
 		// ── Reactions ───────────────────────────────────────────────────────
 		socket.on('gr:react', validateSocketEvent(grReactSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
-			if (d.emoji in state.reactions) state.reactions[d.emoji]++
-			emit(io, d.gameCode, 'gr:reactions', state.reactions)
-			emit(io, d.gameCode, 'gr:player-reacted', { userId: curUser, emoji: d.emoji })
+			if (!state.players.some(p => p.userId === curUser)) return
+			// Only the room's own reactions travel — not arbitrary text to everyone
+			if (!(d.emoji in state.reactions)) return
+			state.reactions[d.emoji]++
+			emit(io, state.gameCode, 'gr:reactions', state.reactions)
+			emit(io, state.gameCode, 'gr:player-reacted', { userId: curUser, emoji: d.emoji })
 		}, socket))
 
 		// ── Hand raise ──────────────────────────────────────────────────────
 		socket.on('gr:hand', validateSocketEvent(grHandSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
 			if (!p || p.isSpectator) return
@@ -504,7 +584,7 @@ export function registerGameRoom(io: Server) {
 
 		// ── Set role ────────────────────────────────────────────────────────
 		socket.on('gr:role', validateSocketEvent(grRoleSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const requester = state.players.find(p => p.userId === curUser)
 			if (!requester) return
@@ -514,13 +594,20 @@ export function registerGameRoom(io: Server) {
 		}, socket))
 
 		// ── Start / End ─────────────────────────────────────────────────────
-		socket.on('gr:start', validateSocketEvent(grStartSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+		socket.on('gr:start', validateSocketEvent(grStartSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
 
-			// Cancel any pending delete timer (allows restart after game end)
-			const existing = endTimers.get(d.gameCode)
-			if (existing) { clearTimeout(existing); endTimers.delete(d.gameCode) }
+			// Cancel any pending release (allows restart after game end)
+			cancelRoomRelease(state.gameCode)
+
+			// Whoever sits in a breakout room is brought back with it
+			clearBreakoutTimers(state.gameCode, state)
+			state.players.forEach(p => {
+				if (p.breakoutRoomId) {
+					for (const sid of socketsOf(state.gameCode, p.userId)) io.to(sid).emit('gr:breakout-return', {})
+				}
+			})
 
 			// Reset transient game state for clean restart
 			state.status = 'started'
@@ -529,6 +616,7 @@ export function registerGameRoom(io: Server) {
 			state.timer = makeDefaultTimer(state.defaultTimerSeconds)
 			state.announcement = null
 			state.breakoutRooms = []
+			state.bankCoins = 0
 			state.players.forEach(p => {
 				p.handRaised = false
 				p.breakoutRoomId = null
@@ -544,42 +632,36 @@ export function registerGameRoom(io: Server) {
 		// Notes are synced as the GM types so the server always holds a copy
 		// — the browser's is the only other one, and it leaves with the tab.
 		socket.on('gr:notes', validateSocketEvent(grNotesSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			gmNotes.set(d.gameCode, d.notes)
-			Game.updateOne({ gameCode: d.gameCode }, { gmNotes: d.notes }).catch(() => { /* draft only */ })
+			const state = hereAsGM()
+			if (!state) return
+			gmNotes.set(state.gameCode, d.notes)
+			Game.updateOne({ gameCode: state.gameCode }, { gmNotes: d.notes }).catch(() => { /* draft only */ })
 		}, socket))
 
-		socket.on('gr:end', validateSocketEvent(grEndSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			// Cancel all breakout auto-return timers for this game
-			state.breakoutRooms.forEach(br => {
-				const tKey = `${d.gameCode}:${br.id}`
-				const tid = breakoutTimers.get(tKey)
-				if (tid) { clearTimeout(tid); breakoutTimers.delete(tKey) }
-			})
+		socket.on('gr:end', validateSocketEvent(grEndSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
+			clearBreakoutTimers(state.gameCode, state)
 			state.status = 'ended'
 			state.messages = []
 			pushState(io, state)
-			emit(io, d.gameCode, 'gr:end-anim', {})
-			// Stops the recording and delivers whatever notes the server holds.
-			// The room also sends them over HTTP so the GM sees the result; the
-			// draft is cleared on success, so only one of the two ever fires.
-			void closeOutSession(io, state, 'ended')
+			emit(io, state.gameCode, 'gr:end-anim', {})
+			// Stops the recording, delivers whatever notes the server holds and
+			// schedules the room's release. The room also sends the notes over
+			// HTTP so the GM sees the result; the draft is cleared on success,
+			// so only one of the two ever delivers.
+			void closeOutSession(state, 'ended')
 			// Delete all messages for this game from DB
 			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
-			const t = setTimeout(() => releaseRoom(d.gameCode), 60_000)
-			endTimers.set(d.gameCode, t)
 		}, socket))
 
 		// ── Coins: player → player ──────────────────────────────────────────
 		socket.on('gr:coins-transfer', validateSocketEvent(grCoinsTransferSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const from = state.players.find(p => p.userId === curUser)
 			const to   = state.players.find(p => p.userId === d.toUserId)
-			if (!from || !to || d.amount <= 0 || from.coins < d.amount) return
+			if (!from || !to || from === to || to.isSpectator || d.amount <= 0 || from.coins < d.amount) return
 			from.coins -= d.amount
 			to.coins   += d.amount
 			pushState(io, state)
@@ -587,7 +669,7 @@ export function registerGameRoom(io: Server) {
 
 		// ── Coins: player → bank ────────────────────────────────────────────
 		socket.on('gr:coins-bank', validateSocketEvent(grCoinsBankSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
 			if (!p || d.amount <= 0 || p.coins < d.amount) return
@@ -598,180 +680,144 @@ export function registerGameRoom(io: Server) {
 
 		// ── Influence (GM only) ─────────────────────────────────────────────
 		socket.on('gr:influence', validateSocketEvent(grInfluenceSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state) return
 			const target = state.players.find(p => p.userId === d.targetUserId)
 			if (target) { target.influence = Math.max(0, target.influence + d.delta); pushState(io, state) }
 		}, socket))
 
-		// ── Mute all (GM only — sets a flag, audio handled by LiveKit) ──────
-		socket.on('gr:mute-all', validateSocketEvent(grMuteAllSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			emit(io, d.gameCode, 'gr:mute-all', {})
+		// ── Mute all (GM only) ──────────────────────────────────────────────
+		// The signal lets well-behaved clients update their buttons; the media
+		// server does the muting, so a modified client cannot ignore it.
+		socket.on('gr:mute-all', validateSocketEvent(grMuteAllSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
+			emit(io, state.gameCode, 'gr:mute-all', {})
+			await muteMicrophones(roomNameFor(state.gameId), identity => identity !== state.gamemasterId)
 		}, socket))
 
-		// ── Mute player (GM only — mutes a single player's mic via LiveKit) ─
+		// ── Mute player (GM only) ───────────────────────────────────────────
 		socket.on('gr:mute-player', validateSocketEvent(grMutePlayerSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			const uKey = `${d.gameCode}:${d.targetUserId}`
-			const sockets = userSockets.get(uKey)
-			if (sockets) sockets.forEach(sid => io.to(sid).emit('gr:mute-player', {}))
+			const state = hereAsGM()
+			if (!state) return
+			for (const sid of socketsOf(state.gameCode, d.targetUserId)) io.to(sid).emit('gr:mute-player', {})
+			const target = state.players.find(p => p.userId === d.targetUserId)
+			await muteMicrophones(roomNameFor(state.gameId, target?.breakoutRoomId ?? undefined), identity => identity === d.targetUserId)
 		}, socket))
 
 		// ── Announcement ────────────────────────────────────────────────────
 		socket.on('gr:announce', validateSocketEvent(grAnnounceSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state) return
 			state.announcement = d.text ? d.text.slice(0, 500) : null
 			pushState(io, state)
 		}, socket))
 
 		// ── Timer ───────────────────────────────────────────────────────────
 		socket.on('gr:timer', validateSocketEvent(grTimerSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state || !curUser) return
 			const gmPlayer = state.players.find(p => p.userId === curUser)
 			const brId = gmPlayer?.breakoutRoomId ?? null
 			const br = brId ? state.breakoutRooms.find(r => r.id === brId) : null
+			// Scoped to the GM's current breakout room, or the main room
+			const holder: { timer: RoomTimer | null } = br ?? state
 
-			if (br) {
-				// Timer scoped to the GM's current breakout room
-				if (d.action === 'set' && d.label && d.seconds) {
-					const secs = Math.floor(Number(d.seconds))
-					if (!Number.isFinite(secs) || secs < 1 || secs > 86400) return
-					br.timer = { label: String(d.label).slice(0, 100), totalSeconds: secs, endsAt: null, running: false }
-				} else if (d.action === 'start' && br.timer) {
-					br.timer.running = true
-					br.timer.endsAt  = Date.now() + br.timer.totalSeconds * 1000
-				} else if (d.action === 'stop' && br.timer) {
-					br.timer.running = false
-					br.timer.endsAt  = null
-				} else if (d.action === 'clear') {
-					br.timer = null
-				}
-			} else {
-				// Timer scoped to the main room
-				if (d.action === 'set' && d.label && d.seconds) {
-					const secs = Math.floor(Number(d.seconds))
-					if (!Number.isFinite(secs) || secs < 1 || secs > 86400) return
-					state.timer = { label: String(d.label).slice(0, 100), totalSeconds: secs, endsAt: null, running: false }
-				} else if (d.action === 'start' && state.timer) {
-					state.timer.running = true
-					state.timer.endsAt  = Date.now() + state.timer.totalSeconds * 1000
-				} else if (d.action === 'stop' && state.timer) {
-					state.timer.running = false
-					state.timer.endsAt  = null
-				} else if (d.action === 'clear') {
-					state.timer = null
-				}
+			if (d.action === 'set' && d.label && d.seconds) {
+				const secs = Math.floor(Number(d.seconds))
+				if (!Number.isFinite(secs) || secs < 1 || secs > 86400) return
+				holder.timer = { label: String(d.label).slice(0, 100), totalSeconds: secs, endsAt: null, running: false }
+			} else if (d.action === 'start' && holder.timer) {
+				holder.timer.running = true
+				holder.timer.endsAt  = Date.now() + holder.timer.totalSeconds * 1000
+			} else if (d.action === 'stop' && holder.timer) {
+				holder.timer.running = false
+				holder.timer.endsAt  = null
+			} else if (d.action === 'clear') {
+				holder.timer = null
 			}
 			pushState(io, state)
 		}, socket))
 
 		// ── Voting (players only) ───────────────────────────────────────────
 		socket.on('gr:vote-create', validateSocketEvent(grVoteCreateSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			const vote: ActiveVote = {
-				id: uid(),
-				question: d.question.slice(0, 300),
-				options: d.options.map((t: any, i: any) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
-				isAnonymous: d.isAnonymous,
-				multipleChoice: d.multipleChoice,
-				closed: false,
-			}
-			state.activeVote = vote
+			const state = hereAsGM()
+			if (!state) return
+			state.activeVote = makeVote(d, false)
 			pushState(io, state)
 		}, socket))
 
 		socket.on('gr:vote-cast', validateSocketEvent(grVoteCastSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser || !state.activeVote || state.activeVote.closed) return
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player || player.isSpectator) return
-			const vote = state.activeVote
-			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
-			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
-			toVote.forEach((oid: any) => {
-				const o = vote.options.find(o => o.id === oid)
-				if (o && curUser) o.voterIds.push(curUser)
-			})
-			socket.emit('gr:my-vote', { voteId: vote.id, optionIds: toVote })
+			castVote(state.activeVote, curUser, d.optionIds)
 			pushState(io, state)
 		}, socket))
 
-		socket.on('gr:vote-close', validateSocketEvent(grVoteCloseSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+		socket.on('gr:vote-close', validateSocketEvent(grVoteCloseSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
 			if (state.activeVote) { state.activeVote.closed = true; pushState(io, state) }
 		}, socket))
 
-		socket.on('gr:vote-clear', validateSocketEvent(grVoteClearSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+		socket.on('gr:vote-clear', validateSocketEvent(grVoteClearSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
 			state.activeVote = null
 			pushState(io, state)
 		}, socket))
 
 		// ── Spectator voting ────────────────────────────────────────────────
 		socket.on('gr:spectator-vote-create', validateSocketEvent(grSpectatorVoteCreateSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			const vote: ActiveVote = {
-				id: uid(),
-				question: d.question.slice(0, 300),
-				options: d.options.map((t: string, i: number) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
-				isAnonymous: d.isAnonymous,
-				multipleChoice: d.multipleChoice,
-				closed: false,
-				spectatorOnly: true,
-			}
-			state.spectatorVote = vote
+			const state = hereAsGM()
+			if (!state) return
+			state.spectatorVote = makeVote(d, true)
 			pushState(io, state)
 		}, socket))
 
 		socket.on('gr:spectator-vote-cast', validateSocketEvent(grSpectatorVoteCastSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser || !state.spectatorVote || state.spectatorVote.closed) return
 			const player = state.players.find(p => p.userId === curUser)
 			if (!player || (!player.isSpectator && !player.isGamemaster)) return
-			const vote = state.spectatorVote
-			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== curUser) })
-			const toVote = vote.multipleChoice ? d.optionIds : [d.optionIds[0]]
-			toVote.forEach((oid: string) => {
-				const o = vote.options.find(o => o.id === oid)
-				if (o && curUser) o.voterIds.push(curUser)
-			})
-			socket.emit('gr:my-vote', { voteId: vote.id, optionIds: toVote })
+			castVote(state.spectatorVote, curUser, d.optionIds)
 			pushState(io, state)
 		}, socket))
 
-		socket.on('gr:spectator-vote-close', validateSocketEvent(grSpectatorVoteCloseSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+		socket.on('gr:spectator-vote-close', validateSocketEvent(grSpectatorVoteCloseSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
 			if (state.spectatorVote) { state.spectatorVote.closed = true; pushState(io, state) }
 		}, socket))
 
-		socket.on('gr:spectator-vote-clear', validateSocketEvent(grSpectatorVoteClearSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+		socket.on('gr:spectator-vote-clear', validateSocketEvent(grSpectatorVoteClearSchema, async () => {
+			const state = hereAsGM()
+			if (!state) return
 			state.spectatorVote = null
 			pushState(io, state)
 		}, socket))
 
+		function castVote(vote: ActiveVote, voterId: string, optionIds: string[]): void {
+			vote.options.forEach(o => { o.voterIds = o.voterIds.filter(id => id !== voterId) })
+			const chosen = (vote.multipleChoice ? [...new Set(optionIds)] : [optionIds[0]])
+				.filter(oid => vote.options.some(o => o.id === oid))
+			chosen.forEach(oid => vote.options.find(o => o.id === oid)!.voterIds.push(voterId))
+			socket.emit('gr:my-vote', { voteId: vote.id, optionIds: chosen })
+		}
+
 		// ── Breakout rooms ──────────────────────────────────────────────────
 		socket.on('gr:breakout-create', validateSocketEvent(grBreakoutCreateSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state) return
 			// A refusal, not a broken room: gr:error would throw the gamemaster
 			// out to the "room not found" screen mid-game.
 			if (state.breakoutRooms.length >= 5) { socket.emit('gr:action-error', 'Max 5 breakout rooms'); return }
 			const br: BreakoutRoom = {
 				id: uid(), name: d.name.slice(0, 50),
 				imageUrl: d.imageUrl || '',
-				timerSeconds: d.timerSeconds,
+				timerSeconds: d.timerSeconds ?? null,
 				endsAt: null, playerIds: [], invitedIds: [],
 				timer: null,
 				shownImageUrl: null,
@@ -781,55 +827,53 @@ export function registerGameRoom(io: Server) {
 		}, socket))
 
 		socket.on('gr:breakout-invite', validateSocketEvent(grBreakoutAssignSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
 			d.playerIds.forEach((playerId: string) => {
+				const target = state.players.find(p => p.userId === playerId)
+				if (!target || target.isSpectator) return
 				if (!br.invitedIds.includes(playerId)) br.invitedIds.push(playerId)
-				const target = state!.players.find(p => p.userId === playerId)
-				if (target?.socketId) {
-					io.to(target.socketId).emit('gr:breakout-invited', {
-						roomId: d.roomId, roomName: br.name, imageUrl: br.imageUrl,
-					})
+				for (const sid of socketsOf(state.gameCode, playerId)) {
+					io.to(sid).emit('gr:breakout-invited', { roomId: d.roomId, roomName: br.name, imageUrl: br.imageUrl })
 				}
 			})
+			pushState(io, state)
 		}, socket))
 
 		socket.on('gr:breakout-join', validateSocketEvent(grBreakoutJoinSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+			const state = here()
 			if (!state || !curUser) return
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
 			// Invitations are sent to named players; joining has to respect that,
 			// or a private breakout discussion is private in name only.
-			const invited = br.invitedIds?.includes(curUser) ?? false
-			if (!invited && !isGM(state, curUser)) {
+			if (!br.invitedIds.includes(curUser) && !isGM(state, curUser)) {
 				socket.emit('gr:action-error', 'Not invited to this room')
 				return
 			}
 			// Remove from any current breakout
 			state.breakoutRooms.forEach(r => { r.playerIds = r.playerIds.filter(id => id !== curUser) })
-			br.playerIds.push(curUser!)
+			br.playerIds.push(curUser)
 			const p = state.players.find(p => p.userId === curUser)
 			if (p) p.breakoutRoomId = d.roomId
 			// Start timer if first join
 			if (br.timerSeconds && !br.endsAt) {
 				br.endsAt = Date.now() + br.timerSeconds * 1000
-				const tKey = `${d.gameCode}:${d.roomId}`
+				const gameCode = state.gameCode
+				const tKey = `${gameCode}:${d.roomId}`
 				const tid = setTimeout(() => {
 					breakoutTimers.delete(tKey)
-					const s = rooms.get(d.gameCode)
+					const s = rooms.get(gameCode)
 					if (!s) return
 					const r = s.breakoutRooms.find(r => r.id === d.roomId)
 					if (!r) return
-					logger.info(`[breakout-timer] expired roomId=${d.roomId} gameCode=${d.gameCode} returning ${r.playerIds.length} players`)
+					logger.info(`[breakout-timer] expired roomId=${d.roomId} gameCode=${gameCode} returning ${r.playerIds.length} players`)
 					r.playerIds.forEach(playerId => {
 						const pl = s.players.find(p => p.userId === playerId)
-						if (pl) {
-							pl.breakoutRoomId = null
-							if (pl.socketId) io.to(pl.socketId).emit('gr:breakout-return', {})
-						}
+						if (pl) pl.breakoutRoomId = null
+						for (const sid of socketsOf(gameCode, playerId)) io.to(sid).emit('gr:breakout-return', {})
 					})
 					r.playerIds = []
 					r.endsAt = null
@@ -840,8 +884,8 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		}, socket))
 
-		socket.on('gr:breakout-leave', validateSocketEvent(grBreakoutLeaveSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
+		socket.on('gr:breakout-leave', validateSocketEvent(grBreakoutLeaveSchema, async () => {
+			const state = here()
 			if (!state || !curUser) return
 			state.breakoutRooms.forEach(r => { r.playerIds = r.playerIds.filter(id => id !== curUser) })
 			const p = state.players.find(p => p.userId === curUser)
@@ -850,20 +894,18 @@ export function registerGameRoom(io: Server) {
 		}, socket))
 
 		socket.on('gr:breakout-end', validateSocketEvent(grBreakoutEndSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state) return
 			// Cancel any running auto-return timer for this room
-			const tKey = `${d.gameCode}:${d.roomId}`
+			const tKey = `${state.gameCode}:${d.roomId}`
 			const tid = breakoutTimers.get(tKey)
 			if (tid) { clearTimeout(tid); breakoutTimers.delete(tKey) }
 			const br = state.breakoutRooms.find(r => r.id === d.roomId)
 			if (!br) return
 			br.playerIds.forEach(playerId => {
-				const pl = state!.players.find(p => p.userId === playerId)
-				if (pl) {
-					pl.breakoutRoomId = null
-					if (pl.socketId) io.to(pl.socketId).emit('gr:breakout-return', {})
-				}
+				const pl = state.players.find(p => p.userId === playerId)
+				if (pl) pl.breakoutRoomId = null
+				for (const sid of socketsOf(state.gameCode, playerId)) io.to(sid).emit('gr:breakout-return', {})
 			})
 			state.breakoutRooms = state.breakoutRooms.filter(r => r.id !== d.roomId)
 			pushState(io, state)
@@ -871,8 +913,8 @@ export function registerGameRoom(io: Server) {
 
 		// ── Show image ──────────────────────────────────────────────────────
 		socket.on('gr:image-show', validateSocketEvent(grImageShowSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
+			const state = hereAsGM()
+			if (!state || !curUser) return
 			const gmPlayer = state.players.find(p => p.userId === curUser)
 			const brId = gmPlayer?.breakoutRoomId ?? null
 			const br = brId ? state.breakoutRooms.find(r => r.id === brId) : null
@@ -884,114 +926,61 @@ export function registerGameRoom(io: Server) {
 			pushState(io, state)
 		}, socket))
 
-		// ── Observer connect ─────────────────────────────────────────────────────
-		// The observer is the GM's automated recording tool — not a person.
-		// Identity comes from the verified JWT (socket.data.userId), not the client payload.
-		socket.on('gr:observer-connect', validateSocketEvent(grObserverConnectSchema, async (d: any) => {
-			const userId = socket.data.userId as string | null
-			if (!userId) { socket.emit('gr:error', 'Unauthorized'); return }
-
-			const state = await getOrLoadRoom(d.gameCode)
-			if (!state) { socket.emit('gr:error', 'Room not found'); return }
-			if (userId !== state.gamemasterId) {
-				socket.emit('gr:error', 'Observer access denied')
-				return
-			}
-
-			curCode = d.gameCode
-			socket.join(`gr-${d.gameCode}`)
-
-			observerSockets.set(d.gameCode, socket.id)
-			state.hasObserver = true
-			pushState(io, state)
-			socket.emit('gr:state', publicState(state))
-
-			try {
-				const dbHistory = await GameMessage.find({
-					gameId: state.gameId,
-					recipients: { $size: 0 },
-				}).sort({ createdAt: 1 }).limit(100).lean()
-				const history = dbHistory.map(m => ({
-					id: String(m._id),
-					userId: m.senderId,
-					name: m.senderName,
-					text: m.text,
-					ts: (m.createdAt as Date).getTime(),
-					recipients: [],
-					recipientNames: [],
-					spectatorChat: m.spectatorChat ?? false,
-				}))
-				socket.emit('gr:chat-history', history)
-			} catch { /* non-critical */ }
-		}, socket))
-
-		// ── Recording control (GM → observer) ───────────────────────────────────
+		// ── Recording (GM only) ─────────────────────────────────────────────
+		// LiveKit records the main room on its own servers; nothing runs in any
+		// browser. Progress comes back through recordingEvents.
 		socket.on('gr:record-control', validateSocketEvent(grRecordControlSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || !curUser || !isGM(state, curUser)) return
-			const obsSocketId = observerSockets.get(d.gameCode)
-			if (obsSocketId) io.to(obsSocketId).emit('gr:record-signal', { action: d.action })
-		}, socket))
-
-		// ── Recording status (observer → GM + room broadcast) ────────────────────
-		socket.on('gr:record-status', validateSocketEvent(grRecordStatusSchema, async (d: any) => {
-			const state = rooms.get(d.gameCode)
-			if (!state || observerSockets.get(d.gameCode) !== socket.id) return
-			const gm = state.players.find(p => p.isGamemaster && p.connected)
-			if (gm?.socketId) io.to(gm.socketId).emit('gr:record-status', { status: d.status })
-			// Notify all room members when recording starts or ends
-			if (d.status === 'recording') emit(io, d.gameCode, 'gr:recording-notify', { active: true })
-			if (d.status === 'done' || d.status === 'error' || d.status === 'idle') {
-				emit(io, d.gameCode, 'gr:recording-notify', { active: false })
+			const state = hereAsGM()
+			if (!state || !curUser) return
+			try {
+				if (d.action === 'start') {
+					await startRecording({ gameId: state.gameId, gameCode: state.gameCode, gameTitle: state.title, gmId: curUser })
+				} else {
+					const stopped = await stopRecording(state.gameId)
+					if (!stopped) socket.emit('gr:record-status', { status: 'idle' })
+				}
+			} catch (err) {
+				const detail = err instanceof RecordingError ? err.message : 'Recording failed'
+				socket.emit('gr:record-status', { status: 'error', detail })
 			}
 		}, socket))
 
 		// ── Disconnect ──────────────────────────────────────────────────────
 		socket.on('disconnect', () => {
-			if (!curCode) return
-
-			if (observerSockets.get(curCode) === socket.id) {
-				observerSockets.delete(curCode)
-				const state = rooms.get(curCode)
-				if (state) { state.hasObserver = false; pushState(io, state) }
-				return
-			}
-
-			if (!curUser) return
+			if (!curCode || !curUser) return
 			const state = rooms.get(curCode)
 			if (!state) return
 
 			// Remove this socket from per-user tracking to handle multi-tab correctly
 			const uKey = `${curCode}:${curUser}`
 			const sockets = userSockets.get(uKey)
-			if (sockets) {
-				sockets.delete(socket.id)
-				if (sockets.size === 0) {
-					// No remaining connections for this user — mark disconnected
-					userSockets.delete(uKey)
-					const p = state.players.find(p => p.userId === curUser)
-					if (p) { p.connected = false; p.socketId = '' }
-					logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} fully disconnected`)
-					pushState(io, state)
+			sockets?.delete(socket.id)
+			const p = state.players.find(p => p.userId === curUser)
 
-					scheduleGmAwayCloseOut(io, state, curCode, curUser)
-				} else {
-					// User still has another tab open — keep them connected,
-					// update socketId to a still-alive socket so private messages deliver
-					const p = state.players.find(p => p.userId === curUser)
-					if (p && p.socketId === socket.id) {
-						p.socketId = [...sockets][sockets.size - 1]
-						logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} tab closed, ${sockets.size} connection(s) remain, socketId→${p.socketId}`)
-					}
-				}
-			} else {
-				// No tracking entry (join predates this fix) — fall back to marking disconnected
-				const p = state.players.find(p => p.userId === curUser)
+			if (!sockets || sockets.size === 0) {
+				// No remaining connections for this user — mark disconnected
+				userSockets.delete(uKey)
 				if (p) { p.connected = false; p.socketId = '' }
-				logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} disconnected (no tracking)`)
+				logger.info(`[disconnect] userId=${curUser} gameCode=${curCode} fully disconnected`)
 				pushState(io, state)
 				scheduleGmAwayCloseOut(io, state, curCode, curUser)
+				if (!state.players.some(pl => pl.connected)) scheduleRoomRelease(curCode)
+			} else if (p && p.socketId === socket.id) {
+				// Another tab is still open — point at a live socket
+				p.socketId = [...sockets][sockets.size - 1]
 			}
 		})
 	})
+}
+
+function makeVote(d: { question: string; options: string[]; isAnonymous: boolean; multipleChoice: boolean }, spectatorOnly: boolean): ActiveVote {
+	return {
+		id: uid(),
+		question: d.question.slice(0, 300),
+		options: d.options.map((t, i) => ({ id: `o${i}`, text: t.slice(0, 100), voterIds: [] })),
+		isAnonymous: d.isAnonymous,
+		multipleChoice: d.multipleChoice,
+		closed: false,
+		...(spectatorOnly ? { spectatorOnly: true } : {}),
+	}
 }

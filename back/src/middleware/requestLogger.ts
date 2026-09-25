@@ -11,14 +11,6 @@ morgan.token('user-id', (req: any) => {
 	return req.userId || 'anonymous'
 })
 
-// Custom Morgan token for response time in ms
-morgan.token('response-time-ms', (req: any, res: any) => {
-	if (!res._header) return 'N/A'
-	const start = (req._startTime as number) || Date.now()
-	const duration = Date.now() - start
-	return `${duration}ms`
-})
-
 // Stream for Morgan to use Winston
 const stream = {
 	write: (message: string) => {
@@ -34,7 +26,7 @@ const stream = {
 // Create Morgan middleware with custom format
 // Format: timestamp [HTTP_METHOD] path HTTP/1.1 STATUS DURATION userId
 export const requestLogger = morgan(
-	':timestamp :method :url HTTP/:http-version :status :response-time-ms [:user-id]',
+	':timestamp :method :url HTTP/:http-version :status :response-time ms [:user-id]',
 	{
 		stream,
 		// Skip health checks and status endpoints (too noisy)

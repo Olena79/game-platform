@@ -1,23 +1,25 @@
-import React, { useEffect, useRef } from 'react'
+import React, { Suspense, lazy, useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireAuth } from './components/RequireAuth'
 import { ResetPasswordPage } from './components/pages/ResetPasswordPage'
-import { AccountPage } from './components/pages/AccountPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { MobileBottomNav } from './components/layout/MobileBottomNav'
 import { HomePage } from './components/pages/HomePage'
 import { AuthPage } from './components/pages/AuthPage'
 import { GamePage } from './components/pages/GamePage'
-import { CreateGamePage } from './components/pages/CreateGamePage'
 import { OurGamesPage } from './components/pages/OurGamesPage'
-import { CommunityPage } from './components/pages/CommunityPage'
-import { GameRoomPage } from './components/pages/GameRoomPage'
-import { ObserverPage } from './components/pages/ObserverPage'
-import { PrivacyPolicyPage } from './components/pages/PrivacyPolicyPage'
-import { TermsOfServicePage } from './components/pages/TermsOfServicePage'
+
+// The game room carries LiveKit and most of the bundle; the site pages load
+// without it, and the room without the site's heavier pages.
+const AccountPage = lazy(() => import('./components/pages/AccountPage').then(m => ({ default: m.AccountPage })))
+const CreateGamePage = lazy(() => import('./components/pages/CreateGamePage').then(m => ({ default: m.CreateGamePage })))
+const CommunityPage = lazy(() => import('./components/pages/CommunityPage').then(m => ({ default: m.CommunityPage })))
+const GameRoomPage = lazy(() => import('./components/pages/GameRoomPage').then(m => ({ default: m.GameRoomPage })))
+const PrivacyPolicyPage = lazy(() => import('./components/pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })))
+const TermsOfServicePage = lazy(() => import('./components/pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })))
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
@@ -65,12 +67,15 @@ const Stars = () => {
 	)
 }
 
+const PageFallback = () => <div className='w-full min-h-[50vh]' />
+
 const SiteLayout = () => (
 	<div className='min-h-screen flex flex-col' style={{ color: 'var(--text-primary)' }}>
 		<Stars />
 		<div className='rainbow-line relative z-10' />
 		<Header />
 		<main className='flex-grow relative z-10 mobile-pb-nav md:pb-0'>
+			<Suspense fallback={<PageFallback />}>
 			<Routes>
 				<Route path='/' element={<HomePage />} />
 				<Route path='/auth' element={<AuthPage />} />
@@ -85,6 +90,7 @@ const SiteLayout = () => (
 				<Route path='/terms-of-service' element={<TermsOfServicePage />} />
 				{/* <Route path='/about' element={<AboutPage />} /> */}
 			</Routes>
+			</Suspense>
 		</main>
 		<Footer />
 		<MobileBottomNav />
@@ -98,8 +104,11 @@ const App = () => {
 		<ErrorBoundary>
 			<Router>
 				<Routes>
-					<Route path='/room/:code/observe' element={<ObserverPage />} />
-					<Route path='/room/:code' element={<GameRoomPage />} />
+					<Route path='/room/:code' element={
+						<Suspense fallback={<div className='w-screen h-screen' style={{ background: '#07080f' }} />}>
+							<GameRoomPage />
+						</Suspense>
+					} />
 					<Route path='/*' element={<SiteLayout />} />
 				</Routes>
 			</Router>

@@ -7,7 +7,7 @@ import {
 	communityLimiter,
 	uploadLimiter,
 	livekitLimiter,
-	recordingsLimiter,
+	forgotPasswordLimiter,
 } from '../src/middleware/rateLimitMiddleware'
 
 /**
@@ -34,7 +34,7 @@ async function hit(app: express.Express, times: number, body?: object) {
 
 describe('Rate limiting', () => {
 	it('every limiter is a usable middleware', () => {
-		for (const limiter of [authLimiter, loginLimiter, gamesLimiter, communityLimiter, uploadLimiter, livekitLimiter, recordingsLimiter]) {
+		for (const limiter of [authLimiter, loginLimiter, gamesLimiter, communityLimiter, uploadLimiter, livekitLimiter, forgotPasswordLimiter]) {
 			expect(typeof limiter).toBe('function')
 		}
 	})
@@ -70,5 +70,37 @@ describe('Rate limiting', () => {
 		await hit(app, 12, { email: 'first@example.com', password: 'guess' })
 		const other = await request(app).post('/').send({ email: 'second@example.com', password: 'guess' })
 		expect(other.status).toBe(401)   // a different account is unaffected
+	})
+
+	// Keyed by account *and* address: a stranger's failed attempts elsewhere
+	// must not lock the owner out of their own account.
+	it('does not let one address lock an account for everyone', async () => {
+		const app = express()
+		app.set('trust proxy', true)
+		app.use(express.json())
+		app.use(loginLimiter)
+		app.post('/', (_req, res) => { res.status(401).json({ message: 'INVALID_CREDENTIALS' }) })
+
+		for (let i = 0; i < 12; i++) {
+			await request(app).post('/').set('X-Forwarded-For', '203.0.113.7').send({ email: 'owner@example.com', password: 'guess' })
+		}
+		const owner = await request(app).post('/').set('X-Forwarded-For', '198.51.100.9').send({ email: 'owner@example.com', password: 'guess' })
+		expect(owner.status).toBe(401)
+	})
+
+	it('caps password reset requests per address without revealing it', async () => {
+		const app = express()
+		app.use(express.json())
+		app.use(forgotPasswordLimiter)
+		app.post('/', (_req, res) => { res.json({ ok: true, sent: true }) })
+
+		const bodies = []
+		for (let i = 0; i < 5; i++) {
+			const res = await request(app).post('/').send({ email: 'someone@example.com' })
+			expect(res.status).toBe(200)
+			bodies.push(res.body)
+		}
+		// The limited answers look like the normal one, minus the work
+		expect(bodies.slice(3).every(b => b.ok === true && b.sent === undefined)).toBe(true)
 	})
 })

@@ -8,6 +8,11 @@ export interface IUser extends Document {
 	googleId?: string
 	telegramChatId?: string
 	language?: string
+	/** Bumped when the password is reset: access tokens carrying an older one are refused */
+	tokenVersion: number
+	/** sha256 of the pending Telegram deep-link token, and when it lapses */
+	telegramLinkTokenHash?: string
+	telegramLinkExpiresAt?: Date
 	createdAt: Date
 	updatedAt: Date
 }
@@ -25,6 +30,9 @@ const UserSchema = new Schema<IUser>(
 		googleId:        { type: String, trim: true },
 		telegramChatId:  { type: String, trim: true },
 		language:        { type: String, default: 'uk', enum: ['uk', 'en'], trim: true },
+		tokenVersion:    { type: Number, default: 0 },
+		telegramLinkTokenHash: { type: String },
+		telegramLinkExpiresAt: { type: Date },
 	},
 	{ timestamps: true }
 )
@@ -37,5 +45,6 @@ UserSchema.index(
 	{ unique: true, partialFilterExpression: { googleId: { $type: 'string' } } },
 )
 UserSchema.index({ telegramChatId: 1 }, { sparse: true })
+UserSchema.index({ telegramLinkTokenHash: 1 }, { sparse: true })
 
 export const User = mongoose.model<IUser>('User', UserSchema)

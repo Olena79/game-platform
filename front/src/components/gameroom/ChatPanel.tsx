@@ -35,10 +35,10 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
-	onOpenObserver?: () => void
 	onRecordStart?: () => void
 	onRecordStop?: () => void
 	recordStatus?: string
+	recordError?: string
 	/** Passed down so the gamemaster's timer matches the room's clock */
 	clockOffset?: number
 	showMod?: boolean
@@ -54,7 +54,7 @@ export const ChatPanel = ({
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
 	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
-	onOpenObserver, onRecordStart, onRecordStop, recordStatus = '', clockOffset = 0,
+	onRecordStart, onRecordStop, recordStatus = '', recordError = '', clockOffset = 0,
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
 }: Props) => {
@@ -501,10 +501,10 @@ export const ChatPanel = ({
 					onTimerStop={onTimerStop}
 					onTimerClear={onTimerClear}
 					onBreakout={onBreakout}
-					onOpenObserver={onOpenObserver ?? (() => {})}
 					onRecordStart={onRecordStart ?? (() => {})}
 					onRecordStop={onRecordStop ?? (() => {})}
 					recordStatus={recordStatus}
+					recordError={recordError}
 					clockOffset={clockOffset}
 				/>
 			)}

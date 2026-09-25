@@ -6,22 +6,38 @@ import type { Request } from 'express'
  *
  * The general auth limiter allows 100 requests per quarter hour per IP, which
  * is some 9600 password attempts a day from one address. This one is keyed by
- * the account being guessed at, so a shared NAT does not shield an attacker
- * and does not punish everyone else either.
+ * the account being guessed at *and* the address guessing: keyed by the
+ * account alone, ten wrong attempts from anywhere locked the real owner out
+ * for a quarter of an hour.
  */
+function emailKey(req: Request): string {
+	return String(req.body?.email ?? '').trim().toLowerCase()
+}
+
 export const loginLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
 	max: 10,
 	standardHeaders: true,
 	legacyHeaders: false,
-	keyGenerator: (req: Request) => {
-		const email = String(req.body?.email ?? '').toLowerCase()
-		// Falling back to the address needs the helper: an IPv6 client owns a
-		// whole subnet and would otherwise get a fresh bucket per request.
-		return email || ipKeyGenerator(req.ip ?? '')
-	},
+	// The helper matters: an IPv6 client owns a whole subnet and would
+	// otherwise get a fresh bucket per request.
+	keyGenerator: (req: Request) => `${emailKey(req)}|${ipKeyGenerator(req.ip ?? '')}`,
 	skipSuccessfulRequests: true,
 	message: { message: 'Too many sign-in attempts. Please wait 15 minutes.' },
+})
+
+/**
+ * Reset links go to the account owner's Telegram. Without a per-address cap,
+ * anyone could fill a stranger's chat with them.
+ */
+export const forgotPasswordLimiter = rateLimit({
+	windowMs: 60 * 60 * 1000,
+	max: 3,
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: (req: Request) => emailKey(req) || ipKeyGenerator(req.ip ?? ''),
+	// Same answer as a real request, so the limit says nothing about the account
+	handler: (_req, res) => { res.json({ ok: true }) },
 })
 
 // ─ Auth Limiter (Already in use)
@@ -67,22 +83,4 @@ export const livekitLimiter = rateLimit({
 	standardHeaders: true,
 	legacyHeaders: false,
 	message: { message: 'Too many LiveKit token requests, please try again in 15 minutes.' },
-})
-
-// ─ Recordings Limiter (Recording management)
-export const recordingsLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
-	max: 100,
-	standardHeaders: true,
-	legacyHeaders: false,
-	message: { message: 'Too many recording requests, please try again in 15 minutes.' },
-})
-
-// ─ General API Limiter (Fallback for any unspecified routes)
-export const apiLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
-	max: 300,
-	standardHeaders: true,
-	legacyHeaders: false,
-	message: { message: 'Too many API requests, please try again in 15 minutes.' },
 })

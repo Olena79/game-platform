@@ -30,13 +30,17 @@ export function useGameRoom(rawCode: string) {
 	const [shouldMute, setShouldMute] = useState<'all' | 'self' | null>(null)
 	const [newPublicMsgSignal, setNewPublicMsgSignal] = useState(0)
 	const [recordStatus, setRecordStatus] = useState<string>('')
+	const [recordError, setRecordError] = useState('')
+	// The GM's image deck and a signal that the server delivered the notes
+	const [gmImages, setGmImages] = useState<string[]>([])
+	const gmImagesRef = useRef<string[]>([])
+	const [notesDelivered, setNotesDelivered] = useState(0)
 	const [scenario, setScenario] = useState('')
 	const [actionError, setActionError] = useState('')
 	// How far this device's clock sits from the room's
 	const [clockOffset, setClockOffset] = useState(0)
 	// What this person voted for: an anonymous vote no longer says so in the state
 	const [myVote, setMyVote] = useState<{ voteId: string; optionIds: string[] } | null>(null)
-	const [recordingActive, setRecordingActive] = useState(false)
 	const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 	const prevStatusRef = useRef<string>('')
 	// Refs that mirror state so async connect handler never reads stale closures
@@ -48,58 +52,54 @@ export function useGameRoom(rawCode: string) {
 	useEffect(() => { lkRef.current = lk }, [lk])
 	useEffect(() => { lkBreakoutRef.current = lkBreakout }, [lkBreakout])
 
-	// Resolved code info — populated after code resolution
-	const [resolved, setResolved] = useState<{ gameCode: string; isSpectatorJoin: boolean } | null>(null)
+	// What kind of seat this code gives — known before the socket connects,
+	// so the interface can hide the player controls from the first frame.
+	// The server decides for itself from the same code; this only mirrors it.
+	const [resolved, setResolved] = useState<{ isSpectatorJoin: boolean } | null>(null)
 
 	const myId = user?.id ?? ''
 
-	// Step 1: resolve the raw code to the real gameCode + isSpectator flag
+	// Step 1: does the code open a room at all?
 	useEffect(() => {
 		if (!rawCode) return
 		setResolved(null)
 		resolveGameCode(rawCode)
-			.then(r => setResolved({ gameCode: r.gameCode, isSpectatorJoin: r.isSpectator }))
+			.then(r => setResolved({ isSpectatorJoin: r.isSpectator }))
 			.catch(() => setError('Кімнату не знайдено'))
 	}, [rawCode])
 
-	// The server builds the room name from the game and checks membership,
-	// so this only says which game (and which breakout, if any).
+	// The code the person was given is all the client ever sends: the server
+	// works out the room, the room's name and whether this seat has a voice.
 	const fetchLKToken = useCallback(async (breakoutId?: string): Promise<LKData | null> => {
 		if (!authToken || !user) return null
-		const code = resolved?.gameCode ?? rawCode
 		try {
-			const userName = [user.name, user.surname].filter(Boolean).join(' ') || user.name
-			// `rawCode` is what the person was actually given — entry or
-			// spectator code — and that is what earns them their seat.
-			const payload = { code: rawCode, gameCode: code, breakoutId, userName }
 			const res = await fetch(`${API}/api/livekit/token`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-				body: JSON.stringify(payload),
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('mindflow_access_token') ?? authToken}` },
+				body: JSON.stringify({ code: rawCode, breakoutId }),
 			})
 			if (!res.ok) {
 				const error = await res.json().catch(() => ({}))
 				console.error('[LiveKit] Token request failed:', res.status, error)
-				// 403 means this person is not in this game. Saying so beats a
-				// room that sits on "connecting..." with no explanation.
-				if (res.status === 403) setError('NOT_A_PARTICIPANT')
+				// 403 on the main room means this code opens nothing for this
+				// person. Saying so beats a room stuck on "connecting...".
+				if (res.status === 403 && !breakoutId) setError('NOT_A_PARTICIPANT')
 				return null
 			}
 			const d = await res.json()
-			// Mirror the server's naming so LiveKitRoom remounts on room changes
-			const roomName = breakoutId ? `mindflow-${code}-${breakoutId}` : `mindflow-${code}`
-			return { token: d.token, url: d.url, roomName }
+			return { token: d.token, url: d.url, roomName: d.roomName }
 		} catch (err) {
 			console.error('[LiveKit] Token fetch error:', err)
 			return null
 		}
-	}, [authToken, user, resolved, rawCode])
+	}, [authToken, user, rawCode])
 
 	// Step 2: connect socket once the code is resolved
 	useEffect(() => {
 		if (!user || !authToken || !resolved) return
 
-		const { gameCode, isSpectatorJoin } = resolved
+		const { isSpectatorJoin } = resolved
+		const gameCode = rawCode
 
 		// The auth callback runs on every (re)connect, so a token refreshed
 		// mid-game is picked up instead of the stale one this effect closed over.
@@ -114,12 +114,7 @@ export function useGameRoom(rawCode: string) {
 		socket.on('connect', async () => {
 			setConnected(true)
 			setConnStatus('connected')
-			socket.emit('gr:join', {
-				gameCode,
-				userId: user.id,
-				name: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
-				isSpectatorJoin,
-			})
+			socket.emit('gr:join', { gameCode })
 			// Only fetch main token on first connect; LiveKit manages its own reconnection
 			if (!lkRef.current) {
 				const token = await fetchLKToken()
@@ -143,7 +138,8 @@ export function useGameRoom(rawCode: string) {
 			if (user && !s.players.some(p => p.userId === user.id)) announce()
 			if ((prevStatusRef.current === 'lobby' || prevStatusRef.current === 'ended') && s.status === 'started') setStartAnim(true)
 			prevStatusRef.current = s.status
-			setState(s)
+			// The deck is the GM's alone and arrives separately
+			setState({ ...s, images: gmImagesRef.current })
 		})
 		// An expired access token makes the handshake fail forever: the socket
 		// keeps retrying with the same dead token and the room becomes a wall.
@@ -161,12 +157,7 @@ export function useGameRoom(rawCode: string) {
 			const now = Date.now()
 			if (now - lastJoinRef.current < 4000) return
 			lastJoinRef.current = now
-			socket.emit('gr:join', {
-				gameCode,
-				userId: user.id,
-				name: [user.name, user.surname].filter(Boolean).join(' ') || user.name,
-				isSpectatorJoin,
-			})
+			socket.emit('gr:join', { gameCode })
 		}
 		socket.on('gr:rejoin', announce)
 
@@ -235,10 +226,19 @@ export function useGameRoom(rawCode: string) {
 			setLkBreakout(null)
 		})
 		socket.on('gr:end-anim', () => setEndAnim(true))
-		// Scenario arrives separately, addressed to the gamemaster
-		socket.on('gr:gm-state', (d: { scenario: string }) => setScenario(d.scenario ?? ''))
-		socket.on('gr:record-status', (d: { status: string }) => setRecordStatus(d.status))
-		socket.on('gr:recording-notify', (d: { active: boolean }) => setRecordingActive(d.active))
+		// Scenario and image deck arrive separately, addressed to the gamemaster
+		socket.on('gr:gm-state', (d: { scenario: string; images?: string[] }) => {
+			setScenario(d.scenario ?? '')
+			const images = d.images ?? []
+			gmImagesRef.current = images
+			setGmImages(images)
+			setState(prev => prev ? { ...prev, images } : prev)
+		})
+		socket.on('gr:record-status', (d: { status: string; detail?: string }) => {
+			setRecordStatus(d.status)
+			setRecordError(d.status === 'error' ? d.detail ?? '' : '')
+		})
+		socket.on('gr:notes-delivered', () => setNotesDelivered(n => n + 1))
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
 
 		return () => {
@@ -248,7 +248,7 @@ export function useGameRoom(rawCode: string) {
 			Object.values(reactionTimersRef.current).forEach(clearTimeout)
 			reactionTimersRef.current = {}
 		}
-	}, [resolved?.gameCode, user?.id, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [resolved, rawCode, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const markDMRead = useCallback((convKey: string) => {
 		setUnreadDMs(prev => { const n = { ...prev }; delete n[convKey]; return n })
@@ -256,19 +256,26 @@ export function useGameRoom(rawCode: string) {
 
 	const clearMuteSignal = useCallback(() => setShouldMute(null), [])
 
-	const gameCode = resolved?.gameCode ?? rawCode
+	const gameCode = rawCode
 
 	const emit = useCallback((event: string, data?: object) => {
 		socketRef.current?.emit(event, { gameCode, ...(data ?? {}) })
 	}, [gameCode])
 
+	// Media first, then the move: announcing the move without a media token
+	// left the person in a breakout with no video and no way out.
 	const joinBreakout = useCallback(async (roomId: string) => {
-		currentBreakoutRoomIdRef.current = roomId
-		const token = await fetchLKToken(roomId)
-		if (token) setLkBreakout(token)
-		emit('gr:breakout-join', { roomId })
 		setBreakoutInvite(null)
-	}, [fetchLKToken, gameCode, emit])
+		const token = await fetchLKToken(roomId)
+		if (!token) {
+			setActionError('Не вдалося перейти до кімнати. Спробуйте ще раз.')
+			setTimeout(() => setActionError(''), 5000)
+			return
+		}
+		currentBreakoutRoomIdRef.current = roomId
+		setLkBreakout(token)
+		emit('gr:breakout-join', { roomId })
+	}, [fetchLKToken, emit])
 
 	const leaveBreakout = useCallback(() => {
 		currentBreakoutRoomIdRef.current = null
@@ -287,11 +294,13 @@ export function useGameRoom(rawCode: string) {
 		shouldMute, clearMuteSignal,
 		newPublicMsgSignal,
 		recordStatus,
+		recordError,
+		gmImages,
+		notesDelivered,
 		scenario,
 		actionError,
 		clockOffset,
 		myVote,
-		recordingActive,
 		lk, lkBreakout,
 		breakoutInvite, setBreakoutInvite,
 		endAnim, setEndAnim,
@@ -330,7 +339,10 @@ export function useGameRoom(rawCode: string) {
 			emit('gr:breakout-invite', { roomId, playerIds }),
 		endBreakout:   (roomId: string)           => emit('gr:breakout-end',   { roomId }),
 		showImage:       (imageUrl: string | null)  => emit('gr:image-show',     { imageUrl }),
-		recordControl:   (action: 'start' | 'stop') => emit('gr:record-control', { action }),
+		recordControl:   (action: 'start' | 'stop') => {
+			if (action === 'start') { setRecordStatus('starting'); setRecordError('') }
+			emit('gr:record-control', { action })
+		},
 		// Keeps the server's copy of the GM's notes current, so they are still
 		// delivered if the tab closes instead of the game being ended.
 		syncNotes:       (notes: string)            => emit('gr:notes',          { notes }),

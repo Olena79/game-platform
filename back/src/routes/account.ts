@@ -35,7 +35,7 @@ router.get('/export', authMiddleware, async (req: AuthRequest, res: Response): P
  */
 router.delete('/', authMiddleware, validateBody(deleteAccountSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const user = await User.findById(req.userId).select('password provider')
+		const user = await User.findById(req.userId).select('password')
 		if (!user) { res.status(404).json({ message: 'User not found' }); return }
 
 		if (user.password) {

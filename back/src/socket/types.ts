@@ -10,7 +10,6 @@ export interface RoomPlayer {
 	breakoutRoomId: string | null
 	isGamemaster: boolean
 	isSpectator: boolean
-	isObserver?: boolean
 	connected: boolean
 }
 
@@ -83,5 +82,6 @@ export interface GameRoomState {
 	gamemasterId: string
 	shownImageUrl: string | null
 	defaultTimerSeconds: number | null
-	hasObserver: boolean
+	/** A LiveKit Egress recording of the main room is running */
+	isRecording: boolean
 }

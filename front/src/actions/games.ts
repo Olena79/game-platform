@@ -53,8 +53,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
 	return data as T
 }
 
-export const resolveGameCode = (code: string): Promise<{ gameCode: string; isSpectator: boolean }> =>
-	fetch(`${API}/api/games/resolve/${encodeURIComponent(code)}`).then(handleResponse<{ gameCode: string; isSpectator: boolean }>)
+/** Which seat a code gives. Never the entry code: a spectator must not learn it. */
+export const resolveGameCode = (code: string): Promise<{ isSpectator: boolean; title: string }> =>
+	fetch(`${API}/api/games/resolve/${encodeURIComponent(code)}`).then(handleResponse<{ isSpectator: boolean; title: string }>)
 
 /**
  * The token is optional but matters: without it the server cannot tell who is

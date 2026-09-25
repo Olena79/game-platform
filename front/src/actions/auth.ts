@@ -79,14 +79,6 @@ export const googleAuthRequest = (idToken: string): Promise<AuthResponse> =>
 		body: JSON.stringify({ token: idToken }),
 	}).then(handleResponse<AuthResponse>)
 
-/** Links the caller's own account — the server takes the user from the session. */
-export const linkTelegramRequest = (authToken: string, telegramChatId: string) =>
-	fetch(`${API}/api/telegram/link`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-		body: JSON.stringify({ telegramChatId }),
-	}).then(handleResponse<AuthResponse>)
-
 export const getTelegramStatusRequest = (token: string): Promise<{ telegramConnected: boolean }> =>
 	fetch(`${API}/api/telegram/status`, {
 		headers: { Authorization: `Bearer ${token}` },

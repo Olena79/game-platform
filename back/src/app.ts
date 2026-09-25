@@ -29,7 +29,7 @@ import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
-import jwt from 'jsonwebtoken'
+import helmet from 'helmet'
 import * as cron from 'node-cron'
 import { connectDB } from './config/db'
 import logger from './config/logger'
@@ -38,15 +38,15 @@ import { getSentryMiddleware } from './config/sentry'
 import authRoutes from './routes/auth'
 import gameRoutes from './routes/games'
 import livekitRoutes from './routes/livekit'
-import recordingRoutes, { finalizeStaleUploads } from './routes/recordings'
 import accountRoutes from './routes/account'
 import uploadRoutes from './routes/upload'
 import telegramRoutes from './routes/telegram'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
-import { Recording } from './models/Recording'
-import { deleteFile, verifyDriveAccess } from './services/googleDrive'
+import { authenticateAccessToken } from './middleware/authMiddleware'
+import { cleanupExpiredRecordings, syncRecordings } from './services/recording'
+import { verifyStorageAccess } from './services/storage'
 import { startTelegramPolling, stopTelegramPolling } from './services/telegramBot'
 import {
 	authLimiter,
@@ -54,9 +54,7 @@ import {
 	communityLimiter,
 	uploadLimiter,
 	livekitLimiter,
-	recordingsLimiter,
 	loginLimiter,
-	apiLimiter,
 } from './middleware/rateLimitMiddleware'
 
 const app = express()
@@ -68,11 +66,6 @@ const isDev = process.env.NODE_ENV === 'development'
 // Without this, express-rate-limit sees the load-balancer IP and throttles everyone.
 app.set('trust proxy', 1)
 
-// JWT_SECRET is validated at startup inside authMiddleware.ts (throws if missing).
-// Redundant guard here so this file stays safe even if the import chain ever changes.
-const JWT_SECRET = process.env.JWT_SECRET
-if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET is not set.')
-
 // One list for both Express and Socket.IO. They used to be built
 // differently: with two domains in CLIENT_URL the API worked and the
 // WebSocket did not, which reads as "the room will not open".
@@ -82,7 +75,7 @@ const allowedOrigins = isDev
 logger.info(`CORS configured for: ${allowedOrigins.join(', ')}`, { context: 'app:cors' })
 
 if (!isDev && !process.env.CLIENT_URL) {
-	logger.warn('CLIENT_URL is not set in production — CORS will block all browser requests and email links will point to localhost', {
+	logger.warn('CLIENT_URL is not set in production — CORS will block all browser requests and password reset links will point nowhere', {
 		context: 'app:startup',
 	})
 }
@@ -100,24 +93,25 @@ const io = new Server(httpServer, {
 // the community feed which is publicly readable), but rejects connections that
 // send an explicitly invalid/expired token. Game room events enforce userId
 // separately via socket.data.userId (see gameRoom.ts / gr:join).
-io.use((socket, next) => {
-	const token = socket.handshake.auth?.token as string | undefined
+io.use(async (socket, next) => {
+	const token = socket.handshake.auth?.token
 	if (!token) {
 		// No token — allow connection without an authenticated identity.
 		// gr:join will reject if socket.data.userId is not set.
 		socket.data.userId = null
 		return next()
 	}
-	try {
-		const decoded = jwt.verify(token, JWT_SECRET) as { id: string }
-		socket.data.userId = decoded.id
-		next()
-	} catch {
-		// Explicitly forged or expired token → reject the handshake immediately.
-		next(new Error('Authentication error'))
-	}
+	// Same check as the REST API: an access token (not a reset link), for an
+	// account that still exists and has not reset its password since.
+	const userId = typeof token === 'string' ? await authenticateAccessToken(token) : null
+	if (!userId) return next(new Error('Authentication error'))
+	socket.data.userId = userId
+	next()
 })
 
+// Security headers. The API serves JSON only, so the defaults fit; the
+// frontend's headers are set by its host (see front/vercel.json).
+app.use(helmet())
 app.use(
 	cors({
 		origin: isDev ? true : allowedOrigins,
@@ -142,7 +136,6 @@ app.use('/api/account',     authLimiter, accountRoutes)
 app.use('/api/upload',      uploadLimiter, uploadRoutes)
 app.use('/api/games',       gamesLimiter, gameRoutes)
 app.use('/api/livekit',     livekitLimiter, livekitRoutes)
-app.use('/api/recordings',  recordingsLimiter, recordingRoutes)
 app.use('/api/community',   communityLimiter, makeCommunityRouter(io))
 
 registerGameRoom(io)
@@ -151,47 +144,12 @@ registerCommunity(io)
 // ── Sentry error handler (must be after all other middleware and routes) ───────
 app.use(getSentryMiddleware()[1])
 
-// Delete expired recordings from Google Drive every 6 hours.
-// Recordings expire 7 days after they start (set in routes/recordings.ts).
-const cleanupExpiredRecordings = async () => {
-	try {
-		const expired = await Recording.find({ expiresAt: { $lte: new Date() } })
-		let removed = 0
-		let kept = 0
-		for (const rec of expired) {
-			if (rec.driveFileId) {
-				try {
-					await deleteFile(rec.driveFileId)
-				} catch (err) {
-					// Drive still holds the file: keep the row so the next run
-					// retries instead of leaking an orphaned video forever.
-					kept++
-					logger.warn('Could not delete recording from Drive', {
-						task: 'cron:cleanup',
-						recordingId: String(rec._id),
-						error: err instanceof Error ? err.message : String(err),
-					})
-					continue
-				}
-			}
-			// Rows with no file (upload never finished) just go
-			await rec.deleteOne()
-			removed++
-		}
-		if (removed > 0 || kept > 0) {
-			logger.info(`Cleaned up ${removed} expired recording(s), ${kept} retained for retry`, { task: 'cron:cleanup' })
-		}
-	} catch (err) {
-		logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err })
-	}
-}
-
-cron.schedule('0 */6 * * *', cleanupExpiredRecordings)
-
-// Close recordings whose observer window disappeared, so the part that did
-// reach Drive becomes a playable file instead of an unfinished upload session.
-cron.schedule('*/2 * * * *', () => { void finalizeStaleUploads() })
-
+// Recordings: LiveKit Egress writes them to R2; this follows each one to the
+// end (link to the GM's Telegram) and deletes them after 7 days.
+cron.schedule('* * * * *', () => { void syncRecordings() })
+cron.schedule('0 */6 * * *', () => {
+	cleanupExpiredRecordings().catch(err => logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err }))
+})
 
 const PORT = process.env.PORT || 5000
 
@@ -200,15 +158,17 @@ connectDB()
 		// Start Telegram bot polling
 		startTelegramPolling()
 
-		// Recording storage is only exercised when a game ends, so check it at
-		// startup — a misconfigured Drive should not be discovered by losing a game.
-		verifyDriveAccess().then(({ ok, detail }) => {
-			if (ok) logger.info(`Google Drive ready — ${detail}`, { context: 'server:startup' })
-			else logger.error(`Google Drive NOT usable — recordings will fail to save: ${detail}`, { context: 'server:startup' })
+		// Recording storage is only exercised when someone presses "record",
+		// so check it at startup — a misconfigured bucket should be found in
+		// the deploy log, not in front of the club.
+		verifyStorageAccess().then(({ ok, detail }) => {
+			if (ok) logger.info(`Recording storage ready — ${detail}`, { context: 'server:startup' })
+			else logger.error(`Recording storage NOT usable — recordings will fail: ${detail}`, { context: 'server:startup' })
 		})
 
-		// Clear anything that expired while the server was down
-		cleanupExpiredRecordings()
+		// Catch up on whatever finished or expired while the server was down
+		void syncRecordings()
+		cleanupExpiredRecordings().catch(err => logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err }))
 
 		httpServer.listen(PORT, () => {
 			logger.info(`Server running on http://localhost:${PORT}`, { context: 'server:startup', port: PORT })

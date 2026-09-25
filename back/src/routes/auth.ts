@@ -2,11 +2,11 @@ import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import { OAuth2Client } from 'google-auth-library'
 import { User } from '../models/User'
-import { authMiddleware, AuthRequest } from '../middleware/authMiddleware'
+import { authMiddleware, AuthRequest, forgetUser } from '../middleware/authMiddleware'
+import { forgotPasswordLimiter } from '../middleware/rateLimitMiddleware'
 import { validateBody } from '../middleware/validationMiddleware'
 import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas'
 import {
-	generateAccessToken,
 	issueTokenPair,
 	refreshAccessToken,
 	revokeAllUserTokens,
@@ -43,6 +43,12 @@ async function verifyGoogleIdToken(idToken: string): Promise<GoogleUserInfo> {
 		if (!payload || !payload.email) {
 			throw new Error('Invalid Google ID token: missing email')
 		}
+		// Accounts are matched by email below, so an address Google has not
+		// verified must not be trusted: whoever registered it with Google
+		// without owning it would walk into the real owner's account here.
+		if (payload.email_verified !== true) {
+			throw new Error('Invalid Google ID token: email not verified')
+		}
 		return {
 			sub: payload.sub || '',
 			email: payload.email,
@@ -63,7 +69,6 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 	try {
 		const { email, password, name, surname } = req.body
 		const language = req.headers['accept-language']?.split(',')[0]?.split('-')[0]?.toLowerCase() || 'uk'
-		logger.info('[register] Destructured values', { email, password: '***', name, surname, language })
 
 		const emailExists = await User.findOne({ email })
 		if (emailExists) {
@@ -73,8 +78,8 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 
 		const hashed = await bcrypt.hash(password, 10)
 		const user = await User.create({ email, password: hashed, name, surname, googleId: null, language: ['uk', 'en'].includes(language) ? language : 'uk' })
-		logger.info('[register] User created', { userId: user._id, email, name, surname, language: user.language, userObject: JSON.stringify({ id: user._id, email: user.email, name: user.name, surname: user.surname }) })
-		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
+		logger.info('[register] User created', { userId: String(user._id), language: user.language })
+		const { accessToken, refreshToken } = await issueTokenPair(String(user._id), user.tokenVersion ?? 0)
 
 
 		res.status(201).json({
@@ -111,7 +116,7 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
 			return
 		}
 
-		const { accessToken, refreshToken } = await issueTokenPair(String(user._id))
+		const { accessToken, refreshToken } = await issueTokenPair(String(user._id), user.tokenVersion ?? 0)
 		res.json({
 			accessToken,
 			refreshToken,
@@ -153,7 +158,7 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 			await user.save()
 		}
 
-		const { accessToken: jwtAccessToken, refreshToken } = await issueTokenPair(String(user._id))
+		const { accessToken: jwtAccessToken, refreshToken } = await issueTokenPair(String(user._id), user.tokenVersion ?? 0)
 		res.json({
 			accessToken: jwtAccessToken,
 			refreshToken,
@@ -243,11 +248,11 @@ router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response): 
  * account here. Delivery goes over Telegram, the one channel tied to the
  * account that still exists.
  */
-router.post('/forgot-password', validateBody(forgotPasswordSchema), async (req: Request, res: Response): Promise<void> => {
+router.post('/forgot-password', validateBody(forgotPasswordSchema), forgotPasswordLimiter, async (req: Request, res: Response): Promise<void> => {
 	try {
 		const user = await User.findOne({ email: req.body.email })
 		if (user?.telegramChatId) {
-			const resetUrl = `${process.env.CLIENT_URL?.split(',')[0] ?? ''}/auth/reset?token=${generatePasswordResetToken(String(user._id))}`
+			const resetUrl = `${process.env.CLIENT_URL?.split(',')[0] ?? ''}/auth/reset?token=${generatePasswordResetToken(String(user._id), user.password)}`
 			await sendPasswordResetToTelegram(user.telegramChatId, resetUrl, user.language || 'uk')
 			logger.info('[forgot-password] reset link sent', { userId: String(user._id) })
 		} else if (user) {
@@ -262,16 +267,20 @@ router.post('/forgot-password', validateBody(forgotPasswordSchema), async (req: 
 
 router.post('/reset-password', validateBody(resetPasswordSchema), async (req: Request, res: Response): Promise<void> => {
 	try {
-		const userId = verifyPasswordResetToken(req.body.token)
+		// The token is bound to the password it was issued for, so it stops
+		// working the moment that password changes — a link is good once.
+		const userId = await verifyPasswordResetToken(req.body.token, async id => {
+			const u = await User.findById(id).select('password').lean()
+			return u ? u.password ?? '' : null
+		})
 		if (!userId) { res.status(400).json({ message: 'INVALID_OR_EXPIRED_TOKEN' }); return }
 
-		const user = await User.findById(userId)
-		if (!user) { res.status(400).json({ message: 'INVALID_OR_EXPIRED_TOKEN' }); return }
-
-		user.password = await bcrypt.hash(req.body.password, 10)
-		await user.save()
-		// Whoever knew the old password is no longer welcome
+		const password = await bcrypt.hash(req.body.password, 10)
+		// Whoever knew the old password is no longer welcome: refresh tokens
+		// are revoked, and the version bump retires every access token too.
+		await User.updateOne({ _id: userId }, { $set: { password }, $inc: { tokenVersion: 1 } })
 		await revokeAllUserTokens(userId)
+		forgetUser(userId)
 
 		logger.info('[reset-password] password changed', { userId })
 		res.json({ ok: true })
