@@ -1053,8 +1053,9 @@ const GameCard = ({
 					</span>
 				)}
 				<div className='flex items-center justify-between pt-[2px]'>
-					{/* Left: players count */}
-					<div className='flex items-center gap-[10px]'>
+					{/* Left: registered players, and under them registered spectators
+					    (👀, from 0 — the count is public, the names are not) */}
+					<div className='flex flex-col items-start gap-[4px]'>
 						<button
 							onClick={onShowPlayers}
 							className='flex items-center gap-[5px] text-[12px] transition-colors cursor-pointer'
@@ -1062,12 +1063,13 @@ const GameCard = ({
 						>
 							<UserCheck size={12} strokeWidth={1.8} />
 							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
-							{spectators.length > 0 && (
-								<span className='ml-[4px]' style={{ color: 'rgba(190,148,255,0.78)' }}>
-									· {game.spectatorsCount ?? spectators.length} 👁
-								</span>
-							)}
 						</button>
+						<span className='flex items-center gap-[5px] text-[12px]'
+							style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}
+							title={t('our_games.spectators_count')}>
+							<span aria-hidden='true' className='text-[13px] leading-none'>👀</span>
+							{t('our_games.spectators_count')}: {game.spectatorsCount ?? spectators.length}
+						</span>
 					</div>
 
 					<div className='flex gap-[6px] items-center'>

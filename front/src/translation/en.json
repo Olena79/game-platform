@@ -194,7 +194,8 @@
     "spectator_code_label": "👁 Spectator code:",
     "player_code_label": "🎮 Player code:",
     "copy_code": "copy",
-    "no_name": "No name"
+    "no_name": "No name",
+    "spectators_count": "Spectators"
   },
   "donate": {
     "title": "Donate to Game Master",

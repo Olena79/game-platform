@@ -194,7 +194,8 @@
     "spectator_code_label": "👁 Код глядача:",
     "player_code_label": "🎮 Код гравця:",
     "copy_code": "копіювати",
-    "no_name": "Немає імені"
+    "no_name": "Немає імені",
+    "spectators_count": "Глядачі"
   },
   "donate": {
     "title": "Донат ігромайстру",
