@@ -282,6 +282,12 @@ front/src/
    GM's browser gets `gr:record-stop` and uploads its last part), deliver notes to Telegram
    (`gr:notes-delivered` lets the browser drop its copy), release the room
    (60 s after a proper end; 10 min after the last person leaves otherwise).
+   Someone who reopens the room while the room still has them in a breakout
+   (they left the page from there) gets that breakout's media token, or is
+   sent back to the main room if it is no longer theirs — the page used to
+   hang on "Getting LiveKit token..." (`useGameRoom`). A failed token request
+   is retried (401 → refresh sign-in; network/5xx → 1, 2, 4, 8 s), then the
+   room shows "Try again" instead of waiting forever.
 4. Deleting a game closes its room and stops its recording.
 5. Editing a game while its room is in memory updates the room at once
    (`applyGameSettings`): coins, bank (refilled only before the start),

@@ -51,6 +51,8 @@ export function useGameRoom(rawCode: string) {
 	const lkRef = useRef<LKData | null>(null)
 	const lkBreakoutRef = useRef<LKData | null>(null)
 	const currentBreakoutRoomIdRef = useRef<string | null>(null)
+	// Left a breakout, and the room has not confirmed it yet
+	const leavingBreakoutRef = useRef(false)
 	const lastJoinRef = useRef(0)
 
 	useEffect(() => { lkRef.current = lk }, [lk])
@@ -74,29 +76,54 @@ export function useGameRoom(rawCode: string) {
 
 	// The code the person was given is all the client ever sends: the server
 	// works out the room, the room's name and whether this seat has a voice.
+	//
+	// A failed request used to leave the room on "Getting LiveKit token..."
+	// for good: nothing asked again. That happened on iPhones after picking a
+	// photo — Safari freezes the page meanwhile, the scheduled sign-in refresh
+	// is missed, and the first request after goes out with an expired token.
+	// Now a 401 refreshes the sign-in, a network or server error is retried
+	// after a pause, and only then does the room give up with a retry button.
 	const fetchLKToken = useCallback(async (breakoutId?: string): Promise<LKData | null> => {
 		if (!authToken || !user) return null
-		try {
-			const res = await fetch(`${API}/api/livekit/token`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('mindflow_access_token') ?? authToken}` },
-				body: JSON.stringify({ code: rawCode, breakoutId }),
-			})
-			if (!res.ok) {
+		const pauses = [1000, 2000, 4000, 8000]
+		let refreshed = false
+		for (let attempt = 0; ; attempt++) {
+			let status = 0
+			try {
+				const res = await fetch(`${API}/api/livekit/token`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('mindflow_access_token') ?? authToken}` },
+					body: JSON.stringify({ code: rawCode, breakoutId }),
+				})
+				if (res.ok) {
+					const d = await res.json()
+					return { token: d.token, url: d.url, roomName: d.roomName }
+				}
+				status = res.status
 				const error = await res.json().catch(() => ({}))
 				console.error('[LiveKit] Token request failed:', res.status, error)
-				// 403 on the main room means this code opens nothing for this
-				// person. Saying so beats a room stuck on "connecting...".
-				if (res.status === 403 && !breakoutId) setError('NOT_A_PARTICIPANT')
+			} catch (err) {
+				console.error('[LiveKit] Token fetch error:', err)
+			}
+			// 403 on the main room means this code opens nothing for this
+			// person. Saying so beats a room stuck on "connecting...".
+			if (status === 403) {
+				if (!breakoutId) setError('NOT_A_PARTICIPANT')
 				return null
 			}
-			const d = await res.json()
-			return { token: d.token, url: d.url, roomName: d.roomName }
-		} catch (err) {
-			console.error('[LiveKit] Token fetch error:', err)
-			return null
+			if (status === 401 && !refreshed) {
+				refreshed = true
+				if (await forceRefresh()) continue
+				if (!breakoutId) setConnStatus('failed')
+				return null
+			}
+			if (attempt >= pauses.length) {
+				if (!breakoutId) setConnStatus('failed')
+				return null
+			}
+			await new Promise(r => setTimeout(r, pauses[attempt]))
 		}
-	}, [authToken, user, rawCode])
+	}, [authToken, user, rawCode, forceRefresh])
 
 	// Step 2: connect socket once the code is resolved
 	useEffect(() => {
@@ -233,6 +260,7 @@ export function useGameRoom(rawCode: string) {
 
 		socket.on('gr:breakout-invited', (d: BreakoutInvite) => setBreakoutInvite(d))
 		socket.on('gr:breakout-return', () => {
+			leavingBreakoutRef.current = true
 			currentBreakoutRoomIdRef.current = null
 			setLkBreakout(null)
 		})
@@ -285,12 +313,14 @@ export function useGameRoom(rawCode: string) {
 			setTimeout(() => setActionError(''), 5000)
 			return
 		}
+		leavingBreakoutRef.current = false
 		currentBreakoutRoomIdRef.current = roomId
 		setLkBreakout(token)
 		emit('gr:breakout-join', { roomId })
 	}, [fetchLKToken, emit])
 
 	const leaveBreakout = useCallback(() => {
+		leavingBreakoutRef.current = true
 		currentBreakoutRoomIdRef.current = null
 		setLkBreakout(null)
 		emit('gr:breakout-leave')
@@ -299,6 +329,28 @@ export function useGameRoom(rawCode: string) {
 	const me = state?.players.find(p => p.userId === myId) ?? null
 	const isGM = me?.isGamemaster ?? false
 	const inBreakout = me?.breakoutRoomId ?? null
+
+	// The room remembers who sits in a breakout; this page may not know it —
+	// it was reopened (back from editing the game, a reload) while its owner
+	// was still in one. The room then waited for a breakout media token nobody
+	// asked for and hung on "Getting LiveKit token...". Ask for it here, or
+	// go back to the main room if that seat is no longer ours.
+	useEffect(() => {
+		if (!inBreakout) { leavingBreakoutRef.current = false; return }
+		if (!connected || leavingBreakoutRef.current) return
+		if (currentBreakoutRoomIdRef.current === inBreakout) return
+		currentBreakoutRoomIdRef.current = inBreakout
+		void fetchLKToken(inBreakout).then(token => {
+			if (currentBreakoutRoomIdRef.current !== inBreakout) return
+			if (token) setLkBreakout(token)
+			else {
+				leavingBreakoutRef.current = true
+				currentBreakoutRoomIdRef.current = null
+				setLkBreakout(null)
+				emit('gr:breakout-leave')
+			}
+		})
+	}, [inBreakout, connected, fetchLKToken, emit])
 	const isSpectatorJoin = resolved?.isSpectatorJoin ?? false
 
 	return {
