@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 17 suites / 148 tests, frontend 3 files / 29 tests.
+Tests: backend 17 suites / 148 tests, frontend 4 files / 31 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -179,7 +179,10 @@ Sentry, node-cron, google-auth-library (ID token check), Cloudinary (images).
 **Frontend** (`/front`): React 18, TypeScript, Vite, TailwindCSS, React
 Router 6, socket.io-client, LiveKit Components, i18next (`ua`, `en`),
 @react-oauth/google, Sentry. Heavy routes (game room, create game, community,
-account, legal pages) are lazy-loaded.
+account, admin, legal pages) are lazy-loaded through `lazyPage`
+(`utils/lazyPage.ts`): a tab opened before a redeploy asks for page files
+that no longer exist, so it reloads once to get the new build (guarded
+against loops; `vite:preloadError` in `main.tsx` does the same).
 
 ## 📁 Structure
 

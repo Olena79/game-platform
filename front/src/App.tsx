@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useEffect, useRef } from 'react'
+import React, { Suspense, useEffect, useRef } from 'react'
+import { lazyPage } from './utils/lazyPage'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -14,13 +15,13 @@ import { OurGamesPage } from './components/pages/OurGamesPage'
 
 // The game room carries LiveKit and most of the bundle; the site pages load
 // without it, and the room without the site's heavier pages.
-const AccountPage = lazy(() => import('./components/pages/AccountPage').then(m => ({ default: m.AccountPage })))
-const CreateGamePage = lazy(() => import('./components/pages/CreateGamePage').then(m => ({ default: m.CreateGamePage })))
-const CommunityPage = lazy(() => import('./components/pages/CommunityPage').then(m => ({ default: m.CommunityPage })))
-const GameRoomPage = lazy(() => import('./components/pages/GameRoomPage').then(m => ({ default: m.GameRoomPage })))
-const PrivacyPolicyPage = lazy(() => import('./components/pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })))
-const AdminPage = lazy(() => import('./components/pages/AdminPage').then(m => ({ default: m.AdminPage })))
-const TermsOfServicePage = lazy(() => import('./components/pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })))
+const AccountPage = lazyPage(() => import('./components/pages/AccountPage'), 'AccountPage')
+const CreateGamePage = lazyPage(() => import('./components/pages/CreateGamePage'), 'CreateGamePage')
+const CommunityPage = lazyPage(() => import('./components/pages/CommunityPage'), 'CommunityPage')
+const GameRoomPage = lazyPage(() => import('./components/pages/GameRoomPage'), 'GameRoomPage')
+const PrivacyPolicyPage = lazyPage(() => import('./components/pages/PrivacyPolicyPage'), 'PrivacyPolicyPage')
+const AdminPage = lazyPage(() => import('./components/pages/AdminPage'), 'AdminPage')
+const TermsOfServicePage = lazyPage(() => import('./components/pages/TermsOfServicePage'), 'TermsOfServicePage')
 
 const Stars = () => {
 	const ref = useRef<HTMLDivElement>(null)
