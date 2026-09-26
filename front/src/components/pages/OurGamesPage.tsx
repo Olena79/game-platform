@@ -5,7 +5,7 @@ import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, U
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData, gamemasterLabel } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData, gamemasterLabel, withSeatCounts } from '../../actions/games'
 
 // ─── Donate modal ─────────────────────────────────────────────────────────────
 
@@ -324,7 +324,7 @@ export const OurGamesPage = () => {
 		try {
 			const res = await registerForGame(token, gameId)
 			setGames(prev => prev.map(g =>
-				g._id === gameId ? { ...g, registeredPlayers: res.registeredPlayers } : g
+				g._id === gameId ? { ...withSeatCounts(g, res), gameCode: res.gameCode } : g
 			))
 			setModal({
 				open: true,
@@ -353,7 +353,7 @@ export const OurGamesPage = () => {
 		try {
 			const res = await unregisterFromGame(token, gameId)
 			setGames(prev => prev.map(g =>
-				g._id === gameId ? { ...g, registeredPlayers: res.registeredPlayers } : g
+				g._id === gameId ? withSeatCounts(g, res) : g
 			))
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
@@ -369,7 +369,7 @@ export const OurGamesPage = () => {
 		try {
 			const res = await registerAsSpectator(token, gameId)
 			setGames(prev => prev.map(g =>
-				g._id === gameId ? { ...g, spectators: res.spectators, spectatorCode: res.spectatorCode } : g
+				g._id === gameId ? { ...withSeatCounts(g, res), spectatorCode: res.spectatorCode } : g
 			))
 			setModal({
 				open: true,
@@ -397,7 +397,7 @@ export const OurGamesPage = () => {
 		try {
 			const res = await unregisterAsSpectator(token, gameId)
 			setGames(prev => prev.map(g =>
-				g._id === gameId ? { ...g, spectators: res.spectators } : g
+				g._id === gameId ? withSeatCounts(g, res) : g
 			))
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
@@ -629,7 +629,8 @@ export const OurGamesPage = () => {
 			>
 				{modal.variant === 'success' && modal.gameCode && (
 					<div className='flex flex-col gap-[14px] mt-[14px]'>
-						{/* Code display */}
+						{/* The person's own code, once, right after registering — without
+						    Telegram this is the only place they see it */}
 						<div className='flex items-center gap-[10px]'>
 							<span className='text-[13px]' style={{ color: isDark ? 'rgba(200,215,255,0.8)' : 'var(--text-muted)' }}>
 								{t('our_games.game_code_label')}
@@ -654,7 +655,7 @@ export const OurGamesPage = () => {
 									: { background: 'rgba(255,120,80,0.05)', borderColor: '#ff7850', color: '#c35436' }
 								}
 							>
-								⚠️ {t('our_games.no_telegram_warning', 'Вы не подключены к Telegram. Скопируйте код игры выше — он больше не будет доступен. Свяжитесь с игромастером, если потеряете код.')}
+								{t('our_games.no_telegram_warning')}
 							</div>
 						)}
 					</div>
@@ -806,7 +807,15 @@ const GameCard = ({
 			</button>
 		)
 	} else if (isRegistered) {
+		// The code is not shown to players any more, so the way in is here
 		registerBtn = (
+			<div className='flex gap-[6px] items-center'>
+			<button
+				onClick={onEnterGame}
+				className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white hover:shadow-[0_0_16px_rgba(100,80,255,0.35)] hover:-translate-y-[0.5px] transition-all cursor-pointer whitespace-nowrap'
+			>
+				{t('our_games.btn_enter_game')}
+			</button>
 			<button
 				onClick={onUnregister}
 				disabled={unregisterLoading}
@@ -821,8 +830,18 @@ const GameCard = ({
 					: t('our_games.btn_unregister')
 				}
 			</button>
+			</div>
 		)
-	} else if (!isSpectator) {
+	} else if (isSpectator) {
+		registerBtn = (
+			<button
+				onClick={onEnterGame}
+				className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white hover:shadow-[0_0_16px_rgba(100,80,255,0.35)] hover:-translate-y-[0.5px] transition-all cursor-pointer whitespace-nowrap'
+			>
+				{t('our_games.btn_enter_game')}
+			</button>
+		)
+	} else {
 		if (isFull) {
 			registerBtn = (
 				<button

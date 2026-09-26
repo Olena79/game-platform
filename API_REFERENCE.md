@@ -69,10 +69,10 @@ its GM get a reminder with their code and the room link.
 | POST | `/` | JWT | `201 Game` (creator view, with both codes) |
 | PUT | `/:id` | JWT (creator) | `Game` · `400 MAX_BELOW_REGISTERED` |
 | DELETE | `/:id` | JWT (creator) | `{ ok }` — also closes an open room, stops its recording |
-| POST | `/:id/register` | JWT | `{ gameCode, registeredPlayers }` · `400 MAX_PLAYERS_REACHED / ALREADY_REGISTERED / CREATOR_CANNOT_REGISTER` |
-| DELETE | `/:id/register` | JWT | `{ registeredPlayers }` |
-| POST | `/:id/register-spectator` | JWT | `{ spectators, spectatorCode }` |
-| DELETE | `/:id/register-spectator` | JWT | `{ spectators }` |
+| POST | `/:id/register` | JWT | `{ gameCode, playersCount, spectatorsCount, isRegistered, isSpectatorRegistered }` · `400 MAX_PLAYERS_REACHED / ALREADY_REGISTERED / CREATOR_CANNOT_REGISTER` |
+| DELETE | `/:id/register` | JWT | counts + own place (as above, no code) |
+| POST | `/:id/register-spectator` | JWT | `{ spectatorCode, …counts + own place }` |
+| DELETE | `/:id/register-spectator` | JWT | counts + own place |
 | POST / DELETE | `/:id/like` | JWT | `{ likesCount, isLiked }` |
 | POST | `/send-notes` | JWT | `{ notes, gameTitle? }` → `{ delivered, reason? }` — to the caller's own Telegram |
 

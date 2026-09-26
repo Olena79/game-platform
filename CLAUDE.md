@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
+Tests: backend 18 suites / 153 tests, frontend 5 files / 32 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -88,6 +88,12 @@ Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
   read from their account each time: "Name Surname", or "Немає імені /
   No name (alias)" where alias is the part of the email before the @
   (`creatorLabel` in `routes/games.ts`). The full email is never shown.
+- **Game cards**: player and 👀 spectator counts are public; the entry and
+  spectator codes appear on the card for the creator only. A registered
+  player or spectator enters with "Увійти в гру" on the card; their own
+  code is shown once, in the "registered" window (and sent over Telegram).
+  (Un)registering answers with counts and the caller's own place
+  (`seatCounts`), never the lists of names.
 - **Game date and time**: two native fields (`date`, `time`) — one
   `datetime-local` did not open on some phones. The time is sent with its
   zone (`toISOString()` of the local time). Until 2026-09-27 it was sent

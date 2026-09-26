@@ -94,20 +94,20 @@ export const updateGame = (token: string, id: string, body: Partial<GameBody>): 
 export const registerForGame = (
 	token: string,
 	id: string,
-): Promise<{ gameCode: string; registeredPlayers: RegisteredPlayer[] }> =>
+): Promise<{ gameCode: string } & SeatCounts> =>
 	fetch(`${API}/api/games/${id}/register`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-	}).then(handleResponse<{ gameCode: string; registeredPlayers: RegisteredPlayer[] }>)
+	}).then(handleResponse<{ gameCode: string } & SeatCounts>)
 
 export const unregisterFromGame = (
 	token: string,
 	id: string,
-): Promise<{ registeredPlayers: RegisteredPlayer[] }> =>
+): Promise<SeatCounts> =>
 	fetch(`${API}/api/games/${id}/register`, {
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${token}` },
-	}).then(handleResponse<{ registeredPlayers: RegisteredPlayer[] }>)
+	}).then(handleResponse<SeatCounts>)
 
 export const deleteGame = (token: string, id: string): Promise<{ ok: boolean }> =>
 	fetch(`${API}/api/games/${id}`, {
@@ -118,20 +118,20 @@ export const deleteGame = (token: string, id: string): Promise<{ ok: boolean }> 
 export const registerAsSpectator = (
 	token: string,
 	id: string,
-): Promise<{ spectators: RegisteredPlayer[]; spectatorCode: string }> =>
+): Promise<{ spectatorCode: string } & SeatCounts> =>
 	fetch(`${API}/api/games/${id}/register-spectator`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-	}).then(handleResponse<{ spectators: RegisteredPlayer[]; spectatorCode: string }>)
+	}).then(handleResponse<{ spectatorCode: string } & SeatCounts>)
 
 export const unregisterAsSpectator = (
 	token: string,
 	id: string,
-): Promise<{ spectators: RegisteredPlayer[] }> =>
+): Promise<SeatCounts> =>
 	fetch(`${API}/api/games/${id}/register-spectator`, {
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${token}` },
-	}).then(handleResponse<{ spectators: RegisteredPlayer[] }>)
+	}).then(handleResponse<SeatCounts>)
 
 export const likeGame = (
 	token: string,
@@ -162,4 +162,17 @@ export const unlikeGame = (
 /** The gamemaster as the site shows them: the name, or "No name (alias)". */
 export function gamemasterLabel(game: Pick<GameData, 'creatorName' | 'creatorAlias'>, noName: string): string {
 	return game.creatorName || `${noName} (${game.creatorAlias ?? ''})`
+}
+
+/** What (un)registering answers: public counts and the caller's own place */
+export interface SeatCounts {
+	playersCount: number
+	spectatorsCount: number
+	isRegistered: boolean
+	isSpectatorRegistered: boolean
+}
+
+/** Folds a registration answer into a game in the list */
+export function withSeatCounts(g: GameData, c: SeatCounts): GameData {
+	return { ...g, playersCount: c.playersCount, spectatorsCount: c.spectatorsCount, isRegistered: c.isRegistered, isSpectatorRegistered: c.isSpectatorRegistered }
 }

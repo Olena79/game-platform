@@ -102,6 +102,21 @@ function publicGameView(game: GameDoc, viewerId?: string, creator?: CreatorLabel
 	return out
 }
 
+/**
+ * What a (un)registration answers: the public counts and the caller's own
+ * place. It used to return the full lists, names included, to anyone who
+ * registered — the lists belong to the gamemaster alone.
+ */
+export function seatCounts(game: { registeredPlayers: Array<{ userId: unknown }>; spectators: Array<{ userId: unknown }> }, userId?: string) {
+	const uid = String(userId ?? '')
+	return {
+		playersCount: game.registeredPlayers.length,
+		spectatorsCount: game.spectators.length,
+		isRegistered: game.registeredPlayers.some(p => String(p.userId) === uid),
+		isSpectatorRegistered: game.spectators.some(p => String(p.userId) === uid),
+	}
+}
+
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 /**
@@ -375,7 +390,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			).catch(err => logger.error('[telegram game code]', err))
 		}
 
-		res.json({ gameCode: updated.gameCode, registeredPlayers: updated.registeredPlayers })
+		res.json({ gameCode: updated.gameCode, ...seatCounts(updated, req.userId) })
 	} catch (err: any) {
 		logger.error('[games/:id/register]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -397,7 +412,7 @@ router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Res
 
 		game.registeredPlayers.splice(idx, 1)
 		await game.save()
-		res.json({ registeredPlayers: game.registeredPlayers })
+		res.json(seatCounts(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games/:id/register DELETE]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -443,7 +458,7 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 			).catch(err => logger.error('[telegram spectator code]', err))
 		}
 
-		res.json({ spectators: game.spectators, spectatorCode: game.spectatorCode })
+		res.json({ spectatorCode: game.spectatorCode, ...seatCounts(game, req.userId) })
 	} catch (err: any) {
 		logger.error('[games/:id/register-spectator]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -462,7 +477,7 @@ router.delete('/:id/register-spectator', authMiddleware, async (req: AuthRequest
 
 		game.spectators.splice(idx, 1)
 		await game.save()
-		res.json({ spectators: game.spectators })
+		res.json(seatCounts(game, req.userId))
 	} catch (err: any) {
 		logger.error('[games/:id/register-spectator DELETE]', err)
 		res.status(500).json({ message: 'Server error' })

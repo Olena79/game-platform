@@ -1564,9 +1564,6 @@ function GameRoomInner() {
 				>
 					{msg}
 				</span>
-				<span style={{ color: 'rgba(100,140,220,0.3)', fontSize: '11px' }}>
-					{t('room.room_code')}{code}
-				</span>
 				{/* A dead end otherwise: there was no way back from here but F5 */}
 				{connStatus === 'failed' && (
 					<button
