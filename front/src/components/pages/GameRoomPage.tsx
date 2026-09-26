@@ -41,6 +41,8 @@ import { ChatPanel } from '../gameroom/ChatPanel'
 import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { BankModal } from '../gameroom/BankModal'
+import { KickModal } from '../gameroom/KickModal'
+import type { RoomPlayer } from '../gameroom/types'
 import { CoinFlights } from '../gameroom/CoinFlights'
 import { ModalClose } from '../gameroom/ModalClose'
 import { VotingModal } from '../gameroom/VotingModal'
@@ -195,6 +197,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		setInfluence,
 		muteAll,
 		mutePlayer,
+		kickPlayer,
 		announce,
 		setTimer,
 		startTimer,
@@ -266,6 +269,8 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	const [screenError, setScreenError] = useState('')
 	const [showCoinModal, setShowCoin] = useState(false)
 	const [showBankModal, setShowBank] = useState(false)
+	// Removing someone for good: null = closed; { target: null } = the list
+	const [kickDialog, setKickDialog] = useState<{ target: RoomPlayer | null } | null>(null)
 	const [showVoteModal, setShowVote] = useState(false)
 	const [showTimerModal, setShowTimer] = useState(false)
 	const [showBreakout, setShowBreakout] = useState(false)
@@ -867,6 +872,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							onSetRole={setRole}
 							onSetInfluence={setInfluence}
 							onMutePlayer={mutePlayer}
+							onKickPlayer={p => setKickDialog({ target: p })}
 							playerReactions={playerReactions}
 							mockPlayers={mockPlayers}
 							mockSpeakingId={mockSpeakingId}
@@ -929,7 +935,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							onTimerStart={startTimer}
 							onTimerStop={stopTimer}
 							onTimerClear={clearTimer}
-							onBreakout={() => setShowBreakout(true)}
+							onBreakout={() => setShowBreakout(true)} onKick={() => setKickDialog({ target: null })}
 							recording={recordingProps} clockOffset={clockOffset}
 							privateChats={privateChats}
 							unreadDMs={unreadDMs}
@@ -1061,7 +1067,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 								onCastSpectatorVote={castSpectatorVote} onCloseSpectatorVote={closeSpectatorVote} onClearSpectatorVote={clearSpectatorVote}
 								onAnnounce={() => setShowAnnounce(true)} onVoting={() => setShowVote(true)} onSpectatorVoting={() => setShowSpectatorVote(true)}
 								onMuteAll={muteAll} onEndGame={() => setShowStopConfirm(true)} onTimer={() => setShowTimer(true)}
-								onTimerStart={startTimer} onTimerStop={stopTimer} onTimerClear={clearTimer} onBreakout={() => setShowBreakout(true)}
+								onTimerStart={startTimer} onTimerStop={stopTimer} onTimerClear={clearTimer} onBreakout={() => setShowBreakout(true)} onKick={() => setKickDialog({ target: null })}
 								showMod={false}
 								privateChats={privateChats}
 								unreadDMs={unreadDMs}
@@ -1084,6 +1090,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 								onTimerStop={stopTimer}
 								onTimerClear={clearTimer}
 								onBreakout={() => { setShowBreakout(true); setMobilePanelOpen(null) }}
+								onKick={() => { setKickDialog({ target: null }); setMobilePanelOpen(null) }}
 								recording={recordingProps} clockOffset={clockOffset}
 							/>
 						</div>
@@ -1157,6 +1164,15 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 					onTransfer={transferCoins}
 					onPayBank={payBank}
 					onClose={() => setShowCoin(false)}
+				/>
+			)}
+
+			{kickDialog && isGM && (
+				<KickModal
+					players={state.players}
+					initialTarget={kickDialog.target}
+					onKick={kickPlayer}
+					onClose={() => setKickDialog(null)}
 				/>
 			)}
 
@@ -1533,7 +1549,8 @@ function GameRoomInner() {
 				style={{ background: '#07080f' }}
 			>
 				<span className='text-[15px] font-[600]' style={{ color: '#ff3850' }}>
-					{error === 'NOT_A_PARTICIPANT' ? t('room.not_participant') : t('room.not_found')}
+					{error === 'REMOVED' ? t('room.kick.you_were_removed')
+						: error === 'NOT_A_PARTICIPANT' ? t('room.not_participant') : t('room.not_found')}
 				</span>
 				{/* It was a dead end: no way back but the browser's own button */}
 				<a href='/games'

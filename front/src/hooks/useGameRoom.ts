@@ -102,6 +102,7 @@ export function useGameRoom(rawCode: string) {
 				status = res.status
 				const error = await res.json().catch(() => ({}))
 				console.error('[LiveKit] Token request failed:', res.status, error)
+				if (res.status === 403 && error?.message === 'REMOVED') { setError('REMOVED'); return null }
 			} catch (err) {
 				console.error('[LiveKit] Token fetch error:', err)
 			}
@@ -194,6 +195,8 @@ export function useGameRoom(rawCode: string) {
 
 		socket.on('gr:my-vote', (d: { voteId: string; optionIds: string[] }) => setMyVote(d))
 		socket.on('gr:error', (msg: string) => setError(msg))
+		// The gamemaster removed this person from the game for good
+		socket.on('gr:kicked', () => setError('REMOVED'))
 		// A refused command: say so for a moment, keep the room
 		socket.on('gr:action-error', (msg: string) => {
 			setActionError(msg)
@@ -386,6 +389,8 @@ export function useGameRoom(rawCode: string) {
 		setInfluence:  (targetUserId: string, delta: number) => emit('gr:influence', { targetUserId, delta }),
 		muteAll:       ()                         => emit('gr:mute-all'),
 		mutePlayer:    (targetUserId: string)     => emit('gr:mute-player', { targetUserId }),
+		// For good: the server bans them from this game, then takes them out
+		kickPlayer:    (targetUserId: string)     => emit('gr:kick', { targetUserId }),
 		announce:      (text: string | null)      => emit('gr:announce',       { text }),
 		setTimer:      (label: string, seconds: number) => emit('gr:timer',   { action: 'set', label, seconds }),
 		startTimer:    ()                         => emit('gr:timer',          { action: 'start' }),

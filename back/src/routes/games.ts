@@ -352,6 +352,10 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 			res.status(400).json({ message: 'CREATOR_CANNOT_REGISTER' })
 			return
 		}
+		// Removed from this game by its gamemaster: not as a player, not as a spectator
+		if ((game.bannedUserIds ?? []).includes(String(req.userId))) {
+			res.status(403).json({ message: 'REMOVED_FROM_GAME' }); return
+		}
 
 		const alreadyRegistered = game.registeredPlayers.some(p => String(p.userId) === String(req.userId))
 		if (alreadyRegistered) {
@@ -431,6 +435,9 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 
 		if (String(game.creatorId) === String(req.userId)) {
 			res.status(400).json({ message: 'CREATOR_CANNOT_REGISTER' }); return
+		}
+		if ((game.bannedUserIds ?? []).includes(String(req.userId))) {
+			res.status(403).json({ message: 'REMOVED_FROM_GAME' }); return
 		}
 
 		const alreadyPlayer = game.registeredPlayers.some(p => String(p.userId) === String(req.userId))

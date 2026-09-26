@@ -340,6 +340,7 @@ export const OurGamesPage = () => {
 				msg === 'ALREADY_REGISTERED'     ? t('our_games.err_already_registered') :
 				msg === 'MAX_PLAYERS_REACHED'     ? t('our_games.err_max_players') :
 				msg === 'CREATOR_CANNOT_REGISTER' ? t('our_games.err_creator_register') :
+				msg === 'REMOVED_FROM_GAME'       ? t('our_games.err_removed') :
 				msg
 			setModal({ open: true, title: t('our_games.err_register_title'), message: text, variant: 'error' })
 		} finally {
@@ -384,6 +385,7 @@ export const OurGamesPage = () => {
 				msg === 'ALREADY_REGISTERED'           ? t('our_games.err_already_registered') :
 				msg === 'ALREADY_REGISTERED_AS_PLAYER' ? t('our_games.err_already_player') :
 				msg === 'CREATOR_CANNOT_REGISTER'      ? t('our_games.err_creator_register') :
+				msg === 'REMOVED_FROM_GAME'            ? t('our_games.err_removed') :
 				msg
 			setModal({ open: true, title: t('our_games.err_register_title'), message: text, variant: 'error' })
 		} finally {

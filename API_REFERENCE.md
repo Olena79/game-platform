@@ -181,7 +181,7 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:coins-transfer` / `gr:coins-bank` | players | `{ toUserId, amount }` / `{ amount }` |
 | `gr:vote-cast` / `gr:spectator-vote-cast` | players / spectators | `{ optionIds }` |
 | `gr:breakout-join` / `gr:breakout-leave` | invited | `{ roomId }` / — |
-| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:bank-give { toUserId, amount }` (from the bank to a player), `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:record-control { action: 'start'\|'stop' }` (egress mode) | GM | |
+| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:bank-give { toUserId, amount }` (from the bank to a player), `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:kick { targetUserId }` (removes a player or spectator from this game for good — see below), `gr:record-control { action: 'start'\|'stop' }` (egress mode) | GM | |
 
 ### Server → client
 
@@ -200,7 +200,8 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:record-stop` | GM | browser mode: the game is over, finish the recording |
 | `gr:notes-delivered` | GM | the server sent the notes to Telegram |
 | `gr:end-anim`, `gr:rejoin` | room | |
-| `gr:error` | socket | the room cannot be used (`Room not found`, `Unauthorized`) |
+| `gr:kicked` | removed person | the gamemaster removed them; their sockets are closed right after |
+| `gr:error` | socket | the room cannot be used (`Room not found`, `Unauthorized`, `REMOVED` — removed from this game) |
 | `gr:action-error` | socket | a single command was refused |
 
 ### Recording
@@ -212,3 +213,13 @@ record the main room (grid) into R2; the server follows the job to the end.
 
 Either way the GM gets a Telegram message with a link valid until the file is
 deleted, 7 days after the recording started, and everyone sees `isRecording`.
+
+### Removing someone from a game (`gr:kick`)
+GM only; never the GM. Written first to `Game.bannedUserIds` (and the person's
+registration as player and spectator is dropped); if that save fails the GM
+gets `gr:action-error KICK_FAILED` and nothing else happens. Then the person
+gets `gr:kicked`, their sockets are closed, they leave the roster and the
+breakouts, and LiveKit drops them. From then on `resolveSeat` gives them no
+seat through either code (`gr:join` → `gr:error REMOVED`,
+`POST /api/livekit/token` → 403 `{ message: 'REMOVED' }`), and registering
+answers 403 `REMOVED_FROM_GAME`. There is no undo.

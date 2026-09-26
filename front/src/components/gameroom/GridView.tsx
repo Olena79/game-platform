@@ -23,7 +23,7 @@ import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, UserX } from 'lucide-react'
 import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
 import type { RoomPlayer, GameRoomState } from './types'
 
@@ -47,6 +47,8 @@ interface Props {
 	onSetRole: (targetUserId: string, role: string) => void
 	onSetInfluence: (targetUserId: string, delta: number) => void
 	onMutePlayer?: (targetUserId: string) => void
+	/** Opens the warning before removing this person for good */
+	onKickPlayer?: (player: RoomPlayer) => void
 	playerReactions?: Record<string, { emoji: string; key: number }>
 	mockPlayers?: RoomPlayer[]
 	mockSpeakingId?: string | null
@@ -118,11 +120,12 @@ function fitTiles(n: number, w: number, h: number) {
 	}
 }
 
-function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, reaction, gameStarted, isMockSpeaking, videoHeight }: {
+function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMutePlayer, onKickPlayer, reaction, gameStarted, isMockSpeaking, videoHeight }: {
 	player: RoomPlayer; isGM: boolean; myId: string
 	onSetRole: (uid: string, role: string) => void
 	onSetInfluence: (uid: string, delta: number) => void
 	onMutePlayer?: (uid: string) => void
+	onKickPlayer?: (player: RoomPlayer) => void
 	reaction?: { emoji: string; key: number }
 	gameStarted: boolean
 	isMockSpeaking?: boolean
@@ -286,6 +289,14 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 			{/* GM actions overlay: mute, and ⚡ influence −1 / +1 */}
 			{isGM && !player.isGamemaster && (
 				<div className='absolute top-[4px] right-[4px] flex gap-[4px] items-center'>
+					{onKickPlayer && (
+						<button onClick={() => onKickPlayer(player)}
+							className='w-[28px] h-[28px] rounded-[7px] flex items-center justify-center cursor-pointer transition-all hover:brightness-125'
+							style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid rgba(255,56,80,0.3)', color: 'rgba(255,95,120,0.85)' }}
+							title={t('room.kick.button')} aria-label={t('room.kick.button')}>
+							<UserX size={14} strokeWidth={2} />
+						</button>
+					)}
 					{onMutePlayer && !player.isSpectator && (
 						<button onClick={() => onMutePlayer(player.userId)}
 							className='w-[28px] h-[28px] rounded-[7px] flex items-center justify-center cursor-pointer transition-all hover:brightness-125'
@@ -332,6 +343,7 @@ export const GridView = ({
 	onReact, onRaiseHand, onLeave,
 	onSetRole, onSetInfluence,
 	onMutePlayer,
+	onKickPlayer,
 	playerReactions = {},
 	mockPlayers = [],
 	mockSpeakingId = null,
@@ -507,6 +519,7 @@ export const GridView = ({
 						onSetRole={onSetRole}
 						onSetInfluence={onSetInfluence}
 						onMutePlayer={onMutePlayer}
+						onKickPlayer={onKickPlayer}
 						reaction={playerReactions[p.userId]}
 						gameStarted={state.status === 'started'}
 						isMockSpeaking={mockSpeakingId === p.userId}

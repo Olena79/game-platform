@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Square } from 'lucide-react'
+import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Square, UserX } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
 import { RecordingControls, RecordingControlsProps } from './RecordingControls'
 
@@ -38,13 +38,15 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
+	/** Remove someone from the game for good (opens a list and a warning) */
+	onKick?: () => void
 	recording: RecordingControlsProps
 	clockOffset?: number
 }
 
 export const ModPanel = ({
 	state, onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
-	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
+	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout, onKick,
 	recording, clockOffset = 0,
 }: Props) => {
 	const { t } = useTranslation()
@@ -109,6 +111,7 @@ export const ModPanel = ({
 				{toolBtn(<Timer size={14} />, t('room.mod.timer'), onTimer)}
 				{toolBtn(<VolumeX size={14} />, t('room.mod.mute_all'), onMuteAll, 'warn')}
 				{toolBtn(<DoorOpen size={14} />, `${t('room.mod.breakout')} (${state.breakoutRooms.length})`, onBreakout)}
+				{onKick && toolBtn(<UserX size={14} />, t('room.kick.button'), onKick, 'danger')}
 				{toolBtn(<Square size={14} />, t('room.mod.stop_game'), onEndGame, 'danger')}
 			</div>
 

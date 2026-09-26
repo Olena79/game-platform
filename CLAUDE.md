@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 18 suites / 155 tests, frontend 6 files / 36 tests.
+Tests: backend 19 suites / 158 tests, frontend 6 files / 36 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -130,6 +130,14 @@ Tests: backend 18 suites / 155 tests, frontend 6 files / 36 tests.
   Influence given by the GM (`gr:influence-changed`) flashes on the
   player's tile for everyone: a ring and ⚡ sparks with "+1 ⚡", or a quiet
   "−1 ⚡" when taken.
+- **Removing someone from a game** (`gr:kick`, `KickModal`): the GM's
+  panel has «Видалити з гри» (a list of everyone connected — spectators
+  have no tiles, so this is where they are), and a player's tile in the grid
+  has a 🚫 button. A warning says they can never come back, then it is done:
+  saved to `Game.bannedUserIds` first, registration dropped, then out of the
+  room and LiveKit (`removeFromRoom`). `resolveSeat` refuses them through
+  both codes and registration refuses them. No undo, never the GM.
+  `tests/kick.test.ts` runs it through a real Socket.IO room.
 - **Community feed** with live updates.
 - **Administrator** — one person, `/admin` (invisible button at the end of
   the footer links). See "Administrator" below.
@@ -161,7 +169,8 @@ Tests: backend 18 suites / 155 tests, frontend 6 files / 36 tests.
 ### Access to a room (who may speak)
 `resolveSeat(code, userId)` decides, on the server, from the **presented**
 code only: creator → GM; entry code → player; spectator code → spectator,
-unless the user is a registered player. Both `gr:join` and
+unless the user is a registered player; someone the GM removed from the game
+(`bannedUserIds`) → no seat at all. Both `gr:join` and
 `POST /api/livekit/token` use it. Therefore:
 - `GET /api/games/resolve/:code` returns only `{ isSpectator, title }`.
 - `gr:state` never carries the entry code, the scenario or the GM's image

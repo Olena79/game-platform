@@ -28,6 +28,7 @@ import {
 	grInfluenceSchema,
 	grMuteAllSchema,
 	grMutePlayerSchema,
+	grKickSchema,
 	grAnnounceSchema,
 	grBreakoutAssignSchema,
 	grImageShowSchema,
@@ -42,7 +43,7 @@ import {
 } from '../validation/schemas'
 import logger from '../config/logger'
 import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
-import { resolveSeat } from '../services/roomAccess'
+import { resolveSeat, wasRemovedFrom } from '../services/roomAccess'
 import { muteMicrophones, roomNameFor, roomService } from '../services/livekit'
 import {
 	activeRecording,
@@ -152,6 +153,7 @@ function scheduleRoomRelease(gameCode: string, delayMs = 10 * 60 * 1000, force =
 		releaseRoom(gameCode)
 		logger.info(`[cleanup] released room ${gameCode}`)
 	}, delayMs)
+	timer.unref?.()   // a pending cleanup never keeps the process alive by itself
 	endTimers.set(gameCode, timer)
 }
 
@@ -314,6 +316,36 @@ export async function kickUser(userId: string): Promise<void> {
 }
 
 /**
+ * Takes someone out of a room for good: told why, their sockets closed (a
+ * server-side close is not retried by the client), their tile gone, their
+ * media seats removed. The ban itself is on the game — see resolveSeat.
+ */
+async function removeFromRoom(io: Server, state: GameRoomState, userId: string): Promise<void> {
+	const p = state.players.find(pl => pl.userId === userId)
+	// Off the roster before the sockets close, so the disconnect that follows
+	// finds nobody to mark "away" and nobody sees a ghost tile flicker
+	const sids = socketsOf(state.gameCode, userId)
+	userSockets.delete(`${state.gameCode}:${userId}`)
+	state.players = state.players.filter(pl => pl.userId !== userId)
+	for (const br of state.breakoutRooms) {
+		br.playerIds = br.playerIds.filter(id => id !== userId)
+		br.invitedIds = br.invitedIds.filter(id => id !== userId)
+	}
+	for (const sid of sids) {
+		const sock = io.sockets.sockets.get(sid)
+		sock?.emit('gr:kicked')
+		sock?.leave(`gr-${state.gameCode}`)
+		sock?.disconnect(true)
+	}
+	pushState(io, state)
+	const main = roomNameFor(state.gameId)
+	await roomService.removeParticipant(main, userId).catch(() => undefined)
+	if (p?.breakoutRoomId) {
+		await roomService.removeParticipant(roomNameFor(state.gameId, p.breakoutRoomId), userId).catch(() => undefined)
+	}
+}
+
+/**
  * The gamemaster leaving without ending the game is still the end of the
  * session — but a reload or a dropped connection looks identical at this
  * point, so give them a grace period to come back first.
@@ -331,6 +363,7 @@ function scheduleGmAwayCloseOut(io: Server, state: GameRoomState, gameCode: stri
 		logger.info(`[disconnect] gamemaster gone for ${GM_AWAY_GRACE_MS / 1000}s, closing out gameCode=${gameCode}`)
 		void closeOutSession(current, 'gm_left')
 	}, GM_AWAY_GRACE_MS)
+	timer.unref?.()
 	gmAwayTimers.set(gameCode, timer)
 }
 
@@ -522,7 +555,10 @@ export function registerGameRoom(io: Server) {
 
 			// The code presented decides the seat — see resolveSeat
 			const seat = await resolveSeat(d.gameCode, userId)
-			if (!seat) { socket.emit('gr:error', 'Room not found'); return }
+			if (!seat) {
+				socket.emit('gr:error', (await wasRemovedFrom(d.gameCode, userId)) ? 'REMOVED' : 'Room not found')
+				return
+			}
 			const gameCode = seat.gameCode
 
 			const knownBefore = rooms.has(gameCode)
@@ -854,6 +890,30 @@ export function registerGameRoom(io: Server) {
 			for (const sid of socketsOf(state.gameCode, d.targetUserId)) io.to(sid).emit('gr:mute-player', {})
 			const target = state.players.find(p => p.userId === d.targetUserId)
 			await muteMicrophones(roomNameFor(state.gameId, target?.breakoutRoomId ?? undefined), identity => identity === d.targetUserId)
+		}, socket))
+
+		// ── Removing someone for good ───────────────────────────────────────
+		// The gamemaster's last resort against someone who disrupts the game
+		// (a spectator flooding reactions, say). Written to the game first, so
+		// no code lets them back in — then they are taken out of the room.
+		socket.on('gr:kick', validateSocketEvent(grKickSchema, async (d: any) => {
+			const state = hereAsGM()
+			if (!state) return
+			const target = String(d.targetUserId)
+			if (target === state.gamemasterId || target === curUser) return
+			if (!state.players.some(p => p.userId === target)) return
+			try {
+				await Game.updateOne({ _id: state.gameId }, {
+					$addToSet: { bannedUserIds: target },
+					$pull: { registeredPlayers: { userId: target }, spectators: { userId: target } },
+				})
+			} catch (err) {
+				logger.error('[gr:kick] could not save', { gameId: state.gameId, error: err instanceof Error ? err.message : String(err) })
+				socket.emit('gr:action-error', 'KICK_FAILED')
+				return
+			}
+			await removeFromRoom(io, state, target)
+			logger.info(`[gr:kick] removed userId=${target} gameCode=${state.gameCode}`)
 		}, socket))
 
 		// ── Announcement ────────────────────────────────────────────────────

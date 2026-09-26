@@ -204,7 +204,8 @@
     "copy_code": "copy",
     "no_name": "No name",
     "spectators_count": "Spectators",
-    "err_already_player": "You are already registered as a player."
+    "err_already_player": "You are already registered as a player.",
+    "err_removed": "The gamemaster removed you from this game, so you cannot register for it again."
   },
   "donate": {
     "title": "Donate to Game Master",
@@ -568,7 +569,8 @@
       "Action failed": "That did not work. Please try again.",
       "Not enough coins in the bank": "Not enough coins in the bank.",
       "Max 5 breakout rooms": "At most 5 breakout rooms.",
-      "Not invited to this room": "You are not invited to this room."
+      "Not invited to this room": "You are not invited to this room.",
+      "KICK_FAILED": "Could not remove: the change was not saved. Try again."
     },
     "camera_err": {
       "blocked": "The browser has blocked the camera for this site, so it no longer asks. Click the icon left of the site address (lock or sliders) → Camera → \"Allow\", reload the page and press \"Camera\".",
@@ -576,6 +578,21 @@
       "busy": "The camera is busy or switched off on the laptop itself. Close Zoom, Teams, Skype and other programs that may hold it; check the camera shutter and the camera-off key (on Lenovo often F8 or a switch on the side). Then press \"Camera\" again.",
       "missing": "No camera found. Check it is connected and switched on, then press \"Camera\" again.",
       "other": "The camera will not start. Close other programs that use it, reload the page and press \"Camera\" again."
+    },
+    "kick": {
+      "button": "Remove from game",
+      "title": "Remove from the game for good",
+      "pick": "Who should be removed? They leave the room at once and can never come back to this game.",
+      "nobody": "Nobody else is in the room right now.",
+      "player": "player",
+      "spectator": "spectator",
+      "remove": "Remove",
+      "warning_player": "Player \"{{name}}\" will never be able to come back to this game — not with the player code, not with the spectator code, not by registering again. Under no circumstances.",
+      "warning_spectator": "Spectator \"{{name}}\" will never be able to come back to this game — not with the spectator code, not with the player code, not by registering again. Under no circumstances.",
+      "question": "Are you sure you want to remove this person from the game? This cannot be undone.",
+      "cancel": "No, keep them",
+      "confirm": "Yes, remove for good",
+      "you_were_removed": "The gamemaster removed you from this game. You cannot come back to it."
     }
   },
   "legal": {

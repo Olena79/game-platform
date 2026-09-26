@@ -38,11 +38,13 @@ export async function resolveSeat(presentedCode: unknown, userId: string): Promi
 	if (!CODE_RE.test(code)) return null
 
 	const game = await Game.findOne({ $or: [{ gameCode: code }, { spectatorCode: code }] })
-		.select('gameCode spectatorCode creatorId registeredPlayers')
+		.select('gameCode spectatorCode creatorId registeredPlayers bannedUserIds')
 	if (!game) return null
 
 	const uid = String(userId)
 	const isCreator = String(game.creatorId) === uid
+	// Removed by the gamemaster: no code opens this game for them again
+	if (!isCreator && (game.bannedUserIds ?? []).includes(uid)) return null
 	const isRegisteredPlayer = game.registeredPlayers.some(p => String(p.userId) === uid)
 	const heldSpectatorCode = game.spectatorCode === code && game.gameCode !== code
 
@@ -52,4 +54,12 @@ export async function resolveSeat(presentedCode: unknown, userId: string): Promi
 		isCreator,
 		asSpectator: heldSpectatorCode && !isCreator && !isRegisteredPlayer,
 	}
+}
+
+/** Was this person removed from the game that this code opens? (For the message only.) */
+export async function wasRemovedFrom(presentedCode: unknown, userId: string): Promise<boolean> {
+	if (typeof presentedCode !== 'string') return false
+	const code = presentedCode.trim().toUpperCase()
+	if (!CODE_RE.test(code)) return false
+	return !!(await Game.exists({ $or: [{ gameCode: code }, { spectatorCode: code }], bannedUserIds: String(userId) }))
 }

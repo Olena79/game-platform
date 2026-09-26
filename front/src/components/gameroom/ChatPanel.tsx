@@ -36,6 +36,7 @@ interface Props {
 	onTimerStop: () => void
 	onTimerClear: () => void
 	onBreakout: () => void
+	onKick?: () => void
 	recording?: RecordingControlsProps
 	/** Passed down so the gamemaster's timer matches the room's clock */
 	clockOffset?: number
@@ -51,7 +52,7 @@ export const ChatPanel = ({
 	onSendChat, onCastVote, onCloseVote, onClearVote,
 	onCastSpectatorVote, onCloseSpectatorVote, onClearSpectatorVote,
 	onAnnounce, onVoting, onSpectatorVoting, onMuteAll, onEndGame,
-	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout,
+	onTimer, onTimerStart, onTimerStop, onTimerClear, onBreakout, onKick,
 	recording, clockOffset = 0,
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
@@ -499,6 +500,7 @@ export const ChatPanel = ({
 					onTimerStop={onTimerStop}
 					onTimerClear={onTimerClear}
 					onBreakout={onBreakout}
+					onKick={onKick}
 					recording={recording!}
 					clockOffset={clockOffset}
 				/>

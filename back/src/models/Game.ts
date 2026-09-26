@@ -36,6 +36,8 @@ export interface IGame extends Document {
 	likesCount: number
 	/** When the 10-minutes-to-go reminder went out; cleared when the time changes */
 	reminderSentAt?: Date | null
+	/** Removed by the gamemaster: never let back into this game */
+	bannedUserIds: string[]
 	createdAt: Date
 	updatedAt: Date
 }
@@ -77,6 +79,7 @@ const GameSchema = new Schema<IGame>(
 		spectators:         { type: [RegisteredPlayerSchema], default: [] },
 		likesCount:         { type: Number, default: 0 },
 		reminderSentAt:     { type: Date, default: null },
+		bannedUserIds:      { type: [String], default: [] },
 	},
 	{ timestamps: true, collection: 'our_games' }
 )

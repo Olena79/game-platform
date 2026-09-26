@@ -6,7 +6,7 @@ import { validateBody } from '../middleware/validationMiddleware'
 import { livekitTokenSchema } from '../validation/schemas'
 import { User } from '../models/User'
 import { canEnterBreakout } from '../socket/gameRoom'
-import { resolveSeat } from '../services/roomAccess'
+import { resolveSeat, wasRemovedFrom } from '../services/roomAccess'
 import { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL, roomNameFor } from '../services/livekit'
 
 const router = Router()
@@ -26,7 +26,7 @@ router.post('/token', authMiddleware, validateBody(livekitTokenSchema), async (r
 		const seat = await resolveSeat(code, userId)
 		if (!seat) {
 			logger.warn('[livekit/token] refused', { userId })
-			res.status(403).json({ message: 'FORBIDDEN' })
+			res.status(403).json({ message: (await wasRemovedFrom(code, userId)) ? 'REMOVED' : 'FORBIDDEN' })
 			return
 		}
 

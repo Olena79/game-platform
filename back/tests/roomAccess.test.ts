@@ -29,6 +29,18 @@ describe('resolveSeat', () => {
 		returns(game)
 	})
 
+	it('gives a removed person no seat, through either code', async () => {
+		returns({ ...game, bannedUserIds: ['troublemaker'] })
+		expect(await resolveSeat('PLAY23', 'troublemaker')).toBeNull()
+		expect(await resolveSeat('WATCH7', 'troublemaker')).toBeNull()
+		expect(await resolveSeat('PLAY23', 'someone')).not.toBeNull()
+	})
+
+	it('never locks the gamemaster out of their own game', async () => {
+		returns({ ...game, bannedUserIds: ['gm-user'] })
+		expect(await resolveSeat('PLAY23', 'gm-user')).toMatchObject({ isCreator: true })
+	})
+
 	it('gives the entry code a seat with a voice', async () => {
 		const seat = await resolveSeat('PLAY23', 'someone')
 		expect(seat).toMatchObject({ gameCode: 'PLAY23', asSpectator: false, isCreator: false })
