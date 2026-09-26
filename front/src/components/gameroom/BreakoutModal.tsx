@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Plus, Send, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { BreakoutRoom, RoomPlayer } from './types'
+import { NumberField } from '../minicomponents/NumberField'
 
 interface Props {
 	breakoutRooms: BreakoutRoom[]
@@ -25,14 +26,16 @@ export const BreakoutModal = ({
 	const [name, setName]           = useState('')
 	const [imageUrl, setImageUrl]   = useState(images[0] ?? '')
 	const [useTmer, setUseTimer]    = useState(false)
-	const [minutes, setMinutes]     = useState(10)
+	const [minutes, setMinutes]     = useState<number | null>(10)
+	// With auto-return on, a room needs a number of minutes to go back after
+	const timerMissing = useTmer && !minutes
 	const [inviteMap, setInviteMap] = useState<Record<string, string[]>>({})
 
 	const nonGMPlayers = players.filter(p => !p.isGamemaster)
 
 	const handleCreate = () => {
-		if (!name.trim()) return
-		onCreate(name.trim(), imageUrl, useTmer ? minutes * 60 : null)
+		if (!name.trim() || timerMissing) return
+		onCreate(name.trim(), imageUrl, useTmer && minutes ? minutes * 60 : null)
 		setName(''); setTab('rooms')
 	}
 
@@ -60,9 +63,9 @@ export const BreakoutModal = ({
 	})
 
 	return (
-		<div className='fixed inset-0 z-[80] flex items-center justify-center' style={{ background: 'rgba(7,8,15,0.75)' }}>
+		<div className='room-modal-overlay z-[80]'>
 			<div
-				className='w-[400px] max-h-[90vh] overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+				className='w-[400px] max-w-full max-h-full overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 			>
 				<div className='flex items-center justify-between'>
@@ -111,15 +114,14 @@ export const BreakoutModal = ({
 							<input type='checkbox' checked={useTmer} onChange={e => setUseTimer(e.target.checked)} className='accent-[#0fffc8]' />
 							{t('room.breakout.auto_return')}
 							{useTmer && (
-								<input type='number' min={1} max={120} value={minutes}
-									onChange={e => setMinutes(Math.max(1, Number(e.target.value)))}
-									className='w-[50px] text-center rounded-[6px] px-[4px] py-[3px] text-[12px] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none'
+								<NumberField value={minutes} onChange={setMinutes} max={120} placeholder='0'
+									className='w-[50px] text-center rounded-[6px] px-[4px] py-[3px] text-[12px] focus:outline-none'
 									style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.85)' }}
 								/>
 							)}
 							{useTmer && <span>{t('room.breakout.minutes')}</span>}
 						</label>
-						<button onClick={handleCreate} disabled={!name.trim() || breakoutRooms.length >= 5}
+						<button onClick={handleCreate} disabled={!name.trim() || timerMissing || breakoutRooms.length >= 5}
 							className='py-[9px] rounded-[9px] text-[12px] font-[600] cursor-pointer transition-all disabled:opacity-40 flex items-center justify-center gap-[6px]'
 							style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
 							<Plus size={13} /> {t('room.breakout.create')}

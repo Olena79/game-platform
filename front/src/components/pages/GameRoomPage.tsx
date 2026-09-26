@@ -1148,8 +1148,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 			{showTimerModal && (
 				<TimerModal
-					onSet={(label, secs) => {
+					onSet={(label, secs, start) => {
 						setTimer(label, secs)
+						// The room handles events in order: set, then start
+						if (start) startTimer()
 					}}
 					onClose={() => setShowTimer(false)}
 				/>
@@ -1173,11 +1175,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 			{/* Announcement editor (GM) */}
 			{showAnnounce && (
 				<div
-					className='fixed inset-0 z-[80] flex items-center justify-center'
+					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.75)' }}
 				>
 					<div
-						className='w-[340px] rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+						className='w-[340px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(68,170,255,0.18)',
@@ -1238,11 +1240,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 			{/* Image picker (GM) */}
 			{showImgPicker && (
 				<div
-					className='fixed inset-0 z-[80] flex items-center justify-center'
+					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.75)' }}
 				>
 					<div
-						className='w-[360px] rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+						className='w-[360px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(68,170,255,0.18)',
@@ -1316,11 +1318,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 			{/* Stop game confirm modal */}
 			{showStopConfirm && (
 				<div
-					className='fixed inset-0 z-[80] flex items-center justify-center'
+					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.82)' }}
 				>
 					<div
-						className='w-[320px] rounded-[18px] p-[22px] flex flex-col gap-[16px]'
+						className='w-[320px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[16px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(255,56,80,0.2)',

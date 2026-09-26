@@ -449,3 +449,22 @@
 :root.light main [class*="border-[rgba(68,170,255,0.18)"] {
 	border-color: var(--border-subtle) !important;
 }
+
+/*
+ * Game-room dialogs sit in the part of the screen that is actually visible:
+ * with the on-screen keyboard open on a phone, a dialog centred in the full
+ * screen had its buttons underneath the keyboard.
+ */
+.room-modal-overlay {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: var(--vvt, 0px);
+	height: var(--vvh, 100dvh);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow-y: auto;
+	padding: 12px;
+	background: rgba(7, 8, 15, 0.75);
+}

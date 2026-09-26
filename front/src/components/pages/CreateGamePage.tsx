@@ -43,16 +43,24 @@ const NumInput = ({
 	className?: string
 }) => {
 	const { isDark } = useTheme()
+	// The text while typing: it may be empty (erasing the last digit used to
+	// put a 0 there that had to be erased as well). Leaving an empty field
+	// puts the minimum back.
+	const [text, setText] = useState(String(value))
+	useEffect(() => { setText(prev => (prev === '' && value === min ? prev : String(value))) }, [value, min])
 	return (
 		<div className={`flex flex-col gap-[4px] ${className}`}>
 			<input
-				type='number'
-				min={min}
-				max={max}
-				value={value}
+				type='text'
+				inputMode='numeric'
+				pattern='[0-9]*'
+				value={text}
 				onChange={e => {
-					const n = Number(e.target.value)
-					onChange(isNaN(n) ? min : Math.max(min, n))
+					const digits = e.target.value.replace(/\D/g, '').slice(0, 7)
+					setText(digits)
+					if (digits === '') return
+					const n = Number(digits)
+					onChange(Math.max(min, max !== undefined ? Math.min(max, n) : n))
 				}}
 				className='w-full rounded-[10px] py-[10px] px-[12px] text-[15px] text-center font-[600] focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
 				style={error
@@ -74,6 +82,9 @@ const NumInput = ({
 					}
 				}}
 				onBlur={e => {
+					// An emptied field comes back as the minimum once left
+					if (text === '') { setText(String(min)); onChange(min) }
+					else setText(String(value))
 					if (!error) {
 						e.currentTarget.style.borderColor = isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'
 						e.currentTarget.style.boxShadow = ''

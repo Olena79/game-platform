@@ -14,7 +14,7 @@ Telegram link that could never connect anyone, unauthorised recording
 uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
-Tests: backend 10 suites / 126 tests, frontend 3 files / 29 tests.
+Tests: backend 11 suites / 128 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -49,6 +49,9 @@ Tests: backend 10 suites / 126 tests, frontend 3 files / 29 tests.
     heartbeat is sent every minute) is closed from its parts by
     `syncRecordings`, marked interrupted. "Voice only" mode for weak phones
     (default on low-power mobiles). The room tab must stay open and in front.
+    CORS must allow the `X-Final` header (`back/src/config/cors.ts`, tested):
+    without it every part is refused by the browser's preflight and nothing
+    is saved — that is how recordings died after a few minutes on 2026-09-26.
   - **`egress`** — LiveKit Egress (room composite, grid, MP4) straight to R2.
     Needs a paid LiveKit plan: the free Build plan allows 60 min/month and
     refuses beyond (checked 2026-09-25: Ship $50/mo includes 600 min).
@@ -63,6 +66,11 @@ Tests: backend 10 suites / 126 tests, frontend 3 files / 29 tests.
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the
   screen is shown; failures (macOS permission, unsupported) are explained.
+- **Room dialogs** (timer, coins, breakout, votes, announce…) use
+  `.room-modal-overlay`, which sits in the visible viewport (`--vvh`/`--vvt`
+  from `useVisualViewportHeight`), so a phone keyboard never hides the
+  buttons. Number fields (`NumberField`) can be emptied; confirm buttons stay
+  disabled until a number is there. The timer has "Set and start".
 - **Community feed** with live updates.
 
 ### Deliberate decisions (do not "fix" these)

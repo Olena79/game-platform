@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 /**
- * Publishes the visible viewport height as `--vvh`.
+ * Publishes the visible viewport height as `--vvh` (and its offset as `--vvt`).
  *
  * On iOS Safari `vh` (and even `dvh`) ignore the on-screen keyboard, so a
  * panel sized in viewport units keeps its input underneath the keyboard once
@@ -14,6 +14,8 @@ export function useVisualViewportHeight(): void {
 
 		const apply = () => {
 			document.documentElement.style.setProperty('--vvh', `${vv.height}px`)
+			// iOS also scrolls the page to keep the focused field in view
+			document.documentElement.style.setProperty('--vvt', `${vv.offsetTop}px`)
 		}
 		apply()
 		vv.addEventListener('resize', apply)
@@ -22,6 +24,7 @@ export function useVisualViewportHeight(): void {
 			vv.removeEventListener('resize', apply)
 			vv.removeEventListener('scroll', apply)
 			document.documentElement.style.removeProperty('--vvh')
+			document.documentElement.style.removeProperty('--vvt')
 		}
 	}, [])
 }

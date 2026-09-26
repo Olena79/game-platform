@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ArrowRight, Landmark } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { RoomPlayer } from './types'
+import { NumberField } from '../minicomponents/NumberField'
 
 interface Props {
 	me: RoomPlayer
@@ -15,7 +16,9 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 	const { t } = useTranslation()
 	const [tab, setTab]         = useState<'player' | 'bank'>('player')
 	const [toUserId, setTo]     = useState('')
-	const [amount, setAmount]   = useState(1)
+	// null while the field is empty — the transfer button waits for a number
+	const [amountInput, setAmount] = useState<number | null>(1)
+	const amount = amountInput ?? 0
 	const [confirm, setConfirm] = useState(false)
 
 	const others = players.filter(p => p.userId !== me.userId && !p.isGamemaster)
@@ -33,9 +36,9 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 	}
 
 	return (
-		<div className='fixed inset-0 z-[80] flex items-center justify-center' style={{ background: 'rgba(7,8,15,0.75)' }}>
+		<div className='room-modal-overlay z-[80]'>
 			<div
-				className='w-[340px] rounded-[18px] p-[24px] flex flex-col gap-[16px]'
+				className='w-[340px] max-w-full rounded-[18px] p-[24px] flex flex-col gap-[16px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 			>
 				<div className='flex items-center justify-between'>
@@ -80,13 +83,12 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 
 				<div className='flex items-center gap-[8px]'>
 					<span className='text-[12px]' style={{ color: 'rgba(100,140,220,0.5)' }}>{t('room.coin.amount_label')}</span>
-					<input
-						type='number'
-						min={1}
+					<NumberField
+						value={amountInput}
+						onChange={setAmount}
 						max={me.coins}
-						value={amount}
-						onChange={e => setAmount(Math.max(1, Number(e.target.value)))}
-						className='flex-1 rounded-[8px] px-[10px] py-[7px] text-[14px] font-[600] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+						placeholder='0'
+						className='flex-1 rounded-[8px] px-[10px] py-[7px] text-[14px] font-[600] text-center focus:outline-none'
 						style={{ background: '#060e24', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(180,200,255,0.9)' }}
 					/>
 					<span className='text-[12px]' style={{ color: 'rgba(100,140,220,0.5)' }}>🪙</span>

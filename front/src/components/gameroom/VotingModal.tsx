@@ -33,9 +33,9 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 	})
 
 	return (
-		<div className='fixed inset-0 z-[80] flex items-center justify-center' style={{ background: 'rgba(7,8,15,0.75)' }}>
+		<div className='room-modal-overlay z-[80]'>
 			<div
-				className='w-[360px] max-h-[90vh] overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+				className='w-[360px] max-w-full max-h-full overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 			>
 				<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
