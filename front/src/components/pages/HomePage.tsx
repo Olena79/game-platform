@@ -188,7 +188,10 @@ export const HomePage = () => {
 				<SectionEyebrow>{t('home.how.eyebrow')}</SectionEyebrow>
 				<SectionTitle>{t('home.how.title')}</SectionTitle>
 				<SectionDesc>{t('home.how.desc')}</SectionDesc>
-				<div className='grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-[12px] md:gap-[14px]'>
+				{/* One per row on phones, four only from 1280px: narrower columns
+				    left the text ~120px and the spaced-out titles ran out of
+				    their cards */}
+				<div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[12px] md:gap-[14px]'>
 					<HowCard n='1' title={t('home.how.step1_title')} desc={t('home.how.step1_desc')} color='blue' />
 					<HowCard n='2' title={t('home.how.step2_title')} desc={t('home.how.step2_desc')} color='purple' />
 					<HowCard n='3' title={t('home.how.step3_title')} desc={t('home.how.step3_desc')} color='teal' />
@@ -323,7 +326,7 @@ const HowCard = ({ n, title, desc, color }: { n: string; title: string; desc: st
 		<div className={`font-amatic text-[36px] md:text-[44px] font-[800] leading-[1] min-w-[36px] md:min-w-[42px] ${howColorMap[color].num}`}>
 			{n}
 		</div>
-		<div>
+		<div className='min-w-0 [overflow-wrap:anywhere]'>
 			<h3 className="font-amatic text-[14px] md:text-[15px] font-[600] text-white mb-[5px] md:mb-[6px]">{title}</h3>
 			<p className='text-[13px] text-[rgba(180,200,255,0.4)] leading-[1.65] font-[300]'>{desc}</p>
 		</div>
