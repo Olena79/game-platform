@@ -643,7 +643,7 @@
       },
       {
         "title": "The club administrator knows about it",
-        "text": "When a recording starts, the club administrator gets a Telegram message about it, and later the link to the saved file."
+        "text": "When a recording starts, the club administrator gets a Telegram message about it."
       }
     ],
     "accept": "Got it, start recording",

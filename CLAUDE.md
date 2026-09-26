@@ -158,7 +158,8 @@ unless the user is a registered player. Both `gr:join` and
   linking Telegram, a new game (who, title, date), a recording starting and
   ending (with the link), sign-in attempts. Their own games and recordings
   are not reported. GMs are told in the recording notes that the club's
-  administrator is notified.
+  administrator is notified when a recording starts (the link to the
+  administrator is not mentioned there — decided 2026-09-26).
 
 ## 🏗️ Stack
 
