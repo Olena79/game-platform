@@ -25,13 +25,22 @@ jest.mock('../src/services/adminNotify', () => ({
 jest.mock('../src/models/User', () => ({
 	User: {
 		findById: () => ({ select: () => ({ lean: async () => ({ telegramChatId: '42' }) }) }),
+		find: () => ({ select: () => ({ lean: async () => [] }) }),
 		countDocuments: async () => 0,
 	},
 }))
 jest.mock('../src/models/Game', () => ({ Game: { countDocuments: async () => 0 } }))
 jest.mock('../src/models/Post', () => ({ Post: { countDocuments: async () => 0 } }))
 jest.mock('../src/models/Comment', () => ({ Comment: { countDocuments: async () => 0 } }))
-jest.mock('../src/models/Recording', () => ({ Recording: { countDocuments: async () => 0, aggregate: async () => [] } }))
+// One row as the old Google Drive recorder left it: no type, mode, key or dates
+const oldDriveRow = { _id: 'r1', gameTitle: 'Стара гра', gmId: 'gm', driveFileId: 'x', status: 'completed', shareLink: 'https://drive.example/x' }
+jest.mock('../src/models/Recording', () => ({
+	Recording: {
+		countDocuments: async () => 0,
+		aggregate: async () => [],
+		find: () => ({ sort: () => ({ limit: () => ({ lean: async () => [oldDriveRow] }) }) }),
+	},
+}))
 jest.mock('../src/models/AdminLog', () => ({ AdminLog: { create: async () => ({}) } }))
 jest.mock('../src/socket/gameRoom', () => ({ listRooms: () => [], endRoomAsAdmin: jest.fn(), kickUser: jest.fn() }))
 jest.mock('../src/services/accountDeletion', () => ({ deleteAccount: jest.fn() }))
@@ -106,5 +115,15 @@ describe('admin sign-in', () => {
 		}
 		const res = await request(a).post('/api/admin/login').set('x-test-user', 'admin').send({ passphrase: PHRASE })
 		expect(res.status).toBe(429)
+	})
+
+	it('lists recordings left by the old recorder without failing', async () => {
+		const a = app()
+		await request(a).post('/api/admin/login').set('x-test-user', 'admin').send({ passphrase: PHRASE })
+		const code = /<code>(\d{6})<\/code>/.exec(notifyAdmin.mock.calls[0][0])![1]
+		const { body: { token } } = await request(a).post('/api/admin/verify').set('x-test-user', 'admin').send({ code })
+		const res = await request(a).get('/api/admin/recordings').set('x-test-user', 'admin').set('x-admin-token', token)
+		expect(res.status).toBe(200)
+		expect(res.body[0]).toMatchObject({ gameTitle: 'Стара гра', contentType: '', mode: 'drive', createdAt: null })
 	})
 })

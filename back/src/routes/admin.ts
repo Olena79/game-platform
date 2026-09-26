@@ -350,18 +350,19 @@ export default function makeAdminRouter(io: Server): Router {
 			const gmName = new Map(gms.map(u => [String(u._id), personName(u)]))
 			res.json(recs.map(r => ({
 				id: String(r._id),
-				gameId: r.gameId,
-				gameTitle: r.gameTitle,
+				// Rows left by the old Google Drive recorder lack most of these
+				gameId: r.gameId ?? '',
+				gameTitle: r.gameTitle ?? '',
 				gmName: gmName.get(String(r.gmId)) ?? '—',
-				mode: r.mode,
-				contentType: r.contentType,
-				status: r.status,
+				mode: r.mode ?? (r.driveFileId ? 'drive' : 'egress'),
+				contentType: r.contentType ?? '',
+				status: r.status ?? 'completed',
 				interrupted: !!r.interrupted,
 				error: r.error ?? '',
 				bytes: r.uploadedBytes ?? 0,
-				shareLink: r.status === 'completed' ? r.shareLink : '',
-				createdAt: r.createdAt,
-				expiresAt: r.expiresAt,
+				shareLink: r.status === 'completed' ? (r.shareLink ?? '') : '',
+				createdAt: r.createdAt ?? null,
+				expiresAt: r.expiresAt ?? null,
 			})))
 		} catch (err) {
 			logger.error('[admin/recordings]', err)
@@ -375,7 +376,7 @@ export default function makeAdminRouter(io: Server): Router {
 			if (!isId(id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 			const rec = await Recording.findById(id)
 			if (!rec) { res.status(404).json({ message: 'Not found' }); return }
-			const what = `«${rec.gameTitle}» ${rec.createdAt.toISOString().slice(0, 16)}`
+			const what = `«${rec.gameTitle ?? ''}» ${rec.createdAt ? rec.createdAt.toISOString().slice(0, 16) : ''}`
 			await deleteRecording(rec)
 			await log(req, 'delete-recording', `recording:${id}`, what)
 			res.json({ ok: true })

@@ -403,7 +403,14 @@ async function notifyGamemaster(recording: IRecording): Promise<void> {
  * sit in the Drive account, outside this server's reach now.
  */
 export async function cleanupExpiredRecordings(): Promise<void> {
-	const expired = await Recording.find({ expiresAt: { $lte: new Date() }, status: { $nin: ACTIVE } })
+	const expired = await Recording.find({
+		$or: [
+			{ expiresAt: { $lte: new Date() }, status: { $nin: ACTIVE } },
+			// Old Google Drive rows: often no expiry at all, and their files are
+			// out of reach since Drive access was revoked — the row is all there is
+			{ driveFileId: { $exists: true, $nin: [null, ''] }, fileKey: { $in: [null, ''] } },
+		],
+	})
 	let removed = 0
 	let kept = 0
 	for (const rec of expired) {

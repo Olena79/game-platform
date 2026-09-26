@@ -369,9 +369,9 @@ function Rooms() {
 }
 
 interface AdminRecording {
-	id: string; gameTitle: string; gmName: string; mode: string; contentType: string
+	id: string; gameTitle: string; gmName: string; mode: string; contentType?: string
 	status: string; interrupted: boolean; error: string; bytes: number
-	shareLink: string; createdAt: string; expiresAt: string
+	shareLink: string; createdAt: string | null; expiresAt: string | null
 }
 
 function Recordings() {
@@ -391,12 +391,13 @@ function Recordings() {
 					<div className='flex-1 min-w-0 flex flex-col gap-[4px]'>
 						<div className='flex flex-wrap items-center gap-[6px]'>
 							<span className='text-[14px] font-[700]' style={{ color: 'var(--text-primary)' }}>{r.gameTitle || '—'}</span>
-							<Badge tone={r.status === 'completed' ? 'ok' : r.status === 'failed' ? 'danger' : 'warn'}>{t(`admin.recordings.status_${r.status}`)}</Badge>
+							<Badge tone={r.status === 'completed' ? 'ok' : r.status === 'failed' ? 'danger' : 'warn'}>{t(`admin.recordings.status_${r.status}`, { defaultValue: r.status ?? '—' })}</Badge>
 							{r.interrupted && <Badge tone='warn'>{t('admin.recordings.interrupted')}</Badge>}
-							<Badge>{r.contentType.startsWith('audio/') ? t('admin.recordings.audio') : t('admin.recordings.video')}</Badge>
+							{/* Old Google Drive rows carry no type */}
+							{r.contentType && <Badge>{r.contentType.startsWith('audio/') ? t('admin.recordings.audio') : t('admin.recordings.video')}</Badge>}
 						</div>
 						<p className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
-							{r.gmName} · {when(r.createdAt)} · {size(r.bytes)} · {t('admin.recordings.until', { date: when(r.expiresAt, false) })}
+							{r.gmName} · {when(r.createdAt)} · {size(r.bytes ?? 0)} · {t('admin.recordings.until', { date: when(r.expiresAt, false) })}
 						</p>
 						{r.error && <p className='text-[12px]' style={{ color: 'rgb(220,70,90)' }}>{r.error}</p>}
 					</div>

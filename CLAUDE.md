@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 16 suites / 144 tests, frontend 3 files / 29 tests.
+Tests: backend 16 suites / 145 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
