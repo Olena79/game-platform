@@ -88,6 +88,12 @@ Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
   read from their account each time: "Name Surname", or "Немає імені /
   No name (alias)" where alias is the part of the email before the @
   (`creatorLabel` in `routes/games.ts`). The full email is never shown.
+- **Game date and time**: two native fields (`date`, `time`) — one
+  `datetime-local` did not open on some phones. The time is sent with its
+  zone (`toISOString()` of the local time). Until 2026-09-27 it was sent
+  bare and the server (UTC) read Kyiv 19:00 as 19:00 UTC, so games showed 3 h
+  late (2 h in winter) and reminders fired late; games saved before then keep
+  the wrong time until re-saved (not migrated automatically).
 - **Coins and the bank**: a game may give coins per player and/or a
   gamemaster's starting bank (`Game.startingBank`, reset at `gr:start`).
   Players pay into the bank; the GM hands coins out of it

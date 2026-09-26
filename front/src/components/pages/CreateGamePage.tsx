@@ -176,7 +176,9 @@ export const CreateGamePage = () => {
 	const [startingBank, setStartingBank]         = useState(0)
 	const [useInfluence, setUseInfluence]         = useState(false)
 	const [influencePerPlayer, setInfluencePerPlayer] = useState(10)
-	const [scheduledAt, setScheduledAt]           = useState('')
+	// Date and time as the person sees them, in their own time zone
+	const [gameDate, setGameDate]                 = useState('')   // YYYY-MM-DD
+	const [gameTime, setGameTime]                 = useState('')   // HH:mm
 	const [useDefaultTimer, setUseDefaultTimer]   = useState(false)
 	const [defaultTimerMins, setDefaultTimerMins] = useState(5)
 	const [defaultTimerSecs, setDefaultTimerSecs] = useState(0)
@@ -213,7 +215,13 @@ export const CreateGamePage = () => {
 				setStartingBank(g.startingBank ?? 0)
 				setUseInfluence(g.useInfluence)
 				setInfluencePerPlayer(g.influencePerPlayer || 10)
-				if (g.scheduledAt) setScheduledAt(new Date(g.scheduledAt).toISOString().slice(0, 16))
+				// Local, like the game card shows it (it used to be UTC here — 3 hours off)
+				if (g.scheduledAt) {
+					const d = new Date(g.scheduledAt)
+					const pad = (n: number) => String(n).padStart(2, '0')
+					setGameDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
+					setGameTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`)
+				}
 				if (g.defaultTimerSeconds) {
 					setUseDefaultTimer(true)
 					setDefaultTimerMins(Math.floor(g.defaultTimerSeconds / 60))
@@ -248,6 +256,7 @@ export const CreateGamePage = () => {
 		// Coins with nothing to hand out would be an empty feature
 		if (useCoins && coinsPerPlayer < 1 && startingBank < 1) errs.startingBank = t('create_game.err_coins_nothing')
 		if (useInfluence && influencePerPlayer < 1) errs.influencePerPlayer = '≥ 1'
+		if (gameDate && !gameTime) errs.gameTime = t('create_game.err_time_missing')
 		const rawCard = gmCardNumber.replace(/\D/g, '')
 		if (rawCard.length > 0 && rawCard.length !== 16) errs.gmCardNumber = 'Потрібно 16 цифр'
 		setErrors(errs)
@@ -273,7 +282,9 @@ export const CreateGamePage = () => {
 				influencePerPlayer: useInfluence ? influencePerPlayer : 0,
 				participationCost,
 				gmCardNumber: rawCard.length === 16 ? rawCard : '',
-				scheduledAt: scheduledAt || undefined,
+				// With its time zone: a bare "2026-10-01T19:00" was read by the
+				// server as UTC, so games showed 3 hours later than entered
+				scheduledAt: gameDate ? new Date(`${gameDate}T${gameTime || '00:00'}`).toISOString() : undefined,
 				coverImage,
 				images,
 				defaultTimerSeconds: useDefaultTimer ? (defaultTimerMins * 60 + defaultTimerSecs) : null,
@@ -654,25 +665,35 @@ export const CreateGamePage = () => {
 									{t('create_game.section_schedule')}
 								</span>
 							</SectionLabel>
-							<input
-								type='datetime-local'
-								value={scheduledAt}
-								onChange={e => setScheduledAt(e.target.value)}
-								className='w-full rounded-[12px] py-[12px] px-[14px] text-[14px] focus:outline-none transition-all [color-scheme:dark]'
-								style={{
-									background: isDark ? '#060e24' : 'var(--bg-input)',
-									border: `1px solid ${isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'}`,
-									color: isDark ? 'rgba(180,200,255,0.88)' : 'var(--text-primary)',
-								}}
-								onFocus={e => {
-									e.currentTarget.style.borderColor = isDark ? 'rgba(68,170,255,0.6)' : 'var(--accent)'
-									if (isDark) e.currentTarget.style.boxShadow = '0 0 14px rgba(68,170,255,0.1)'
-								}}
-								onBlur={e => {
-									e.currentTarget.style.borderColor = isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'
-									e.currentTarget.style.boxShadow = ''
-								}}
-							/>
+							{/* Two native fields, not one datetime-local: on phones those
+							    open reliably (a wheel on iPhone, a dialog on Android) */}
+							<div className='grid grid-cols-2 gap-[10px]'>
+								{([
+									['date', gameDate, setGameDate, t('create_game.date_label')],
+									['time', gameTime, setGameTime, t('create_game.time_label')],
+								] as const).map(([kind, value, set, label]) => (
+									<label key={kind} className='flex flex-col gap-[6px]'>
+										<span className='text-[12px]' style={{ color: isDark ? 'rgba(180,200,255,0.6)' : 'var(--text-muted)' }}>{label}</span>
+										<input
+											type={kind}
+											value={value}
+											onChange={e => set(e.target.value)}
+											// Opens the picker on a tap anywhere in the field, where supported
+											onClick={e => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.() } catch { /* not allowed here */ } }}
+											className='w-full min-h-[46px] rounded-[12px] py-[11px] px-[12px] text-[15px] focus:outline-none transition-all'
+											style={{
+												background: isDark ? '#060e24' : 'var(--bg-input)',
+												border: `1px solid ${kind === 'time' && errors.gameTime ? 'rgba(255,90,160,0.55)' : isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'}`,
+												color: isDark ? 'rgba(180,200,255,0.88)' : 'var(--text-primary)',
+												colorScheme: isDark ? 'dark' : 'light',
+											}}
+										/>
+									</label>
+								))}
+							</div>
+							{errors.gameTime && (
+								<p className='text-[12px] mt-[6px]' style={{ color: 'rgba(255,90,160,0.85)' }}>{errors.gameTime}</p>
+							)}
 						</section>
 
 						<Divider />

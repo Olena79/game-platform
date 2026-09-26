@@ -131,7 +131,10 @@
     "images_label": "Additional images",
     "starting_bank": "gamemaster's bank:",
     "starting_bank_hint": "Coins you hand out to players during the game with the 🏦 button in the room. Players may start with 0.",
-    "err_coins_nothing": "Give players coins or fill the gamemaster's bank"
+    "err_coins_nothing": "Give players coins or fill the gamemaster's bank",
+    "date_label": "Date",
+    "time_label": "Time",
+    "err_time_missing": "Set the start time"
   },
   "our_games": {
     "title": "Games",
