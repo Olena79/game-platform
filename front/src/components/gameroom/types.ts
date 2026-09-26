@@ -62,6 +62,9 @@ export interface GameRoomState {
 	gameId: string
 	status: 'lobby' | 'started' | 'ended'
 	coinsPerPlayer: number
+	/** The game uses coins (even with none per player) */
+	coinsEnabled?: boolean
+	startingBank?: number
 	influencePerPlayer: number
 	players: RoomPlayer[]
 	bankCoins: number

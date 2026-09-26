@@ -27,6 +27,8 @@ export interface GameData {
 	scenario: string
 	useCoins: boolean
 	coinsPerPlayer: number
+	/** Coins the gamemaster's bank starts with */
+	startingBank?: number
 	useInfluence: boolean
 	influencePerPlayer: number
 	participationCost?: number

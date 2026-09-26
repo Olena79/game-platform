@@ -172,6 +172,8 @@ export const CreateGamePage = () => {
 	const [scenario, setScenario]                 = useState('')
 	const [useCoins, setUseCoins]                 = useState(false)
 	const [coinsPerPlayer, setCoinsPerPlayer]     = useState(100)
+	// The gamemaster's bank at the start: coins to hand out during the game
+	const [startingBank, setStartingBank]         = useState(0)
 	const [useInfluence, setUseInfluence]         = useState(false)
 	const [influencePerPlayer, setInfluencePerPlayer] = useState(10)
 	const [scheduledAt, setScheduledAt]           = useState('')
@@ -207,7 +209,8 @@ export const CreateGamePage = () => {
 				setMaxPlayers(g.maxPlayers)
 				setScenario(g.scenario)
 				setUseCoins(g.useCoins)
-				setCoinsPerPlayer(g.coinsPerPlayer || 100)
+				setCoinsPerPlayer(g.useCoins ? (g.coinsPerPlayer ?? 0) : 100)
+				setStartingBank(g.startingBank ?? 0)
 				setUseInfluence(g.useInfluence)
 				setInfluencePerPlayer(g.influencePerPlayer || 10)
 				if (g.scheduledAt) setScheduledAt(new Date(g.scheduledAt).toISOString().slice(0, 16))
@@ -242,7 +245,8 @@ export const CreateGamePage = () => {
 		const errs: Record<string, string> = {}
 		if (!title.trim())                    errs.title = t('create_game.err_no_title')
 		if (maxPlayers < minPlayers)          errs.maxPlayers = t('create_game.err_players')
-		if (useCoins && coinsPerPlayer < 1)   errs.coinsPerPlayer = '≥ 1'
+		// Coins with nothing to hand out would be an empty feature
+		if (useCoins && coinsPerPlayer < 1 && startingBank < 1) errs.startingBank = t('create_game.err_coins_nothing')
 		if (useInfluence && influencePerPlayer < 1) errs.influencePerPlayer = '≥ 1'
 		const rawCard = gmCardNumber.replace(/\D/g, '')
 		if (rawCard.length > 0 && rawCard.length !== 16) errs.gmCardNumber = 'Потрібно 16 цифр'
@@ -264,6 +268,7 @@ export const CreateGamePage = () => {
 				scenario,
 				useCoins,
 				coinsPerPlayer: useCoins ? coinsPerPlayer : 0,
+				startingBank: useCoins ? startingBank : 0,
 				useInfluence,
 				influencePerPlayer: useInfluence ? influencePerPlayer : 0,
 				participationCost,
@@ -586,15 +591,31 @@ export const CreateGamePage = () => {
 										icon={<CircleDollarSign size={15} strokeWidth={1.8} />}
 									/>
 									{useCoins && (
-										<div className='flex items-center gap-[10px] pl-[54px]'>
-											<span className='text-[13px] whitespace-nowrap' style={{ color: isDark ? 'rgba(180,200,255,0.72)' : 'var(--text-secondary)' }}>{t('create_game.per_player')}</span>
-											<NumInput
-												value={coinsPerPlayer}
-												onChange={setCoinsPerPlayer}
-												min={1}
-												error={errors.coinsPerPlayer}
-												className='w-[80px]'
-											/>
+										<div className='flex flex-col gap-[10px] pl-[54px]'>
+											<div className='flex items-center gap-[10px]'>
+												<span className='text-[13px] whitespace-nowrap' style={{ color: isDark ? 'rgba(180,200,255,0.72)' : 'var(--text-secondary)' }}>{t('create_game.per_player')}</span>
+												<NumInput
+													value={coinsPerPlayer}
+													onChange={setCoinsPerPlayer}
+													min={0}
+													error={errors.coinsPerPlayer}
+													className='w-[80px]'
+												/>
+											</div>
+											<div className='flex items-center gap-[10px] flex-wrap'>
+												<span className='text-[13px] whitespace-nowrap' style={{ color: isDark ? 'rgba(180,200,255,0.72)' : 'var(--text-secondary)' }}>🏦 {t('create_game.starting_bank')}</span>
+												<NumInput
+													value={startingBank}
+													onChange={setStartingBank}
+													min={0}
+													max={10_000_000}
+													error={errors.startingBank}
+													className='w-[120px]'
+												/>
+											</div>
+											<p className='text-[12px] leading-[1.45]' style={{ color: isDark ? 'rgba(150,170,220,0.6)' : 'var(--text-muted)' }}>
+												{t('create_game.starting_bank_hint')}
+											</p>
 										</div>
 									)}
 								</div>

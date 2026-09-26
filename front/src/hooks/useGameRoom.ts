@@ -323,6 +323,7 @@ export function useGameRoom(rawCode: string) {
 		endGame:       ()                         => emit('gr:end'),
 		transferCoins: (toUserId: string, amount: number) => emit('gr:coins-transfer', { toUserId, amount }),
 		payBank:       (amount: number)           => emit('gr:coins-bank',     { amount }),
+		giveFromBank:  (toUserId: string, amount: number) => emit('gr:bank-give', { toUserId, amount }),
 		setInfluence:  (targetUserId: string, delta: number) => emit('gr:influence', { targetUserId, delta }),
 		muteAll:       ()                         => emit('gr:mute-all'),
 		mutePlayer:    (targetUserId: string)     => emit('gr:mute-player', { targetUserId }),

@@ -17,6 +17,8 @@ export interface IGame extends Document {
 	scenario: string
 	useCoins: boolean
 	coinsPerPlayer: number
+	/** Coins the gamemaster's bank starts with, to hand out during the game */
+	startingBank: number
 	useInfluence: boolean
 	influencePerPlayer: number
 	participationCost: number
@@ -59,6 +61,7 @@ const GameSchema = new Schema<IGame>(
 		scenario:           { type: String, default: '' },
 		useCoins:           { type: Boolean, default: false },
 		coinsPerPlayer:     { type: Number, default: 0 },
+		startingBank:       { type: Number, default: 0, min: 0 },
 		useInfluence:       { type: Boolean, default: false },
 		influencePerPlayer: { type: Number, default: 0 },
 		participationCost:  { type: Number, default: 0, min: 0 },

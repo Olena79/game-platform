@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 17 suites / 148 tests, frontend 4 files / 31 tests.
+Tests: backend 18 suites / 152 tests, frontend 4 files / 31 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -83,6 +83,10 @@ Tests: backend 17 suites / 148 tests, frontend 4 files / 31 tests.
   read from their account each time: "Name Surname", or "Немає імені /
   No name (alias)" where alias is the part of the email before the @
   (`creatorLabel` in `routes/games.ts`). The full email is never shown.
+- **Coins and the bank**: a game may give coins per player and/or a
+  gamemaster's starting bank (`Game.startingBank`, reset at `gr:start`).
+  Players pay into the bank; the GM hands coins out of it
+  (`gr:bank-give`, `BankModal`). Coins may be on with 0 per player.
 - **Community feed** with live updates.
 - **Administrator** — one person, `/admin` (invisible button at the end of
   the footer links). See "Administrator" below.

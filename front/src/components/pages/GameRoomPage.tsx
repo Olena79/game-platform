@@ -39,6 +39,7 @@ import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
 import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
+import { BankModal } from '../gameroom/BankModal'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
@@ -187,6 +188,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		endGame,
 		transferCoins,
 		payBank,
+		giveFromBank,
 		setInfluence,
 		muteAll,
 		mutePlayer,
@@ -260,6 +262,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	const screenOn = isScreenShareEnabled
 	const [screenError, setScreenError] = useState('')
 	const [showCoinModal, setShowCoin] = useState(false)
+	const [showBankModal, setShowBank] = useState(false)
 	const [showVoteModal, setShowVote] = useState(false)
 	const [showTimerModal, setShowTimer] = useState(false)
 	const [showBreakout, setShowBreakout] = useState(false)
@@ -566,6 +569,8 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	}
 
 	const mainPlayers = state.players.filter(p => !p.breakoutRoomId)
+	// Rooms loaded before the server knew coinsEnabled: coins per player said it
+	const coinsOn = state.coinsEnabled ?? state.coinsPerPlayer > 0
 	const imageToShow = !isGM && localImageHidden ? null : activeShownImageUrl
 
 	return (
@@ -763,8 +768,8 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							</button>
 						)}
 
-						{/* Coin button (non-GM players) */}
-						{!isGM && me && (
+						{/* Coin button (players, when the game uses coins) */}
+						{!isGM && me && !me.isSpectator && coinsOn && (
 							<button
 								onClick={() => setShowCoin(true)}
 								className='flex items-center gap-[4px] px-[10px] py-[4px] rounded-[6px] text-[10px] cursor-pointer transition-all'
@@ -777,10 +782,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 								<CircleDollarSign size={11} /> {me.coins}
 							</button>
 						)}
-						{/* Bank button (GM only) */}
-						{isGM && state.coinsPerPlayer > 0 && (
+						{/* Bank button (GM only): hand coins out */}
+						{isGM && coinsOn && (
 							<button
-								onClick={() => setShowCoin(true)}
+								onClick={() => setShowBank(true)}
 								className='px-[10px] py-[4px] rounded-[6px] text-[10px] cursor-pointer transition-all'
 								style={{
 									background: 'rgba(200,168,48,0.06)',
@@ -1139,6 +1144,15 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 					onTransfer={transferCoins}
 					onPayBank={payBank}
 					onClose={() => setShowCoin(false)}
+				/>
+			)}
+
+			{showBankModal && isGM && (
+				<BankModal
+					bankCoins={state.bankCoins}
+					players={state.players}
+					onGive={giveFromBank}
+					onClose={() => setShowBank(false)}
 				/>
 			)}
 

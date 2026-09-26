@@ -35,6 +35,7 @@ const gameFields = {
 	scenario:            z.string().max(20000).optional(),
 	useCoins:            z.boolean().optional(),
 	coinsPerPlayer:      z.number().int().min(0).max(1_000_000).optional(),
+	startingBank:        z.number().int().min(0).max(10_000_000).optional(),
 	useInfluence:        z.boolean().optional(),
 	influencePerPlayer:  z.number().int().min(0).max(1_000_000).optional(),
 	participationCost:   z.number().min(0).max(1_000_000).optional(),
@@ -152,6 +153,13 @@ export const grCoinsTransferSchema = z.object({
 export const grCoinsBankSchema = z.object({
 	gameCode: z.string().min(1),
 	amount: z.number().int().min(0).max(1000000),
+})
+
+/** The gamemaster hands coins from the bank to a player */
+export const grBankGiveSchema = z.object({
+	gameCode: z.string().min(1),
+	toUserId: z.string().min(1).max(64),
+	amount: z.number().int().min(1).max(10_000_000),
 })
 
 export const grInfluenceSchema = z.object({

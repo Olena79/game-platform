@@ -24,6 +24,7 @@ import {
 	grNotesSchema,
 	grCoinsTransferSchema,
 	grCoinsBankSchema,
+	grBankGiveSchema,
 	grInfluenceSchema,
 	grMuteAllSchema,
 	grMutePlayerSchema,
@@ -387,9 +388,11 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		gameId,
 		status: 'lobby',
 		coinsPerPlayer:     game.useCoins    ? game.coinsPerPlayer    : 0,
+		coinsEnabled:       !!game.useCoins,
+		startingBank:       game.useCoins ? (game.startingBank ?? 0) : 0,
 		influencePerPlayer: game.useInfluence ? game.influencePerPlayer : 0,
 		players: [],
-		bankCoins: 0,
+		bankCoins:          game.useCoins ? (game.startingBank ?? 0) : 0,
 		messages,
 		reactions: { '👍': 0, '❤️': 0, '😂': 0, '🔥': 0, '🤔': 0, '👏': 0, '😢': 0, '😡': 0 },
 		announcement: null,
@@ -700,7 +703,7 @@ export function registerGameRoom(io: Server) {
 			state.timer = makeDefaultTimer(state.defaultTimerSeconds)
 			state.announcement = null
 			state.breakoutRooms = []
-			state.bankCoins = 0
+			state.bankCoins = state.startingBank
 			state.players.forEach(p => {
 				p.handRaised = false
 				p.breakoutRoomId = null
@@ -748,6 +751,21 @@ export function registerGameRoom(io: Server) {
 			if (!p || d.amount <= 0 || p.coins < d.amount) return
 			p.coins -= d.amount
 			state.bankCoins += d.amount
+			pushState(io, state)
+		}, socket))
+
+		// ── Bank → player (GM only) ─────────────────────────────────────────
+		socket.on('gr:bank-give', validateSocketEvent(grBankGiveSchema, async (d: any) => {
+			const state = hereAsGM()
+			if (!state) return
+			const to = state.players.find(p => p.userId === d.toUserId)
+			if (!to || to.isGamemaster || to.isSpectator) return
+			if (d.amount <= 0 || d.amount > state.bankCoins) {
+				socket.emit('gr:action-error', 'Not enough coins in the bank')
+				return
+			}
+			state.bankCoins -= d.amount
+			to.coins += d.amount
 			pushState(io, state)
 		}, socket))
 

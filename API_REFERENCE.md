@@ -180,7 +180,7 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:coins-transfer` / `gr:coins-bank` | players | `{ toUserId, amount }` / `{ amount }` |
 | `gr:vote-cast` / `gr:spectator-vote-cast` | players / spectators | `{ optionIds }` |
 | `gr:breakout-join` / `gr:breakout-leave` | invited | `{ roomId }` / — |
-| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:record-control { action: 'start'\|'stop' }` (egress mode) | GM | |
+| `gr:start`, `gr:end`, `gr:notes { notes }`, `gr:announce { text\|null }`, `gr:timer { action, label?, seconds? }`, `gr:vote-create/close/clear`, `gr:spectator-vote-create/close/clear`, `gr:breakout-create/invite/end`, `gr:image-show { imageUrl\|null }`, `gr:influence`, `gr:bank-give { toUserId, amount }` (from the bank to a player), `gr:mute-all`, `gr:mute-player { targetUserId }`, `gr:record-control { action: 'start'\|'stop' }` (egress mode) | GM | |
 
 ### Server → client
 
