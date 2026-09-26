@@ -191,6 +191,7 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:chat`, `gr:chat-history` | room / sender+recipients | message(s) |
 | `gr:my-vote` | voter | `{ voteId, optionIds }` |
 | `gr:reactions`, `gr:player-reacted` | room | |
+| `gr:coins-moved` | room | `{ from, to, amount }` — `from`/`to` a user id or `'bank'`; for the animation only |
 | `gr:breakout-invited`, `gr:breakout-return` | player | |
 | `gr:mute-all`, `gr:mute-player` | room / player | the media server mutes as well |
 | `gr:record-status` | GM | `{ status: 'recording'\|'stopping'\|'done'\|'error'\|'idle', detail? }` |

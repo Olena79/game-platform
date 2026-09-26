@@ -40,6 +40,7 @@ import { ChatPanel } from '../gameroom/ChatPanel'
 import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { BankModal } from '../gameroom/BankModal'
+import { CoinFlights } from '../gameroom/CoinFlights'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
@@ -1132,6 +1133,9 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 			{/* Start overlay */}
 			{startAnim && <GameStartOverlay onDone={() => setStartAnim(false)} />}
+
+			{/* Coins flying between players and the bank — everyone sees them */}
+			<CoinFlights gamemasterId={state.players.find(p => p.isGamemaster)?.userId ?? null} />
 
 			{/* End overlay */}
 			{endAnim && <GameEndOverlay onDone={() => setEndAnim(false)} />}

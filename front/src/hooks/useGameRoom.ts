@@ -216,6 +216,10 @@ export function useGameRoom(rawCode: string) {
 			setState(prev => prev ? { ...prev, reactions: r } : prev)
 		})
 
+		// Coins changed hands: the fly-over layer (CoinFlights) draws it
+		socket.on('gr:coins-moved', (m: { from: string; to: string; amount: number }) => {
+			window.dispatchEvent(new CustomEvent('gos:coins-moved', { detail: m }))
+		})
 		socket.on('gr:player-reacted', ({ userId, emoji }: { userId: string; emoji: string }) => {
 			setPlayerReactions(prev => ({ ...prev, [userId]: { emoji, key: Date.now() } }))
 			if (reactionTimersRef.current[userId]) clearTimeout(reactionTimersRef.current[userId])

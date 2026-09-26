@@ -165,6 +165,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 
 	return (
 		<div
+			data-coin-anchor={player.userId}
 			className='relative rounded-[9px] overflow-hidden flex flex-col'
 			style={{
 				background: '#0f1120',

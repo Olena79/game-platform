@@ -219,7 +219,7 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 	// screen, so on a phone the strip sits right above the bottom bar instead
 	// of floating mid-screen; the video keeps its proportions (object-contain).
 	return (
-		<div className='flex-1 relative overflow-hidden min-h-0 w-full' style={{ background: '#000' }}>
+		<div data-coin-anchor={speakerPlayer.userId} className='flex-1 relative overflow-hidden min-h-0 w-full' style={{ background: '#000' }}>
 			<div className='absolute inset-0 pointer-events-none'
 				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
 
@@ -630,7 +630,7 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, i
 	const canMute = isGM && !player.isGamemaster && !player.isSpectator && onMutePlayer
 
 	return (
-		<div className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default relative group'
+		<div data-coin-anchor={player.userId} className='flex-shrink-0 min-w-[72px] rounded-[8px] p-[6px] flex flex-col items-center gap-[3px] cursor-default relative group'
 			style={{
 				background: (!isPlayer && speaking) ? 'rgba(15,255,200,0.05)' : '#0f1120',
 				border: `1px solid ${borderColor}`,

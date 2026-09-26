@@ -308,6 +308,15 @@ function emit(io: Server, gameCode: string, event: string, data: unknown) {
 }
 
 /**
+ * Coins changed hands — everyone in the room, spectators included, sees them
+ * fly ('bank' is the gamemaster's bank). Only an animation: the numbers
+ * themselves travel in gr:state.
+ */
+function coinsMoved(io: Server, state: GameRoomState, from: string, to: string, amount: number): void {
+	emit(io, state.gameCode, 'gr:coins-moved', { from, to, amount })
+}
+
+/**
  * Everything in here reaches every participant, spectators included. So it
  * carries neither the scenario nor the GM's image deck (both spoilers, one
  * DevTools tab away), nor the entry code — spectators hold only their own
@@ -741,6 +750,7 @@ export function registerGameRoom(io: Server) {
 			from.coins -= d.amount
 			to.coins   += d.amount
 			pushState(io, state)
+			coinsMoved(io, state, from.userId, to.userId, d.amount)
 		}, socket))
 
 		// ── Coins: player → bank ────────────────────────────────────────────
@@ -752,6 +762,7 @@ export function registerGameRoom(io: Server) {
 			p.coins -= d.amount
 			state.bankCoins += d.amount
 			pushState(io, state)
+			coinsMoved(io, state, p.userId, 'bank', d.amount)
 		}, socket))
 
 		// ── Bank → player (GM only) ─────────────────────────────────────────
@@ -767,6 +778,7 @@ export function registerGameRoom(io: Server) {
 			state.bankCoins -= d.amount
 			to.coins += d.amount
 			pushState(io, state)
+			coinsMoved(io, state, 'bank', to.userId, d.amount)
 		}, socket))
 
 		// ── Influence (GM only) ─────────────────────────────────────────────
