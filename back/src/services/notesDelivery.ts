@@ -3,6 +3,30 @@ import { User } from '../models/User'
 import { Game } from '../models/Game'
 import { sendNotesToTelegram } from './telegramBot'
 
+/** Characters that take up no room: zero-width spaces and joiners, the BOM */
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g
+/**
+ * A line the "insert player" button produced and nothing was written after:
+ * "Name — " or "Name (role) — ". It says nothing on its own.
+ */
+const BARE_LABEL = /^[^\n]*\s—\s*$/
+
+/**
+ * The notes as they are worth sending: invisible characters, lines that are
+ * only an inserted player name, and blank edges removed. An empty result
+ * means there is nothing to send — a single letter, digit or sign is enough
+ * to count.
+ */
+export function cleanNotes(notes: string): string {
+	return notes
+		.replace(INVISIBLE, '')
+		.split('\n')
+		.filter(line => !BARE_LABEL.test(line))
+		.join('\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim()
+}
+
 /**
  * Delivers a game's notes to its gamemaster and clears the stored draft.
  *
@@ -19,8 +43,12 @@ export async function deliverGameNotes(
 	gameTitle: string,
 	reason: 'ended' | 'gm_left',
 ): Promise<boolean> {
-	const text = notes.trim()
-	if (!text) return false
+	const text = cleanNotes(notes)
+	if (!text) {
+		// Only a name tapped by mistake, or spaces: no message, and no draft
+		await Game.updateOne({ gameCode }, { gmNotes: '' }).catch(() => undefined)
+		return false
+	}
 
 	try {
 		const gm = await User.findById(gamemasterId).select('telegramChatId language')

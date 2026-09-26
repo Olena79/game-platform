@@ -14,7 +14,7 @@ Telegram link that could never connect anyone, unauthorised recording
 uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
-Tests: backend 9 suites / 119 tests, frontend 2 files / 27 tests.
+Tests: backend 10 suites / 126 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -28,7 +28,10 @@ Tests: backend 9 suites / 119 tests, frontend 2 files / 27 tests.
   **announcement of every new game** to all linked members except its GM
   (title, full description, date/time in Kyiv, paid/free, GM; with the cover
   as a photo when it fits), entry codes on registration (player or spectator
-  code), GM notes after a game, recording links, reset links. `/stop` turns
+  code), GM notes after a game (only when something was written: spaces,
+  invisible characters and a player name inserted with nothing after it do
+  not count — `cleanNotes`, same rule in the browser and on the server),
+  recording links, reset links. `/stop` turns
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
   always come. A chat that blocked the bot is unlinked. The bot's
   description, short description and command menu are set on every start

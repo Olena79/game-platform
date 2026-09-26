@@ -40,7 +40,7 @@ import {
 	grBreakoutEndSchema,
 } from '../validation/schemas'
 import logger from '../config/logger'
-import { deliverGameNotes } from '../services/notesDelivery'
+import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
 import { resolveSeat } from '../services/roomAccess'
 import { muteMicrophones, roomNameFor } from '../services/livekit'
 import {
@@ -98,7 +98,7 @@ async function closeOutSession(
 	})
 
 	const notes = gmNotes.get(gameCode) ?? ''
-	if (notes.trim()) {
+	if (cleanNotes(notes)) {
 		const delivered = await deliverGameNotes(gameCode, notes, state.gamemasterId, state.title, reason)
 		if (delivered) {
 			gmNotes.delete(gameCode)

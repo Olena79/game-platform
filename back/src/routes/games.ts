@@ -6,6 +6,7 @@ import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
 import { GameMessage } from '../models/GameMessage'
 import { closeDeletedGame } from '../socket/gameRoom'
+import { cleanNotes } from '../services/notesDelivery'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
@@ -500,7 +501,13 @@ router.delete('/:id/like', authMiddleware, async (req: AuthRequest, res: Respons
  */
 router.post('/send-notes', authMiddleware, validateBody(sendNotesSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
-		const { notes, gameTitle } = req.body
+		const { gameTitle } = req.body
+		// Nothing but spaces or a player name tapped by mistake: nothing to send
+		const notes = cleanNotes(req.body.notes)
+		if (!notes) {
+			res.json({ delivered: false, reason: 'empty' })
+			return
+		}
 
 		const user = await User.findById(req.userId).select('telegramChatId language')
 		if (!user) { res.status(401).json({ message: 'Unauthorized' }); return }

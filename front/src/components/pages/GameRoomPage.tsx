@@ -48,6 +48,7 @@ import { IosInstallHint } from '../gameroom/IosInstallHint'
 import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
 import type { RecordingControlsProps } from '../gameroom/RecordingControls'
 import { RoomRecorder, RecorderSnapshot } from '../../recording/RoomRecorder'
+import { cleanNotes } from '../../utils/notes'
 import { useTranslation } from 'react-i18next'
 
 type RoomHook = ReturnType<typeof useGameRoom>
@@ -1337,7 +1338,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 						>
 							{t('room.stop_confirm_msg')}
 						</p>
-						{notes.trim() && telegramLinked === false && (
+						{cleanNotes(notes) && telegramLinked === false && (
 							<p className='text-[12px] leading-[1.4]' style={{ color: 'rgba(255,175,90,0.9)' }}>
 								⚠️ {t('room.stop_confirm_notes_warning')}
 							</p>
@@ -1357,7 +1358,14 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							<button
 								onClick={async () => {
 									setShowStopConfirm(false)
-									if (notes.trim() && authToken) {
+									// Only real writing goes to Telegram — not spaces, not a
+									// player name tapped by mistake with nothing after it
+									const toSend = cleanNotes(notes)
+									if (!toSend) {
+										try { localStorage.removeItem(notesKey) } catch { /* ignore */ }
+										syncNotes('')
+									}
+									if (toSend && authToken) {
 										try {
 											const resp = await fetch(`${API}/api/games/send-notes`, {
 												method: 'POST',
@@ -1366,7 +1374,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 													Authorization: `Bearer ${authToken}`,
 												},
 												body: JSON.stringify({
-													notes: notes.trim(),
+													notes: toSend,
 													gameTitle: state.title,
 													gameCode,
 												}),
