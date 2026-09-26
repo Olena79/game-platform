@@ -96,7 +96,7 @@ function AdminLogin() {
 		if (res.status === 404) return t('admin.login.not_admin')
 		const body = await res.json().catch(() => ({})) as { message?: string; until?: number; locked?: boolean }
 		if (body.message === 'LOCKED' || body.locked) return t('admin.login.locked', { time: when(body.until ?? Date.now() + 3600_000) })
-		const known = ['WRONG_PASSPHRASE', 'WRONG_CODE', 'CODE_EXPIRED', 'NO_TELEGRAM', 'CODE_NOT_SENT']
+		const known = ['WRONG_PASSWORD', 'WRONG_CODE', 'CODE_EXPIRED', 'NO_TELEGRAM', 'CODE_NOT_SENT']
 		return body.message && known.includes(body.message) ? t(`admin.login.${body.message}`) : t('admin.action_failed')
 	}
 

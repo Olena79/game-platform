@@ -663,18 +663,18 @@
     "community_hint": "Community moderation: while you are in admin mode, every post and comment on the Community page has a Delete button.",
     "login": {
       "title": "Administrator sign-in",
-      "phrase_label": "Passphrase",
+      "phrase_label": "Password",
       "next": "Next",
       "code_label": "Code from Telegram (sent by the club bot)",
       "enter": "Enter",
       "again": "Start over",
       "not_admin": "Page not found.",
       "locked": "Too many failed attempts. Sign-in is closed until {{time}}.",
-      "WRONG_PASSPHRASE": "Wrong passphrase.",
       "WRONG_CODE": "Wrong code.",
       "CODE_EXPIRED": "The code expired or was used. Start over.",
       "NO_TELEGRAM": "Your account has no Telegram linked — there is nowhere to send the code.",
-      "CODE_NOT_SENT": "Could not send the code to Telegram. Try again."
+      "CODE_NOT_SENT": "Could not send the code to Telegram. Try again.",
+      "WRONG_PASSWORD": "Wrong password."
     },
     "tabs": {
       "overview": "Overview",

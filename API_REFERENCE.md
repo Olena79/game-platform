@@ -118,7 +118,7 @@ After sign-in every request carries `Authorization: Bearer <accessToken>`
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/login` | `{ passphrase }` | `{ ok }` (code sent to Telegram) · `401 WRONG_PASSPHRASE` · `409 NO_TELEGRAM` · `429 LOCKED { until }` |
+| POST | `/login` | `{ passphrase }` | `{ ok }` (code sent to Telegram) · `401 WRONG_PASSWORD` · `409 NO_TELEGRAM` · `429 LOCKED { until }` |
 | POST | `/verify` | `{ code }` (6 digits) | `{ token, expiresAt }` (1 h) · `401 WRONG_CODE / CODE_EXPIRED` · `429` |
 | GET | `/session` | — | `{ ok, expiresAt }` |
 | POST | `/logout` | — | `{ ok }` |

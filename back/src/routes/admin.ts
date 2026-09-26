@@ -65,9 +65,9 @@ export default function makeAdminRouter(io: Server): Router {
 
 			if (!(await verifyPassphrase(req.body.passphrase))) {
 				recordFailure()
-				await log(req, 'login-failed', '', 'wrong passphrase')
-				void notifyAdmin(`⚠️ <b>Невдала спроба входу в адмінку</b> — невірна фраза.\nIP: ${escapeHtml(req.ip ?? '?')}\nЯкщо це були не ви — змініть пароль акаунта.`)
-				res.status(401).json({ message: 'WRONG_PASSPHRASE', locked: !!lockedUntil() })
+				await log(req, 'login-failed', '', 'wrong password')
+				void notifyAdmin(`⚠️ <b>Невдала спроба входу в адмінку</b> — невірний пароль.\nIP: ${escapeHtml(req.ip ?? '?')}\nЯкщо це були не ви — змініть пароль акаунта.`)
+				res.status(401).json({ message: 'WRONG_PASSWORD', locked: !!lockedUntil() })
 				return
 			}
 
