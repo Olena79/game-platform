@@ -6,9 +6,14 @@ interface Props {
 	roomTitle: string
 	userName: string
 	onJoin: (micOn: boolean, camOn: boolean) => void
+	/** A spectator's seat has no camera or microphone: nothing to ask for */
+	spectator?: boolean
 }
 
-export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
+const isIOS = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod/i.test(navigator.userAgent)
+	|| (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1))
+
+export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }: Props) {
 	const { t } = useTranslation()
 	const [micOn, setMicOn] = useState(true)
 	const [camOn, setCamOn] = useState(false)
@@ -21,17 +26,35 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 		streamRef.current = null
 	}
 
+	const VIDEO: MediaTrackConstraints = {
+		facingMode: 'user',
+		aspectRatio: { ideal: 16 / 9 },
+		width: { ideal: 1280 },
+		height: { ideal: 720 },
+	}
+
+	/**
+	 * The first time, camera and microphone are asked for together: Safari
+	 * then shows one question instead of a camera one here and a microphone
+	 * one once in the room — and keeps the answer for the rest of the visit.
+	 * The microphone is released at once; LiveKit opens it again in the room.
+	 */
+	const askedBothRef = useRef(false)
 	const startCam = async () => {
 		try {
-			const s = await navigator.mediaDevices.getUserMedia({
-				video: {
-					facingMode: 'user',
-					aspectRatio: { ideal: 16 / 9 },
-					width: { ideal: 1280 },
-					height: { ideal: 720 },
-				},
-				audio: false,
-			})
+			let s: MediaStream
+			if (!askedBothRef.current) {
+				askedBothRef.current = true
+				try {
+					s = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: true })
+					s.getAudioTracks().forEach(tr => { tr.stop(); s.removeTrack(tr) })
+				} catch {
+					// Microphone refused or missing: the camera alone may still work
+					s = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: false })
+				}
+			} else {
+				s = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: false })
+			}
 			stopStream()
 			streamRef.current = s
 			if (videoRef.current) videoRef.current.srcObject = s
@@ -50,7 +73,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 	}
 
 	useEffect(() => {
-		startCam()
+		if (!spectator) startCam()
 		return () => stopStream()
 	}, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -60,7 +83,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 		// Release camera tracks before LiveKit takes over
 		stopStream()
 		if (videoRef.current) videoRef.current.srcObject = null
-		onJoin(micOn, camOn)
+		onJoin(spectator ? false : micOn, spectator ? false : camOn)
 	}
 
 	const initials = userName
@@ -132,8 +155,8 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 					</div>
 				</div>
 
-				{/* Mic / Cam toggles */}
-				<div className='flex gap-[12px]'>
+				{/* Mic / Cam toggles — not for spectators, who have neither */}
+				{!spectator && <div className='flex gap-[12px]'>
 					<button
 						onClick={() => setMicOn(v => !v)}
 						className='flex flex-col items-center gap-[6px] px-[28px] py-[12px] rounded-[14px] cursor-pointer transition-all'
@@ -160,7 +183,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 							{camOn ? t('room.prejoin.cam_on') : t('room.prejoin.cam_off')}
 						</span>
 					</button>
-				</div>
+				</div>}
 
 				{/* Enter button */}
 				<button
@@ -177,9 +200,18 @@ export function PreJoinScreen({ roomTitle, userName, onJoin }: Props) {
 					<ArrowRight size={16} strokeWidth={2.5} />
 				</button>
 
-				<p className='text-[11px]' style={{ color: 'rgba(100,140,220,0.28)' }}>
-					{t('room.prejoin.settings_hint')}
-				</p>
+				{!spectator && (
+					<p className='text-[11px]' style={{ color: 'rgba(100,140,220,0.28)' }}>
+						{t('room.prejoin.settings_hint')}
+					</p>
+				)}
+
+				{/* Safari asks on every visit unless the site is allowed once */}
+				{isIOS && !spectator && (
+					<p className='text-[11px] leading-[1.45] max-w-[420px] text-center' style={{ color: 'rgba(150,175,230,0.6)' }}>
+						{t('room.prejoin.ios_permissions')}
+					</p>
+				)}
 
 				{/* Said before anyone joins: a session may be recorded, and that
 				    is video and audio of the person reading this. */}

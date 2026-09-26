@@ -1589,6 +1589,7 @@ function GameRoomInner() {
 			<PreJoinScreen
 				roomTitle={room.state?.title ?? ''}
 				userName={userName}
+				spectator={room.isSpectatorJoin}
 				onJoin={(mic, cam) => {
 					// Still inside the button's click handler → the gesture is
 					// live, which the Fullscreen API requires.

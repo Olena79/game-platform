@@ -462,7 +462,8 @@
       "enter": "Enter room",
       "settings_hint": "Media settings will be saved on entry",
       "recording_notice": "The gamemaster may record this session — video and audio of everyone taking part. Recordings are kept for 7 days.",
-      "privacy_link": "Privacy policy"
+      "privacy_link": "Privacy policy",
+      "ios_permissions": "iPhone asks for camera and microphone every time? In Safari tap “aA” next to the address → “Website Settings” → Camera and Microphone: “Allow”. Or: Settings → Apps → Safari → Camera / Microphone → “Allow”."
     },
     "speaker": {
       "welcome": "Welcome to the game",

@@ -70,6 +70,10 @@ Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
 - **Account**: data export and deletion (`routes/account.ts`,
   `services/accountDeletion.ts`). Deletion removes games, recordings, likes;
   posts/comments stay anonymised.
+- **Pre-join screen** (`PreJoinScreen`): camera and microphone are asked for
+  in one request, so Safari shows one question per visit, not two; iPhone
+  users are told how to allow the site for good (Safari asks every visit
+  otherwise — its default). Spectators are asked for nothing.
 - **Screen sharing**: players and the GM (never spectators — their token
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the
