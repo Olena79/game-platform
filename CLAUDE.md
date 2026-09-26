@@ -65,6 +65,9 @@ Tests: backend 18 suites / 155 tests, frontend 5 files / 32 tests.
     Needs a paid LiveKit plan: the free Build plan allows 60 min/month and
     refuses beyond (checked 2026-09-25: Ship $50/mo includes 600 min).
   A shared screen is recorded large with the cameras in a strip beside it.
+  A portrait (phone) camera is cropped no further than 3:4 and centred in its
+  tile over a dimmed copy of itself — cropped to fill the tile, phone players
+  were recorded with half the face cut off (2026-09-27).
   Everyone sees a marker while recording (`isRecording` in room state).
   GMs are told what recording asks of their device on the create-game page
   (`RecordingInfoCard`) and once per device before the first recording.

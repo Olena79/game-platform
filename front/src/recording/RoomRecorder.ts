@@ -284,19 +284,43 @@ export class RoomRecorder {
 		ctx.fillText(label, x + 6 + fs / 2, y + th - fs * 0.5, tw - 12 - fs)
 	}
 
-	/** Draws a tile's video: 'cover' fills and crops, 'contain' shows all of it. */
+	/**
+	 * Draws a tile's video: 'cover' fills the tile, 'contain' shows all of it.
+	 *
+	 * 'cover' used to crop blindly, and a phone's camera is portrait: in a
+	 * landscape tile only a strip across the middle survived, so phone
+	 * players were recorded with half their face cut off (2026-09-27) while
+	 * the room itself showed them whole. A video much taller than its tile is
+	 * now cropped no further than 3:4, shown in the middle of the tile, and the
+	 * sides are filled with a dimmed copy of the same picture.
+	 */
 	private drawVideo(ctx: CanvasRenderingContext2D, tile: Tile, x: number, y: number, w: number, h: number, fit: 'cover' | 'contain'): boolean {
 		const v = tile.video
 		if (!v || v.readyState < 2 || v.videoWidth === 0) return false
+		const vw = v.videoWidth
+		const vh = v.videoHeight
 		if (fit === 'cover') {
-			const scale = Math.max(w / v.videoWidth, h / v.videoHeight)
-			const sw = w / scale
-			const sh = h / scale
-			ctx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, x, y, w, h)
+			const tileAspect = w / h
+			const videoAspect = vw / vh
+			// Wider, or only a little taller, than the tile: fill and crop
+			if (videoAspect >= tileAspect * TALL_VIDEO_RATIO) {
+				drawCover(ctx, v, x, y, w, h)
+				return true
+			}
+			// Taller: a dimmed fill behind, the person in front
+			ctx.save()
+			ctx.globalAlpha = 0.28
+			drawCover(ctx, v, x, y, w, h)
+			ctx.restore()
+			const aspect = Math.min(tileAspect, Math.max(videoAspect, PORTRAIT_CROP_ASPECT))
+			const sh = Math.min(vh, vw / aspect)
+			const sw = sh * aspect
+			const dw = h * aspect
+			ctx.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, x + (w - dw) / 2, y, dw, h)
 		} else {
-			const scale = Math.min(w / v.videoWidth, h / v.videoHeight)
-			const dw = v.videoWidth * scale
-			const dh = v.videoHeight * scale
+			const scale = Math.min(w / vw, h / vh)
+			const dw = vw * scale
+			const dh = vh * scale
 			ctx.drawImage(v, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
 		}
 		return true
@@ -568,4 +592,16 @@ function readToken(): string | null {
 
 function initials(name: string): string {
 	return name.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
+}
+
+/** A video this much narrower than its tile (or more) is not cropped to fill it */
+const TALL_VIDEO_RATIO = 0.7
+/** A portrait video loses at most this much: cropped no further than 3:4 */
+const PORTRAIT_CROP_ASPECT = 3 / 4
+
+function drawCover(ctx: CanvasRenderingContext2D, v: HTMLVideoElement, x: number, y: number, w: number, h: number): void {
+	const scale = Math.max(w / v.videoWidth, h / v.videoHeight)
+	const sw = w / scale
+	const sh = h / scale
+	ctx.drawImage(v, (v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh, x, y, w, h)
 }
