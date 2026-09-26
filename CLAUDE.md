@@ -249,6 +249,9 @@ front/src/
    (`gr:notes-delivered` lets the browser drop its copy), release the room
    (60 s after a proper end; 10 min after the last person leaves otherwise).
 4. Deleting a game closes its room and stops its recording.
+5. Editing a game while its room is in memory updates the room at once
+   (`applyGameSettings`): coins, bank (refilled only before the start),
+   influence, images, scenario, title, default timer.
 
 ## 🔐 Security notes
 

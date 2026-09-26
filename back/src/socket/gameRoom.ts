@@ -214,6 +214,46 @@ function endSession(io: Server, state: GameRoomState): void {
 	GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
 }
 
+/**
+ * The gamemaster edited the game while its room is open (in memory): the
+ * room takes the new settings at once instead of when it is next loaded.
+ * Before the game starts the bank is refilled to the new starting sum;
+ * during a game coins in hand are left alone (the next start uses them).
+ */
+export function applyGameSettings(game: {
+	gameCode: string
+	title: string
+	useCoins?: boolean
+	coinsPerPlayer?: number
+	startingBank?: number
+	useInfluence?: boolean
+	influencePerPlayer?: number
+	images?: string[]
+	coverImage?: string
+	scenario?: string
+	defaultTimerSeconds?: number | null
+}): void {
+	const state = rooms.get(game.gameCode)
+	if (!state) return
+	state.title = game.title
+	state.coinsEnabled = !!game.useCoins
+	state.coinsPerPlayer = game.useCoins ? (game.coinsPerPlayer ?? 0) : 0
+	state.startingBank = game.useCoins ? (game.startingBank ?? 0) : 0
+	state.influencePerPlayer = game.useInfluence ? (game.influencePerPlayer ?? 0) : 0
+	state.images = game.images ?? []
+	state.coverImage = game.coverImage ?? ''
+	state.scenario = game.scenario ?? ''
+	state.defaultTimerSeconds = game.defaultTimerSeconds ?? null
+	if (state.status === 'lobby') {
+		state.bankCoins = state.startingBank
+		if (!state.timer?.running) state.timer = makeDefaultTimer(state.defaultTimerSeconds)
+	}
+	if (ioRef) {
+		pushState(ioRef, state)
+		sendGmState(state)
+	}
+}
+
 // ── For the administrator ───────────────────────────────────────────────────
 
 export interface RoomSummary {

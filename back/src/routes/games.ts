@@ -10,6 +10,7 @@ import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMid
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
+import { applyGameSettings } from '../socket/gameRoom'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
@@ -294,6 +295,8 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) game.reminderSentAt = null
 
 		await game.save()
+		// An open room takes the new settings now, not when next loaded
+		applyGameSettings(game)
 		const labels = await creatorLabels([game.creatorId])
 		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
 	} catch (err: any) {
