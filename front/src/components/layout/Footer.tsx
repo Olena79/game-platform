@@ -35,7 +35,7 @@ export const Footer = () => {
 
 	return (
 		<footer
-			className='px-[20px] md:px-[32px] lg:px-[48px] py-[28px] md:py-[36px] border-t flex flex-col md:flex-row justify-center md:justify-between items-center gap-[16px] md:gap-0 relative z-10 transition-colors duration-[250ms]'
+			className='px-[20px] md:px-[32px] lg:px-[48px] py-[28px] md:py-[36px] mobile-footer-clear border-t flex flex-col md:flex-row justify-center md:justify-between items-center gap-[16px] md:gap-0 relative z-10 transition-colors duration-[250ms]'
 			style={{ borderTopColor: 'var(--footer-border)' }}
 		>
 			<Link to='/' className='no-underline flex items-center'>
@@ -89,7 +89,7 @@ export const Footer = () => {
 						aria-hidden='true'
 						tabIndex={-1}
 						onClick={() => navigate('/admin')}
-						className='w-[28px] h-[18px] opacity-0 cursor-default'
+						className='w-[28px] h-[28px] md:h-[18px] opacity-0 cursor-default'
 					/>
 				</div>
 			</div>

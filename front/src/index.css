@@ -289,6 +289,11 @@
 	.mobile-pb-nav {
 		padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
 	}
+	/* The footer comes after <main>, so <main>'s padding does not help it:
+	   without this its last line (legal links) sat under the bottom nav */
+	.mobile-footer-clear {
+		padding-bottom: calc(64px + 28px + env(safe-area-inset-bottom, 0px)) !important;
+	}
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
