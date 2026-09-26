@@ -219,8 +219,10 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		const user = await User.findByIdAndUpdate(
 			userId,
 			{ telegramChatId: String(chatId) },
-			{ new: true }
+			{ new: false }
 		)
+		const previousChat = user?.telegramChatId
+		if (user) user.telegramChatId = String(chatId)
 
 		if (!user) {
 			await sendMessage(chatId, messages[langOf(null)].invalidLink)
@@ -231,6 +233,15 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		const lang = langOf(user.language)
 		await sendMessage(chatId, messages[lang].linked(firstName))
 		logger.info('[telegram] User linked successfully', { userId, language: lang })
+
+		// The account moved to another Telegram: its old chat hears about it,
+		// so a takeover (codes, reset links now going elsewhere) is not silent
+		if (previousChat && previousChat !== String(chatId)) {
+			await sendTelegramHtml(previousChat, lang === 'uk'
+				? '⚠️ <b>Ваш акаунт на сайті клубу щойно підключено до іншого Telegram.</b>\nНадалі повідомлення приходитимуть туди. Якщо це були не ви — одразу змініть пароль акаунта.'
+				: '⚠️ <b>Your club account has just been connected to another Telegram.</b>\nMessages will go there from now on. If this was not you, change your account password at once.')
+			logger.warn('[telegram] account moved to another chat', { userId })
+		}
 		telegramEvents.emit('linked', { userId })
 	} catch (err) {
 		const lang = langOf(null)

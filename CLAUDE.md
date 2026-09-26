@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 15 suites / 142 tests, frontend 3 files / 29 tests.
+Tests: backend 16 suites / 144 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -37,7 +37,9 @@ Tests: backend 15 suites / 142 tests, frontend 3 files / 29 tests.
   every minute, `Game.reminderSentAt`, cleared when the time changes), and
   the administrator's broadcasts. `/stop` turns
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
-  always come. A chat that blocked the bot is unlinked. The bot's
+  always come. A chat that blocked the bot is unlinked. When an account is linked to a
+  different chat, the old chat is warned (a takeover would otherwise move
+  codes and reset links silently). The bot's
   description, short description and command menu are set on every start
   (`describeBot`). If Telegram cannot be reached at startup, the bot retries
   (5 s, 15 s, 30 s, then every minute) instead of staying deaf until the
@@ -155,8 +157,8 @@ unless the user is a registered player. Both `gr:join` and
   (also from the Community page while in admin mode), message everyone with
   Telegram (`broadcastToAll`, ignores `/stop`, skips blocked), stats, journal.
   The administrator's own account cannot be blocked or deleted from there.
-- **Hears about** (`services/adminNotify.ts`, to the administrator's
-  Telegram): a new account (with whether Telegram is linked), a member
+- **Hears about** (`services/adminNotify.ts`, only ever to the chat linked
+  to the ADMIN_EMAIL account — `tests/adminNotify.test.ts`): a new account (with whether Telegram is linked), a member
   linking Telegram, a new game (who, title, date), a recording starting and
   ending (with the link), sign-in attempts. Their own games and recordings
   are not reported. GMs are told in the recording notes that the club's
