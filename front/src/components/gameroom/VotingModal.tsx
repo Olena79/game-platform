@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { ModalClose } from './ModalClose'
 import { Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -33,12 +34,14 @@ export const VotingModal = ({ onCreate, onClose }: Props) => {
 	})
 
 	return (
-		<div className='room-modal-overlay z-[80]'>
+		<div className='room-modal-overlay z-[80]' onClick={onClose}>
 			<div
-				className='w-[360px] max-w-full max-h-full overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+				className='relative w-[360px] max-w-full max-h-full overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
+				onClick={e => e.stopPropagation()}
 			>
-				<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
+				<ModalClose onClose={onClose} />
+				<h3 className='text-[15px] font-[700] pr-[40px]' style={{ color: 'rgba(220,230,255,0.9)' }}>
 					{t('room.vote.title')}
 				</h3>
 

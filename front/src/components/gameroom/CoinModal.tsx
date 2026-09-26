@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { ModalClose } from './ModalClose'
 import { ArrowRight, Landmark } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { RoomPlayer } from './types'
@@ -36,18 +37,23 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 	}
 
 	return (
-		<div className='room-modal-overlay z-[80]'>
+		<div className='room-modal-overlay z-[80]' onClick={onClose}>
 			<div
 				className='w-[340px] max-w-full rounded-[18px] p-[24px] flex flex-col gap-[16px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
+				onClick={e => e.stopPropagation()}
+				onKeyDown={e => { if (e.key === 'Escape') onClose() }}
 			>
 				<div className='flex items-center justify-between'>
 					<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
 						{t('room.coin.title')}
 					</h3>
-					<span className='text-[13px] font-[600]' style={{ color: '#0fffc8' }}>
-						🪙 {me.coins} {t('room.coin.you_have')}
-					</span>
+					<div className='flex items-center gap-[10px]'>
+						<span className='text-[13px] font-[600]' style={{ color: '#0fffc8' }}>
+							🪙 {me.coins} {t('room.coin.you_have')}
+						</span>
+						<ModalClose onClose={onClose} className='' />
+					</div>
 				</div>
 
 				{/* Tabs */}
@@ -65,7 +71,11 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 					))}
 				</div>
 
-				{tab === 'player' && (
+				{/* Alone with the GM: nobody to give to — say so instead of an empty list */}
+				{tab === 'player' && others.length === 0 && (
+					<p className='text-[12px] leading-[1.45]' style={{ color: 'rgba(160,175,220,0.75)' }}>{t('room.coin.no_others')}</p>
+				)}
+				{tab === 'player' && others.length > 0 && (
 					<select
 						value={toUserId}
 						onChange={e => setTo(e.target.value)}
@@ -125,8 +135,8 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 				)}
 
 				<button onClick={onClose}
-					className='text-[11px] text-center cursor-pointer transition-colors'
-					style={{ color: 'rgba(100,140,220,0.4)' }}>
+					className='w-full py-[9px] rounded-[9px] text-[12px] cursor-pointer transition-all'
+					style={{ background: 'rgba(15,17,32,0.5)', border: '1px solid rgba(68,170,255,0.15)', color: 'rgba(150,175,230,0.8)' }}>
 					{t('room.coin.close')}
 				</button>
 			</div>

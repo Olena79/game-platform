@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Plus, Send, X } from 'lucide-react'
+import { ModalClose } from './ModalClose'
+import { Plus, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { BreakoutRoom, RoomPlayer } from './types'
 import { NumberField } from '../minicomponents/NumberField'
@@ -63,18 +64,17 @@ export const BreakoutModal = ({
 	})
 
 	return (
-		<div className='room-modal-overlay z-[80]'>
+		<div className='room-modal-overlay z-[80]' onClick={onClose}>
 			<div
 				className='w-[400px] max-w-full max-h-full overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
+				onClick={e => e.stopPropagation()}
 			>
 				<div className='flex items-center justify-between'>
 					<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>
 						{t('room.breakout.title')}
 					</h3>
-					<button onClick={onClose} className='cursor-pointer' style={{ color: 'rgba(100,140,220,0.4)' }}>
-						<X size={16} strokeWidth={2} />
-					</button>
+					<ModalClose onClose={onClose} className='' />
 				</div>
 
 				<div className='flex gap-[6px]'>

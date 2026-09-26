@@ -41,6 +41,7 @@ import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSqu
 import { CoinModal } from '../gameroom/CoinModal'
 import { BankModal } from '../gameroom/BankModal'
 import { CoinFlights } from '../gameroom/CoinFlights'
+import { ModalClose } from '../gameroom/ModalClose'
 import { VotingModal } from '../gameroom/VotingModal'
 import { TimerModal } from '../gameroom/TimerModal'
 import { BreakoutModal } from '../gameroom/BreakoutModal'
@@ -1195,16 +1196,19 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 				<div
 					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.75)' }}
+					onClick={() => setShowAnnounce(false)}
 				>
 					<div
-						className='w-[340px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+						onClick={e => e.stopPropagation()}
+						className='relative w-[340px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(68,170,255,0.18)',
 						}}
 					>
+						<ModalClose onClose={() => setShowAnnounce(false)} />
 						<h3
-							className='text-[15px] font-[700]'
+							className='text-[15px] font-[700] pr-[40px]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
 							{t('room.announce_title')}
@@ -1260,16 +1264,19 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 				<div
 					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.75)' }}
+					onClick={() => setShowImgPicker(false)}
 				>
 					<div
-						className='w-[360px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
+						onClick={e => e.stopPropagation()}
+						className='relative w-[360px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(68,170,255,0.18)',
 						}}
 					>
+						<ModalClose onClose={() => setShowImgPicker(false)} />
 						<h3
-							className='text-[15px] font-[700]'
+							className='text-[15px] font-[700] pr-[40px]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
 							{t('room.image_picker_title')}
@@ -1338,16 +1345,19 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 				<div
 					className='room-modal-overlay z-[80]'
 					style={{ background: 'rgba(7,8,15,0.82)' }}
+					onClick={() => setShowStopConfirm(false)}
 				>
 					<div
-						className='w-[320px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[16px]'
+						onClick={e => e.stopPropagation()}
+						className='relative w-[320px] max-w-full rounded-[18px] p-[22px] flex flex-col gap-[16px]'
 						style={{
 							background: '#0b0d1a',
 							border: '1px solid rgba(255,56,80,0.2)',
 						}}
 					>
+						<ModalClose onClose={() => setShowStopConfirm(false)} />
 						<h3
-							className='text-[15px] font-[700]'
+							className='text-[15px] font-[700] pr-[40px]'
 							style={{ color: 'rgba(220,230,255,0.9)' }}
 						>
 							{t('room.stop_confirm_title')}

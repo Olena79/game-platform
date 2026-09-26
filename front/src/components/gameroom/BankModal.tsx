@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ModalClose } from './ModalClose'
 import { useTranslation } from 'react-i18next'
 import type { RoomPlayer } from './types'
 import { NumberField } from '../minicomponents/NumberField'
@@ -39,7 +40,10 @@ export const BankModal = ({ bankCoins, players, onGive, onClose }: Props) => {
 			>
 				<div className='flex items-center justify-between'>
 					<h3 className='text-[15px] font-[700]' style={{ color: 'rgba(220,230,255,0.9)' }}>🏦 {t('room.bank.title')}</h3>
-					<span className='text-[15px] font-[700]' style={{ color: '#c8a830' }}>{bankCoins}</span>
+					<div className='flex items-center gap-[10px]'>
+						<span className='text-[15px] font-[700]' style={{ color: '#c8a830' }}>{bankCoins}</span>
+						<ModalClose onClose={onClose} className='' />
+					</div>
 				</div>
 
 				{recipients.length === 0 ? (

@@ -386,7 +386,8 @@
       "confirm_msg": "Confirm transfer",
       "cancel": "Cancel",
       "confirm": "Confirm",
-      "close": "Close"
+      "close": "Close",
+      "no_others": "No other players in the room yet. You can put coins in the bank."
     },
     "breakout": {
       "title": "🚪 Rooms",

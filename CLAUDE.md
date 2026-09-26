@@ -77,7 +77,8 @@ Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
 - **Room dialogs** (timer, coins, breakout, votes, announce…) use
   `.room-modal-overlay`, which sits in the visible viewport (`--vvh`/`--vvt`
   from `useVisualViewportHeight`), so a phone keyboard never hides the
-  buttons. Number fields (`NumberField`) can be emptied; confirm buttons stay
+  buttons. Every one has a ✕ (`ModalClose`) and closes on a tap outside —
+  a player once could not close the coin window on a phone. Number fields (`NumberField`) can be emptied; confirm buttons stay
   disabled until a number is there. The timer has "Set and start".
 - **The gamemaster's name** on games (list, game page, announcements) is
   read from their account each time: "Name Surname", or "Немає імені /

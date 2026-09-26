@@ -1,9 +1,16 @@
+import { useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { CoinFlights } from './src/components/gameroom/CoinFlights'
-const tile = (id: string, left: number, top: number, label: string) => (
-  <div data-coin-anchor={id} style={{ position: 'absolute', left, top, width: 150, height: 110, border: '1px solid #445', borderRadius: 9, color: '#ccd', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1120' }}>{label}</div>
-)
-ReactDOM.createRoot(document.getElementById('root')!).render(<div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-  {tile('gm', 30, 40, 'GM')}{tile('a', 30, 300, 'Player A')}{tile('b', 220, 300, 'Player B')}
-  <CoinFlights gamemasterId='gm' />
-</div>)
+import './src/index.css'
+import './src/i18n'
+import { CoinModal } from './src/components/gameroom/CoinModal'
+const me = { userId: 'p1', name: 'Player', coins: 100, isGamemaster: false, isSpectator: false, connected: true } as any
+const gm = { userId: 'gm', name: 'GM', coins: 0, isGamemaster: true, isSpectator: false, connected: true } as any
+function App() {
+  const [open, setOpen] = useState(true)
+  return <div style={{ height: '100vh' }}>
+    <div id='state' style={{ color: '#fff' }}>{open ? 'open' : 'closed'}</div>
+    <button id='reopen' onClick={() => setOpen(true)} style={{ color: '#fff' }}>reopen</button>
+    {open && <CoinModal me={me} players={[me, gm]} onTransfer={() => {}} onPayBank={() => {}} onClose={() => setOpen(false)} />}
+  </div>
+}
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
