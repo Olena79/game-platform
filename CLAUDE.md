@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 14 suites / 140 tests, frontend 3 files / 29 tests.
+Tests: backend 15 suites / 142 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -39,7 +39,9 @@ Tests: backend 14 suites / 140 tests, frontend 3 files / 29 tests.
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
   always come. A chat that blocked the bot is unlinked. The bot's
   description, short description and command menu are set on every start
-  (`describeBot`).
+  (`describeBot`). If Telegram cannot be reached at startup, the bot retries
+  (5 s, 15 s, 30 s, then every minute) instead of staying deaf until the
+  next deploy.
 - **Game room**: Socket.IO state machine + LiveKit media. See "Access" below.
 - **Recording** — into a **Cloudflare R2** bucket, 7 days, link to the GM's
   Telegram. Two modes, `RECORDING_MODE`:

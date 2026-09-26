@@ -492,6 +492,12 @@ export function reminderText(opts: {
 
 export { langOf }
 
+/** Waits between attempts to reach Telegram at startup: 5 s, 15 s, 30 s, then every minute */
+const CONNECT_RETRY_MS = [5_000, 15_000, 30_000, 60_000]
+let connectAttempt = 0
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let stopped = false
+
 export async function startTelegramPolling(): Promise<void> {
 	if (!BOT_TOKEN) {
 		logger.warn('[telegram] BOT_TOKEN not set — Telegram polling disabled')
@@ -512,8 +518,13 @@ export async function startTelegramPolling(): Promise<void> {
 	}
 
 	logger.info('[telegram] Starting polling...', { botUsername: BOT_USERNAME })
+	if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+	stopped = false
 
-	// Test bot connectivity
+	// Test bot connectivity. A network hiccup right after a deploy ("fetch
+	// failed") used to leave the bot deaf until the next deploy: no linking,
+	// no commands. Now it tries again, less and less often, until it gets
+	// through; only a token Telegram rejects stops it.
 	try {
 		const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getMe`)
 		const data = await response.json()
@@ -524,9 +535,13 @@ export async function startTelegramPolling(): Promise<void> {
 		const botInfo = data.result as TelegramUser
 		logger.info('[telegram] Bot connected', { botId: botInfo.id, botUsername: botInfo.username })
 	} catch (err) {
-		logger.error('[telegram] Failed to connect to bot', { error: err instanceof Error ? err.message : String(err) })
+		const delay = CONNECT_RETRY_MS[Math.min(connectAttempt, CONNECT_RETRY_MS.length - 1)]
+		connectAttempt++
+		logger.warn(`[telegram] Could not reach Telegram, retrying in ${delay / 1000}s`, { attempt: connectAttempt, error: err instanceof Error ? err.message : String(err) })
+		if (!stopped) retryTimer = setTimeout(() => { retryTimer = null; void startTelegramPolling() }, delay)
 		return
 	}
+	connectAttempt = 0
 
 	void describeBot()
 
@@ -565,6 +580,8 @@ async function pollLoop(): Promise<void> {
 }
 
 export function stopTelegramPolling(): void {
+	stopped = true
+	if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
 	if (!pollingActive) return
 	pollingActive = false
 	// Release the long-poll connection immediately, otherwise a redeploy spends
