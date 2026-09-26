@@ -32,6 +32,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import * as cron from 'node-cron'
 import { connectDB } from './config/db'
+import { corsOptions } from './config/cors'
 import logger from './config/logger'
 import { requestLogger } from './middleware/requestLogger'
 import { getSentryMiddleware } from './config/sentry'
@@ -114,15 +115,7 @@ io.use(async (socket, next) => {
 // Security headers. The API serves JSON only, so the defaults fit; the
 // frontend's headers are set by its host (see front/vercel.json).
 app.use(helmet())
-app.use(
-	cors({
-		origin: isDev ? true : allowedOrigins,
-		credentials: true,
-		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-		maxAge: 86400,
-	}),
-)
+app.use(cors(corsOptions(isDev ? true : allowedOrigins)))
 app.use(express.json())
 app.use(requestLogger)
 

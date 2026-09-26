@@ -65,6 +65,8 @@ export const RecordingControls = (p: RecordingControlsProps) => {
 		else if (s.status === 'error') {
 			label = t('room.mod.rec_error'); tone = 'err'
 			detail = s.message === 'unsupported' ? t('room.mod.rec_err_unsupported')
+				// Nothing reached the server: there will be no file, so no link either
+				: (s.message === 'closed_by_server' || s.message === 'network') && s.uploadedBytes === 0 ? t('room.mod.rec_err_nothing')
 				: s.message === 'closed_by_server' || s.message === 'network' ? t('room.mod.rec_err_interrupted')
 				: s.message
 		} else if (p.roomIsRecording) {
@@ -165,9 +167,7 @@ export const RecordingExplainer = ({ onClose, onAccept }: { onClose: () => void;
 	const { t } = useTranslation()
 	const points = t('recording_info.points', { returnObjects: true }) as Array<{ title: string; text: string }>
 	return (
-		<div className='fixed inset-0 z-[120] flex items-center justify-center p-[16px]'
-			style={{ background: 'rgba(7,8,15,0.8)' }}
-			onClick={onClose}>
+		<div className='room-modal-overlay z-[120]' onClick={onClose}>
 			<div className='w-full max-w-[460px] max-h-[88dvh] overflow-y-auto rounded-[18px] p-[22px] flex flex-col gap-[14px]'
 				style={{ background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.18)' }}
 				onClick={e => e.stopPropagation()}>
