@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events'
 import logger from '../config/logger'
 import { consumeTelegramLinkToken } from './tokenService'
 import { User } from '../models/User'
@@ -27,6 +28,9 @@ const POLL_TIMEOUT_S = 30
 const CONFLICT_BACKOFF_MS = 5000
 const ERROR_BACKOFF_MS = 3000
 const CONFLICT_LOG_INTERVAL_MS = 60000
+
+/** 'linked' { userId }: a member has just connected their Telegram */
+export const telegramEvents = new EventEmitter()
 
 let lastUpdateId = 0
 let pollingActive = false
@@ -83,7 +87,7 @@ async function getUpdates(): Promise<PollResult> {
 	}
 }
 
-interface TelegramResult {
+export interface TelegramResult {
 	ok: boolean
 	/** The person blocked the bot or deleted their account: nothing will ever reach them */
 	unreachable: boolean
@@ -125,6 +129,17 @@ async function sendMessage(chatId: number, text: string): Promise<boolean> {
 
 type Lang = 'uk' | 'en'
 
+/**
+ * One message (HTML) to one chat. For the rest of the server: the
+ * administrator's notices, reminders. Says whether the chat is gone for good.
+ */
+export async function sendTelegramHtml(telegramChatId: string, text: string): Promise<TelegramResult> {
+	if (!BOT_TOKEN) return { ok: false, unreachable: false }
+	const chatId = parseInt(String(telegramChatId), 10)
+	if (!Number.isFinite(chatId)) return { ok: false, unreachable: false }
+	return callTelegram('sendMessage', { chat_id: chatId, text: text.slice(0, 4096), parse_mode: 'HTML', disable_web_page_preview: true })
+}
+
 function langOf(value: string | undefined | null): Lang {
 	return value === 'en' ? 'en' : value === 'uk' ? 'uk' : ((process.env.DEFAULT_LANGUAGE === 'en' ? 'en' : 'uk'))
 }
@@ -145,6 +160,7 @@ const messages = {
 			`Я не веду розмов — я надсилаю новини:\n` +
 			`🎲 анонси нових ігор на платформі;\n` +
 			`🔑 коди для входу в гру — щойно ви зареєструєтесь гравцем чи глядачем;\n` +
+			`⏰ нагадування за 10 хвилин до початку гри;\n` +
 			`📝 ведучим — нотатки після гри та посилання на запис;\n` +
 			`🔐 посилання для відновлення пароля.\n\n` +
 			`Щоб усе це приходило сюди, підключіть Telegram у своєму акаунті на сайті` +
@@ -156,6 +172,7 @@ const messages = {
 			`Тепер сюди приходитимуть:\n` +
 			`🎲 анонси нових ігор;\n` +
 			`🔑 коди входу в ігри, на які ви зареєструвались (гравцем чи глядачем);\n` +
+			`⏰ нагадування за 10 хвилин до початку гри;\n` +
 			`📝 якщо ви ведете гру — нотатки й посилання на запис;\n` +
 			`🔐 посилання для відновлення пароля.\n\n` +
 			`Відповідати мені не потрібно — я лише надсилаю новини. Не хочете анонсів? /stop`,
@@ -172,6 +189,7 @@ const messages = {
 			`I don’t chat — I send news:\n` +
 			`🎲 announcements of new games on the platform;\n` +
 			`🔑 entry codes — as soon as you register as a player or a spectator;\n` +
+			`⏰ a reminder 10 minutes before the game starts;\n` +
 			`📝 for gamemasters — notes after a game and recording links;\n` +
 			`🔐 password reset links.\n\n` +
 			`To get all this here, connect Telegram in your account on the website` +
@@ -183,6 +201,7 @@ const messages = {
 			`From now on you will get here:\n` +
 			`🎲 announcements of new games;\n` +
 			`🔑 entry codes for games you register for (as a player or spectator);\n` +
+			`⏰ a reminder 10 minutes before the game starts;\n` +
 			`📝 if you run a game — notes and the recording link;\n` +
 			`🔐 password reset links.\n\n` +
 			`No need to reply — I only send news. Don’t want announcements? /stop`,
@@ -212,6 +231,7 @@ async function handleStartCommand(userId: string, chatId: number, firstName: str
 		const lang = langOf(user.language)
 		await sendMessage(chatId, messages[lang].linked(firstName))
 		logger.info('[telegram] User linked successfully', { userId, language: lang })
+		telegramEvents.emit('linked', { userId })
 	} catch (err) {
 		const lang = langOf(null)
 		logger.error('[telegram] handleStartCommand error', { userId, error: err instanceof Error ? err.message : String(err) })
@@ -373,6 +393,7 @@ async function sendAnnouncements(game: GameAnnouncement & { creatorId: string })
 	const recipients = await User.find({
 		telegramChatId: { $exists: true, $nin: [null, ''] },
 		newsOptOut: { $ne: true },
+		blockedAt: null,
 		_id: { $ne: game.creatorId },
 	}).select('telegramChatId language').lean()
 
@@ -401,6 +422,75 @@ async function sendAnnouncements(game: GameAnnouncement & { creatorId: string })
 	}
 	logger.info('[telegram] new game announced', { recipients: recipients.length, sent, unlinked })
 }
+
+/**
+ * A message from the club to everyone who linked Telegram — /stop included:
+ * /stop turns off new-game announcements, not the club's own news. Queued
+ * behind announcements, paced the same way. Resolves with the counts.
+ */
+export function broadcastToAll(text: string): Promise<{ recipients: number; sent: number; unlinked: number }> {
+	const run = announcing.then(() => sendBroadcast(text))
+	announcing = run.then(() => undefined, err => {
+		logger.error('[telegram] broadcast failed', { error: err instanceof Error ? err.message : String(err) })
+	})
+	return run
+}
+
+export function broadcastText(text: string, lang: Lang): string {
+	const header = lang === 'uk' ? '📢 <b>Новини клубу «Ігри Сенсів»</b>' : '📢 <b>Games of Senses club news</b>'
+	return `${header}\n\n${escapeHtml(text.trim())}`
+}
+
+async function sendBroadcast(text: string): Promise<{ recipients: number; sent: number; unlinked: number }> {
+	if (!BOT_TOKEN) return { recipients: 0, sent: 0, unlinked: 0 }
+	const recipients = await User.find({
+		telegramChatId: { $exists: true, $nin: [null, ''] },
+		blockedAt: null,
+	}).select('telegramChatId language').lean()
+
+	let sent = 0
+	let unlinked = 0
+	for (const r of recipients) {
+		const res = await sendTelegramHtml(String(r.telegramChatId), broadcastText(text, langOf(r.language)))
+		if (res.ok) sent++
+		else if (res.unreachable) {
+			await User.updateOne({ _id: r._id }, { $unset: { telegramChatId: 1 } })
+			unlinked++
+		}
+		await sleep(60)
+	}
+	logger.info('[telegram] broadcast sent', { recipients: recipients.length, sent, unlinked })
+	return { recipients: recipients.length, sent, unlinked }
+}
+
+/** "Your game starts in 10 minutes", with the way in. */
+export function reminderText(opts: {
+	title: string
+	minutes: number
+	role: 'player' | 'spectator' | 'gamemaster'
+	code: string
+}, lang: Lang): string {
+	const link = siteUrl() ? `${siteUrl()}/room/${opts.code}` : ''
+	const m = Math.max(1, opts.minutes)
+	if (lang === 'en') {
+		return [
+			`⏰ <b>In ${m} min the game starts</b>`,
+			`<b>${escapeHtml(opts.title)}</b>`,
+			'',
+			opts.role === 'gamemaster' ? '🎭 You are the gamemaster.' : opts.role === 'spectator' ? `👁 Spectator code: <code>${opts.code}</code>` : `🎮 Game code: <code>${opts.code}</code>`,
+			link ? `Enter: ${link}` : '',
+		].filter(Boolean).join('\n')
+	}
+	return [
+		`⏰ <b>Через ${m} хв починається гра</b>`,
+		`<b>${escapeHtml(opts.title)}</b>`,
+		'',
+		opts.role === 'gamemaster' ? '🎭 Ви — ведучий цієї гри.' : opts.role === 'spectator' ? `👁 Код глядача: <code>${opts.code}</code>` : `🎮 Код гри: <code>${opts.code}</code>`,
+		link ? `Увійти: ${link}` : '',
+	].filter(Boolean).join('\n')
+}
+
+export { langOf }
 
 export async function startTelegramPolling(): Promise<void> {
 	if (!BOT_TOKEN) {
@@ -499,7 +589,7 @@ const gameNotificationMessages = {
 const TELEGRAM_MAX_MESSAGE = 4096
 
 /** Notes are free text typed by the GM, and the bot posts with parse_mode HTML. */
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
 	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 

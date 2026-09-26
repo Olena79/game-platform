@@ -1,6 +1,6 @@
 # Games of Senses — Project Context for Claude
 
-**Last Updated**: 2026-09-25
+**Last Updated**: 2026-09-26
 
 This file describes the code as it is. It once described features that were
 never built, which is part of how real bugs survived to release — keep it
@@ -14,7 +14,8 @@ Telegram link that could never connect anyone, unauthorised recording
 uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
-Tests: backend 11 suites / 128 tests, frontend 3 files / 29 tests.
+The admin panel was added on 2026-09-26 (see "Administrator").
+Tests: backend 14 suites / 140 tests, frontend 3 files / 29 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -31,7 +32,10 @@ Tests: backend 11 suites / 128 tests, frontend 3 files / 29 tests.
   code), GM notes after a game (only when something was written: spaces,
   invisible characters and a player name inserted with nothing after it do
   not count — `cleanNotes`, same rule in the browser and on the server),
-  recording links, reset links. `/stop` turns
+  recording links, reset links, a **reminder 10 minutes before a game** to
+  everyone registered for it and its GM (`services/gameReminders.ts`, cron
+  every minute, `Game.reminderSentAt`, cleared when the time changes), and
+  the administrator's broadcasts. `/stop` turns
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
   always come. A chat that blocked the bot is unlinked. The bot's
   description, short description and command menu are set on every start
@@ -72,6 +76,8 @@ Tests: backend 11 suites / 128 tests, frontend 3 files / 29 tests.
   buttons. Number fields (`NumberField`) can be emptied; confirm buttons stay
   disabled until a number is there. The timer has "Set and start".
 - **Community feed** with live updates.
+- **Administrator** — one person, `/admin` (invisible button at the end of
+  the footer links). See "Administrator" below.
 
 ### Deliberate decisions (do not "fix" these)
 - **The game code is the pass.** The entry code grants a seat with a voice;
@@ -94,7 +100,7 @@ Tests: backend 11 suites / 128 tests, frontend 3 files / 29 tests.
 - **`EMAIL_EXISTS` on registration** tells whether an address has an account.
   Accepted: without an email service there is no "check your inbox" flow.
 - **One backend instance.** Room state, GM notes drafts, the user-check
-  cache and Telegram long-polling live in process memory. A second instance
+  cache, admin sessions and Telegram long-polling live in process memory. A second instance
   splits rooms and steals the bot (`TELEGRAM_POLLING=off` on extra ones).
 
 ### Access to a room (who may speak)
@@ -113,11 +119,46 @@ unless the user is a registered player. Both `gr:join` and
 
 ### Not implemented (do not assume otherwise)
 - No email of any kind.
-- No scheduled game reminders (`scheduledAt` is display-only).
 - No notification to the GM when a player registers.
 - No pagination on `GET /api/games` (fine at this size).
 - No Content-Security-Policy yet (other security headers are set: helmet on
   the API, `front/vercel.json` on the site).
+
+### Administrator
+- **Who**: the account whose email is `ADMIN_EMAIL`. Nothing in the database
+  makes anyone an administrator. Everything under `/api/admin` answers 404 to
+  any other account.
+- **Getting in** (`services/adminAuth.ts`, `routes/admin.ts`): signed-in
+  account → passphrase (server keeps only `ADMIN_PASSPHRASE_HASH`,
+  `pbkdf2$600000$<salt b64>$<hash b64>`, SHA-256, NFC + trimmed) → 6-digit
+  code sent to the administrator's Telegram (5 min, 3 tries) → a session
+  token (1 h, in process memory; a restart signs out) sent as `X-Admin-Token`
+  with the normal bearer token. 5 failures lock sign-in for an hour. Every
+  failure and every entry is reported to the administrator's Telegram and
+  written to `AdminLog`. The front keeps the session in `sessionStorage`
+  (`AdminContext`).
+- **Making the hash**: in a desktop browser, on any https page, open the
+  console and run (Chrome may ask to type "allow pasting" first):
+  ```js
+  (async () => { const p = prompt('Парольна фраза'); if (!p) return; const s = crypto.getRandomValues(new Uint8Array(16)); const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(p.normalize('NFC').trim()), 'PBKDF2', false, ['deriveBits']); const h = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: s, iterations: 600000 }, k, 256); const b = u => btoa(String.fromCharCode(...new Uint8Array(u))); console.log('pbkdf2$600000$' + b(s) + '$' + b(h)) })()
+  ```
+  `tests/adminAuth.test.ts` checks the server accepts exactly this.
+- **Can**: block / unblock (`User.blockedAt`: token version bumped, refresh
+  tokens revoked, sockets closed, removed from LiveKit; login, Google and
+  refresh answer `ACCOUNT_BLOCKED`), stop someone writing in the community
+  (`User.communityMuted` → `COMMUNITY_MUTED`), delete an account
+  (`deleteAccount`), delete a game (`services/gameDeletion.ts`, shared with
+  the GM's delete), see and end live rooms (`listRooms`, `endRoomAsAdmin`),
+  list / delete recordings (`deleteRecording`), delete any post or comment
+  (also from the Community page while in admin mode), message everyone with
+  Telegram (`broadcastToAll`, ignores `/stop`, skips blocked), stats, journal.
+  The administrator's own account cannot be blocked or deleted from there.
+- **Hears about** (`services/adminNotify.ts`, to the administrator's
+  Telegram): a new account (with whether Telegram is linked), a member
+  linking Telegram, a new game (who, title, date), a recording starting and
+  ending (with the link), sign-in attempts. Their own games and recordings
+  are not reported. GMs are told in the recording notes that the club's
+  administrator is notified.
 
 ## 🏗️ Stack
 
@@ -142,8 +183,8 @@ back/src/
     rateLimitMiddleware.ts  per-section limits; login keyed by email+IP; forgot-password per email
     validationMiddleware.ts zod body/params/query
     requestLogger.ts      morgan → winston
-  models/                 User, Game, GameLike, GameMessage, Post, Comment, Recording, RefreshToken
-  routes/                 auth, account, telegram, games, livekit, recordings, upload, community
+  models/                 User, Game, GameLike, GameMessage, Post, Comment, Recording, RefreshToken, AdminLog
+  routes/                 auth, account, telegram, games, livekit, recordings, upload, community, admin
   services/
     tokenService.ts       access/refresh tokens, reset tokens (bound to the password hash), Telegram link tokens
     roomAccess.ts         resolveSeat() — who may sit where
@@ -153,6 +194,10 @@ back/src/
     telegramBot.ts        long-polling bot: commands, all outgoing messages, new-game announcements
     notesDelivery.ts      GM notes → Telegram
     accountDeletion.ts    export + delete
+    adminAuth.ts          admin passphrase / Telegram code / sessions / lockout
+    adminNotify.ts        notices to the administrator's Telegram
+    gameReminders.ts      "starts in 10 minutes"
+    gameDeletion.ts       deleting a game (GM or administrator)
   socket/
     gameRoom.ts           the room (gr:*), in-memory state, close-out when the GM ends or leaves
     community.ts          com:join / com:leave
@@ -163,10 +208,11 @@ back/tests/               jest (no DB needed; tests/setupEnv.ts sets env)
 front/src/
   App.tsx                 routes (/room/:code is full-screen)
   context/AuthContext.tsx tokens, refresh scheduled from the token's real expiry, cross-tab sync
+  context/AdminContext.tsx the admin session (sessionStorage) and adminFetch
   hooks/useGameRoom.ts    socket + LiveKit tokens for the room
   hooks/useTelegramLink.ts bot deep link
   recording/RoomRecorder.ts the in-browser recorder (canvas grid + audio mix → parts)
-  components/pages/       Home, Auth, ResetPassword, Account, Game, OurGames, CreateGame, GameRoom, Community, legal
+  components/pages/       Home, Auth, ResetPassword, Account, Game, OurGames, CreateGame, GameRoom, Community, Admin, legal
   components/gameroom/    GridView, SpeakerView, ChatPanel, ModPanel, RecordingControls (+ explainer), modals, overlays
   components/RecordingInfoCard.tsx  recording notes for GMs on the create-game page
   translation/{ua,en}.json
@@ -203,7 +249,8 @@ Backend env (see `back/.env.example`): `MONGO_URI`, `JWT_SECRET`,
 `RECORDING_MODE` (`browser` default | `egress`), `R2_ENDPOINT` (local S3
 emulator only),
 `CLOUDINARY_*`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`,
-`TELEGRAM_POLLING`, `SENTRY_DSN_BACKEND`, `DEFAULT_LANGUAGE`.
+`TELEGRAM_POLLING`, `SENTRY_DSN_BACKEND`, `DEFAULT_LANGUAGE`,
+`ADMIN_EMAIL`, `ADMIN_PASSPHRASE_HASH` (both empty → no admin panel).
 
 Frontend env: `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`,
 `VITE_TELEGRAM_BOT_USERNAME`, `VITE_SENTRY_DSN_FRONTEND`.
@@ -225,5 +272,6 @@ is one developer on this project. Lockfiles must stay in sync (`npm ci` is
 what deploys run). Commits use a scope prefix (`fix(room):`, `feat(recording):`). Not covered by tests and
 checked by hand against a running server: recording on real devices
 (especially iPhone Safari), the Egress chain, notes delivery, Telegram
-linking, the session close-out. The recorder and the R2 calls were exercised
+linking, the session close-out, the admin panel against real data (its
+screens were checked in headless Chromium with a mocked API, 2026-09-26). The recorder and the R2 calls were exercised
 in headless Chromium and against an S3 emulator when written (2026-09-25).

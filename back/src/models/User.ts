@@ -15,6 +15,12 @@ export interface IUser extends Document {
 	/** sha256 of the pending Telegram deep-link token, and when it lapses */
 	telegramLinkTokenHash?: string
 	telegramLinkExpiresAt?: Date
+	/** Blocked by the administrator: cannot sign in, every session is refused */
+	blockedAt?: Date | null
+	/** Why — seen only in the admin panel */
+	blockReason?: string
+	/** May play, but may not write in the community */
+	communityMuted?: boolean
 	createdAt: Date
 	updatedAt: Date
 }
@@ -36,6 +42,9 @@ const UserSchema = new Schema<IUser>(
 		newsOptOut:      { type: Boolean, default: false },
 		telegramLinkTokenHash: { type: String },
 		telegramLinkExpiresAt: { type: Date },
+		blockedAt:       { type: Date, default: null },
+		blockReason:     { type: String, default: '', maxlength: 500 },
+		communityMuted:  { type: Boolean, default: false },
 	},
 	{ timestamps: true }
 )

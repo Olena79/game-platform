@@ -5,8 +5,8 @@ JSON unless stated otherwise. Authenticated routes take
 `Authorization: Bearer <accessToken>`.
 
 Access tokens live 1 hour, refresh tokens 30 days (single use — each refresh
-returns a new pair). An access token is refused once the account is deleted or
-its password is reset.
+returns a new pair). An access token is refused once the account is deleted,
+blocked, or its password is reset.
 
 Errors look like `{ "message": "..." }`; validation errors add
 `{ "error": "Validation error", "details": [{ "field", "message" }] }`.
@@ -18,7 +18,7 @@ Errors look like `{ "message": "..." }`; validation errors add
 | Method | Path | Auth | Body | Returns |
 |---|---|---|---|---|
 | POST | `/register` | — | `{ email, password (≥8), name?, surname? }` | `201 { accessToken, refreshToken, user }` · `400 EMAIL_EXISTS` |
-| POST | `/login` | — | `{ email, password }` | `{ accessToken, refreshToken, user }` · `400 INVALID_CREDENTIALS` |
+| POST | `/login` | — | `{ email, password }` | `{ accessToken, refreshToken, user }` · `400 INVALID_CREDENTIALS` · `403 ACCOUNT_BLOCKED` |
 | POST | `/google` | — | `{ token }` (Google ID token) | `{ accessToken, refreshToken, user }` — the Google email must be verified |
 | GET | `/me` | JWT | — | `user` |
 | POST | `/refresh` | — | `{ refreshToken }` | `{ accessToken, refreshToken }` · `401` |
@@ -54,6 +54,8 @@ The bot answers `/start` (welcome, or confirmation when the link token is
 valid), `/stop` (no new-game announcements), `/news` (announcements back on)
 and `/help`; anything else gets "I only send news". Creating a game
 (`POST /api/games`) announces it to every linked member except its creator.
+Ten minutes before a game's `scheduledAt`, everyone registered for it and
+its GM get a reminder with their code and the room link.
 
 ## Games — `/api/games`
 
@@ -107,6 +109,34 @@ acknowledged. The final part closes the file and sends the Telegram link.
 After 3 minutes without a part or heartbeat the server closes the file from
 the parts it has (marked interrupted). Limit: 8 GB per recording.
 
+## Admin — `/api/admin`
+
+Only for the account named by `ADMIN_EMAIL`; any other account gets `404`.
+After sign-in every request carries `Authorization: Bearer <accessToken>`
+**and** `X-Admin-Token: <admin session token>`; without a live session:
+`401 ADMIN_SESSION_REQUIRED`.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/login` | `{ passphrase }` | `{ ok }` (code sent to Telegram) · `401 WRONG_PASSPHRASE` · `409 NO_TELEGRAM` · `429 LOCKED { until }` |
+| POST | `/verify` | `{ code }` (6 digits) | `{ token, expiresAt }` (1 h) · `401 WRONG_CODE / CODE_EXPIRED` · `429` |
+| GET | `/session` | — | `{ ok, expiresAt }` |
+| POST | `/logout` | — | `{ ok }` |
+| GET | `/stats` | — | counts: users, telegram, blocked, muted, newUsers, games, upcoming, posts, comments, recordings, recordingBytes, openRooms, activeRooms |
+| GET | `/users?q=&filter=blocked\|muted\|no-telegram` | — | `[user]` (≤300, newest first) with flags and game counts |
+| POST | `/users/:id/block` | `{ reason? }` | `{ ok }` — signs them out everywhere, closes their sockets |
+| POST | `/users/:id/unblock`, `/users/:id/mute`, `/users/:id/unmute` | — | `{ ok }` |
+| DELETE | `/users/:id` | — | `{ ok, ...deletion summary }` |
+| GET | `/games` · DELETE `/games/:id` | — | list · `{ ok }` |
+| GET | `/rooms` · POST `/rooms/:gameId/close` | — | rooms in memory · `{ ok }` (ends the session for everyone) |
+| GET | `/recordings` · DELETE `/recordings/:id` | — | list with links · `{ ok }` |
+| DELETE | `/posts/:id`, `/comments/:id` | — | `{ ok }` (live `com:*-deleted` events) |
+| POST | `/broadcast` | `{ text (≤3500) }` | `{ ok, recipients }` — sent in the background; the summary goes to the administrator's Telegram |
+| GET | `/log` | — | last 300 journal entries |
+
+The administrator's own account cannot be blocked, muted or deleted here.
+Five failed sign-in steps lock `/login` and `/verify` for an hour.
+
 ## Upload — `/api/upload`
 
 `POST /` (JWT, `multipart/form-data`, field `file`, images ≤ 10 MB) → `{ url }` (Cloudinary).
@@ -116,7 +146,7 @@ the parts it has (marked interrupted). Limit: 8 GB per recording.
 | Method | Path | Auth | Returns |
 |---|---|---|---|
 | GET | `/posts?sort=new\|popular&skip&limit(≤50)` | optional | `{ posts, total, hasMore }` |
-| POST | `/posts` | JWT | `{ text (≤1000), topic? }` → post |
+| POST | `/posts` | JWT | `{ text (≤1000), topic? }` → post · `403 COMMUNITY_MUTED` |
 | PUT | `/posts/:id` | JWT (author) | `{ text?, topic? }` → post |
 | DELETE | `/posts/:id` | JWT (author) | `{ ok }` |
 | POST / DELETE | `/posts/:id/like` | JWT | `{ postId, likesCount, isLiked }` |

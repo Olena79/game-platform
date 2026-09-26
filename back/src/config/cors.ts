@@ -7,7 +7,7 @@ import type { CorsOptions } from 'cors'
  * server. That is how recordings died after a few minutes of retrying:
  * the recorder sent `X-Final` and this list did not allow it.
  */
-export const ALLOWED_REQUEST_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Final']
+export const ALLOWED_REQUEST_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Final', 'X-Admin-Token']
 
 export function corsOptions(origin: CorsOptions['origin']): CorsOptions {
 	return {

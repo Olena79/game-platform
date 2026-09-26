@@ -93,3 +93,12 @@ export const recordingsLimiter = rateLimit({
 	legacyHeaders: false,
 	message: { message: 'Too many recording requests, please try again in 15 minutes.' },
 })
+
+// ─ Admin panel (one person; the sign-in has its own lockout on top)
+export const adminLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 300,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { message: 'Too many requests, please try again in 15 minutes.' },
+})

@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client'
 import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight, UserX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
+import { useAdmin } from '../../context/AdminContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
 	PostData, CommentData,
@@ -96,6 +97,8 @@ const CommentItem = ({
 	const { isDark } = useTheme()
 	const { t } = useTranslation()
 	const isOwn      = currentUserId === comment.authorId
+	// The administrator, in admin mode, may delete anyone's comment
+	const { active: moderating } = useAdmin()
 	const isEditing  = editingId === comment._id
 	const isReplying = replyingToId === comment._id
 	const authorGone = Boolean(comment.authorDeleted)
@@ -177,6 +180,11 @@ const CommentItem = ({
 									</button>
 								)}
 
+								{!isOwn && moderating && (
+									<button onClick={() => onDelete(comment._id)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(255,95,160,0.88)' : 'rgba(180,50,50,0.9)' }}>
+										<Trash2 size={12} strokeWidth={2} />{t('community.delete_short')}
+									</button>
+								)}
 								{isOwn && (
 									<>
 										<button onClick={() => onStartEdit(comment._id, comment.text)} className='flex items-center gap-[4px] text-[13px] cursor-pointer transition-all hover:opacity-90' style={{ color: isDark ? 'rgba(68,170,255,0.88)' : 'var(--accent)' }}>
@@ -267,7 +275,7 @@ const CommentSection = ({
 	const handleSubmit = async () => {
 		if (!newText.trim() || submitting) return
 		setSubmitting(true)
-		try { await onCommentCreate(newText.trim()); setNewText('') } finally { setSubmitting(false) }
+		try { await onCommentCreate(newText.trim()); setNewText('') } catch { /* explained by the page */ } finally { setSubmitting(false) }
 	}
 
 	return (
@@ -322,11 +330,11 @@ const CommentSection = ({
 								replyingToId={replyingToId} replyText={replyText}
 								onLike={onCommentLike} onDelete={onCommentDelete}
 								onStartEdit={(id, text) => { setEditingId(id); setEditingText(text) }}
-								onSaveEdit={async (id) => { await onCommentUpdate(id, editingText.trim()); setEditingId(null); setEditingText('') }}
+								onSaveEdit={async (id) => { try { await onCommentUpdate(id, editingText.trim()); setEditingId(null); setEditingText('') } catch { /* explained by the page */ } }}
 								onCancelEdit={() => { setEditingId(null); setEditingText('') }}
 								onEditTextChange={setEditingText}
 								onStartReply={(id) => { setReplyingToId(id); setReplyText('') }}
-								onSaveReply={async (parentId) => { if (replyText.trim()) { await onCommentCreate(replyText.trim(), parentId); setReplyingToId(null); setReplyText('') } }}
+								onSaveReply={async (parentId) => { if (replyText.trim()) { try { await onCommentCreate(replyText.trim(), parentId); setReplyingToId(null); setReplyText('') } catch { /* explained by the page */ } } }}
 								onCancelReply={() => { setReplyingToId(null); setReplyText('') }}
 								onReplyTextChange={setReplyText}
 							/>
@@ -366,6 +374,8 @@ const PostCard = ({
 	const { isDark } = useTheme()
 	const { t } = useTranslation()
 	const isOwn    = currentUserId === post.authorId
+	// The administrator, in admin mode, may delete anyone's post
+	const { active: moderating } = useAdmin()
 	const authorGone = Boolean(post.authorDeleted)
 	const fullName = authorGone
 		? t('community.deleted_author')
@@ -411,9 +421,9 @@ const PostCard = ({
 					</div>
 				</div>
 
-				{isOwn && (
+				{(isOwn || moderating) && (
 					<div className='flex gap-[6px] flex-shrink-0'>
-						<button
+						{isOwn && <button
 							onClick={onEdit}
 							className='flex items-center gap-[5px] px-[10px] py-[5px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-125'
 							style={isDark
@@ -423,7 +433,7 @@ const PostCard = ({
 						>
 							<Pencil size={12} strokeWidth={2} />
 							<span className='hidden sm:inline'>{t('community.edit_short')}</span>
-						</button>
+						</button>}
 						<button
 							onClick={onDelete}
 							className='flex items-center gap-[5px] px-[10px] py-[5px] rounded-[8px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-125'
@@ -511,7 +521,10 @@ const PostModal = ({
 		if (!text.trim()) { setError(t('community.text_required')); return }
 		setLoading(true); setError('')
 		try { await onSubmit(topic.trim(), text.trim()); onClose() }
-		catch (err) { setError(err instanceof Error ? err.message : t('community.error')) }
+		catch (err) {
+			const msg = err instanceof Error ? err.message : ''
+			setError(msg === 'COMMUNITY_MUTED' ? t('community.muted') : msg || t('community.error'))
+		}
 		finally { setLoading(false) }
 	}
 
@@ -651,6 +664,7 @@ const OrbButton = ({ onClick, disabled }: { onClick: () => void; disabled?: bool
 
 export const CommunityPage = () => {
 	const { user, token, isLoggedIn } = useAuth()
+	const { active: adminActive, adminFetch } = useAdmin()
 	const { isDark } = useTheme()
 	const { t } = useTranslation()
 
@@ -777,29 +791,38 @@ export const CommunityPage = () => {
 
 	const handleDeletePost = useCallback(async (postId: string) => {
 		if (!token) return
+		const own = posts.find(p => p._id === postId)?.authorId === user?.id
 		setPosts(prev => prev.filter(p => p._id !== postId)); setDeleteConfirm(null)
-		try { await deletePost(token, postId) } catch { /* ignore */ }
-	}, [token])
+		try {
+			if (own || !adminActive) await deletePost(token, postId)
+			else await adminFetch(`/posts/${postId}`, { method: 'DELETE' })
+		} catch { /* ignore */ }
+	}, [token, posts, user?.id, adminActive, adminFetch])
+
+	const explainRefusal = useCallback((err: unknown) => {
+		if (err instanceof Error && err.message === 'COMMUNITY_MUTED') window.alert(t('community.muted'))
+		throw err
+	}, [t])
 
 	const handleCommentCreate = useCallback(async (postId: string, text: string, parentId?: string) => {
 		if (!token) return
-		const comment = await createComment(token, postId, { text, parentId })
+		const comment = await createComment(token, postId, { text, parentId }).catch(explainRefusal)
 		setCommentsMap(prev => {
 			if (!prev[postId] || prev[postId].some(c => c._id === comment._id)) return prev
 			return { ...prev, [postId]: [...prev[postId], comment] }
 		})
 		setPosts(prev => prev.map(p => p._id === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p))
-	}, [token])
+	}, [token, explainRefusal])
 
 	const handleCommentUpdate = useCallback(async (commentId: string, text: string) => {
 		if (!token) return
-		const updated = await updateComment(token, commentId, text)
+		const updated = await updateComment(token, commentId, text).catch(explainRefusal)
 		setCommentsMap(prev => {
 			const pid = updated.postId
 			if (!prev[pid]) return prev
 			return { ...prev, [pid]: prev[pid].map(c => c._id === commentId ? updated : c) }
 		})
-	}, [token])
+	}, [token, explainRefusal])
 
 	const handleCommentDelete = useCallback(async (commentId: string) => {
 		if (!token) return
@@ -808,9 +831,13 @@ export const CommunityPage = () => {
 		if (!pid) return
 		const replyCount = commentsMap[pid]?.filter(c => c.parentId === commentId).length || 0
 		setCommentsMap(prev => ({ ...prev, [pid]: (prev[pid] || []).filter(c => c._id !== commentId && c.parentId !== commentId) }))
+		const own = commentsMap[pid]?.find(c => c._id === commentId)?.authorId === user?.id
 		setPosts(prev => prev.map(p => p._id === pid ? { ...p, commentsCount: Math.max(0, p.commentsCount - 1 - replyCount) } : p))
-		try { await deleteComment(token, commentId) } catch { /* ignore */ }
-	}, [token, commentsMap])
+		try {
+			if (own || !adminActive) await deleteComment(token, commentId)
+			else await adminFetch(`/comments/${commentId}`, { method: 'DELETE' })
+		} catch { /* ignore */ }
+	}, [token, commentsMap, user?.id, adminActive, adminFetch])
 
 	const handleCommentLike = useCallback(async (commentId: string, isLiked: boolean) => {
 		if (!token) return

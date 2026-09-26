@@ -19,6 +19,7 @@ const CreateGamePage = lazy(() => import('./components/pages/CreateGamePage').th
 const CommunityPage = lazy(() => import('./components/pages/CommunityPage').then(m => ({ default: m.CommunityPage })))
 const GameRoomPage = lazy(() => import('./components/pages/GameRoomPage').then(m => ({ default: m.GameRoomPage })))
 const PrivacyPolicyPage = lazy(() => import('./components/pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })))
+const AdminPage = lazy(() => import('./components/pages/AdminPage').then(m => ({ default: m.AdminPage })))
 const TermsOfServicePage = lazy(() => import('./components/pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })))
 
 const Stars = () => {
@@ -88,6 +89,7 @@ const SiteLayout = () => (
 				<Route path='/community' element={<CommunityPage />} />
 				<Route path='/privacy-policy' element={<PrivacyPolicyPage />} />
 				<Route path='/terms-of-service' element={<TermsOfServicePage />} />
+				<Route path='/admin' element={<RequireAuth><AdminPage /></RequireAuth>} />
 				{/* <Route path='/about' element={<AboutPage />} /> */}
 			</Routes>
 			</Suspense>

@@ -42,7 +42,7 @@ import {
 import logger from '../config/logger'
 import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
 import { resolveSeat } from '../services/roomAccess'
-import { muteMicrophones, roomNameFor } from '../services/livekit'
+import { muteMicrophones, roomNameFor, roomService } from '../services/livekit'
 import {
 	activeRecording,
 	recordingEvents,
@@ -193,6 +193,83 @@ export async function closeDeletedGame(gameCode: string, gameId: string): Promis
 		ioRef.in(`gr-${gameCode}`).socketsLeave(`gr-${gameCode}`)
 	}
 	releaseRoom(gameCode)
+}
+
+/**
+ * The game is over for everyone in the room — the GM pressed "end", or the
+ * administrator closed the room.
+ */
+function endSession(io: Server, state: GameRoomState): void {
+	clearBreakoutTimers(state.gameCode, state)
+	state.status = 'ended'
+	state.messages = []
+	pushState(io, state)
+	emit(io, state.gameCode, 'gr:end-anim', {})
+	// Stops the recording, delivers whatever notes the server holds and
+	// schedules the room's release. The room also sends the notes over
+	// HTTP so the GM sees the result; the draft is cleared on success,
+	// so only one of the two ever delivers.
+	void closeOutSession(state, 'ended')
+	GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
+}
+
+// ── For the administrator ───────────────────────────────────────────────────
+
+export interface RoomSummary {
+	gameId: string
+	title: string
+	status: GameRoomState['status']
+	players: number
+	spectators: number
+	gamemasterOnline: boolean
+	isRecording: boolean
+	breakouts: number
+}
+
+/** The rooms open in memory right now. */
+export function listRooms(): RoomSummary[] {
+	return [...rooms.values()].map(s => ({
+		gameId: s.gameId,
+		title: s.title,
+		status: s.status,
+		players: s.players.filter(p => p.connected && !p.isSpectator && !p.isGamemaster).length,
+		spectators: s.players.filter(p => p.connected && p.isSpectator).length,
+		gamemasterOnline: s.players.some(p => p.isGamemaster && p.connected),
+		isRecording: s.isRecording,
+		breakouts: s.breakoutRooms.length,
+	}))
+}
+
+/** Ends a room's session as if its gamemaster had. False if no such room is open. */
+export function endRoomAsAdmin(gameId: string): boolean {
+	const state = [...rooms.values()].find(s => s.gameId === gameId)
+	if (!state || !ioRef) return false
+	if (state.status !== 'ended') endSession(ioRef, state)
+	else scheduleRoomRelease(state.gameCode, 0, true)
+	return true
+}
+
+/**
+ * Throws a blocked member out: every socket closed, every media seat
+ * removed. Their tokens are already refused, so they cannot come back.
+ */
+export async function kickUser(userId: string): Promise<void> {
+	if (!ioRef) return
+	const sockets = await ioRef.fetchSockets()
+	for (const sock of sockets) {
+		if (String(sock.data.userId) !== String(userId)) continue
+		sock.emit('gr:error', 'Unauthorized')
+		sock.disconnect(true)
+	}
+	for (const state of rooms.values()) {
+		const p = state.players.find(pl => pl.userId === String(userId))
+		if (!p) continue
+		const roomName = p.breakoutRoomId ? roomNameFor(state.gameId, p.breakoutRoomId) : roomNameFor(state.gameId)
+		await roomService.removeParticipant(roomName, String(userId)).catch(() => undefined)
+		if (roomName !== roomNameFor(state.gameId)) {
+			await roomService.removeParticipant(roomNameFor(state.gameId), String(userId)).catch(() => undefined)
+		}
+	}
 }
 
 /**
@@ -648,18 +725,7 @@ export function registerGameRoom(io: Server) {
 		socket.on('gr:end', validateSocketEvent(grEndSchema, async () => {
 			const state = hereAsGM()
 			if (!state) return
-			clearBreakoutTimers(state.gameCode, state)
-			state.status = 'ended'
-			state.messages = []
-			pushState(io, state)
-			emit(io, state.gameCode, 'gr:end-anim', {})
-			// Stops the recording, delivers whatever notes the server holds and
-			// schedules the room's release. The room also sends the notes over
-			// HTTP so the GM sees the result; the draft is cleared on success,
-			// so only one of the two ever delivers.
-			void closeOutSession(state, 'ended')
-			// Delete all messages for this game from DB
-			GameMessage.deleteMany({ gameId: state.gameId }).catch(() => { /* ignore */ })
+			endSession(io, state)
 		}, socket))
 
 		// ── Coins: player → player ──────────────────────────────────────────

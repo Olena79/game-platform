@@ -43,6 +43,8 @@ import accountRoutes from './routes/account'
 import uploadRoutes from './routes/upload'
 import telegramRoutes from './routes/telegram'
 import recordingRoutes from './routes/recordings'
+import makeAdminRouter from './routes/admin'
+import { sendDueReminders } from './services/gameReminders'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
@@ -58,6 +60,7 @@ import {
 	livekitLimiter,
 	recordingsLimiter,
 	loginLimiter,
+	adminLimiter,
 } from './middleware/rateLimitMiddleware'
 
 const app = express()
@@ -133,6 +136,7 @@ app.use('/api/games',       gamesLimiter, gameRoutes)
 app.use('/api/livekit',     livekitLimiter, livekitRoutes)
 app.use('/api/recordings',  recordingsLimiter, recordingRoutes)
 app.use('/api/community',   communityLimiter, makeCommunityRouter(io))
+app.use('/api/admin',       adminLimiter, makeAdminRouter(io))
 
 registerGameRoom(io)
 registerCommunity(io)
@@ -143,6 +147,8 @@ app.use(getSentryMiddleware()[1])
 // Recordings: closes recordings whose browser went quiet, follows LiveKit
 // egress jobs to the end, and deletes files after 7 days.
 cron.schedule('* * * * *', () => { void syncRecordings() })
+// "Your game starts in 10 minutes" to everyone registered who linked Telegram
+cron.schedule('* * * * *', () => { void sendDueReminders() })
 cron.schedule('0 */6 * * *', () => {
 	cleanupExpiredRecordings().catch(err => logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err }))
 })

@@ -14,6 +14,7 @@ import {
 	verifyPasswordResetToken,
 } from '../services/tokenService'
 import { sendPasswordResetToTelegram } from '../services/telegramBot'
+import { noticeNewUser } from '../services/adminNotify'
 import logger from '../config/logger'
 
 interface GoogleUserInfo {
@@ -79,6 +80,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 		const hashed = await bcrypt.hash(password, 10)
 		const user = await User.create({ email, password: hashed, name, surname, googleId: null, language: ['uk', 'en'].includes(language) ? language : 'uk' })
 		logger.info('[register] User created', { userId: String(user._id), language: user.language })
+		noticeNewUser(user, 'email')
 		const { accessToken, refreshToken } = await issueTokenPair(String(user._id), user.tokenVersion ?? 0)
 
 
@@ -113,6 +115,11 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
 		const valid = await bcrypt.compare(password, user.password)
 		if (!valid) {
 			res.status(400).json({ message: 'INVALID_CREDENTIALS' })
+			return
+		}
+		// Said only after the right password: nobody learns it from a guess
+		if (user.blockedAt) {
+			res.status(403).json({ message: 'ACCOUNT_BLOCKED' })
 			return
 		}
 
@@ -151,6 +158,10 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 				surname: info.family_name || '',
 				password: '',
 			})
+			noticeNewUser(user, 'google')
+		} else if (user.blockedAt) {
+			res.status(403).json({ message: 'ACCOUNT_BLOCKED' })
+			return
 		} else if (!user.googleId) {
 			user.googleId = info.sub
 			if (!user.name) user.name = info.given_name || info.name

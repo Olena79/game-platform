@@ -168,6 +168,10 @@ export async function refreshAccessToken(refreshTokenString: string): Promise<To
 			return null
 		}
 
+		// Blocking revokes refresh tokens too; this covers one issued in between
+		const owner = await User.findById(storedToken.userId).select('blockedAt').lean()
+		if (!owner || owner.blockedAt) return null
+
 		return await issueTokenPair(String(storedToken.userId))
 	} catch (err) {
 		logger.error('Token refresh failed', { error: err })

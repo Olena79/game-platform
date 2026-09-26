@@ -167,6 +167,7 @@ export const AuthPage = () => {
 		switch (msg) {
 			case 'EMAIL_EXISTS':        return t('auth.err_email_exists')
 			case 'INVALID_CREDENTIALS': return t('auth.err_credentials')
+			case 'ACCOUNT_BLOCKED':     return t('auth.ACCOUNT_BLOCKED')
 			default: return msg
 		}
 	}
@@ -456,7 +457,7 @@ export const AuthPage = () => {
 											setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
 										}
 									} catch (err) {
-										const msg = err instanceof Error ? err.message : 'Google auth failed'
+										const msg = err instanceof Error ? resolveServerError(err.message) : 'Google auth failed'
 										setModal({ open: true, title: t('auth.modal_error_title'), message: msg, variant: 'error', success: false })
 									} finally {
 										setLoading(false)

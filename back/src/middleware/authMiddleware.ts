@@ -31,8 +31,9 @@ async function currentTokenVersion(userId: string): Promise<number | null> {
 	const seen = seenUsers.get(userId)
 	if (seen && Date.now() - seen.at < USER_CHECK_TTL_MS) return seen.tv
 
-	const user = await User.findById(userId).select('tokenVersion').lean()
-	if (!user) {
+	const user = await User.findById(userId).select('tokenVersion blockedAt').lean()
+	// A blocked account is treated as gone
+	if (!user || user.blockedAt) {
 		seenUsers.delete(userId)
 		return null
 	}
@@ -44,7 +45,7 @@ async function currentTokenVersion(userId: string): Promise<number | null> {
 /**
  * The user id behind an access token, or null when the token is invalid,
  * expired, not an access token, or belongs to an account that no longer
- * exists or has since reset its password.
+ * exists, is blocked, or has since reset its password.
  *
  * A database hiccup does not sign anybody out mid-game: the signature alone
  * is trusted until the database answers again.

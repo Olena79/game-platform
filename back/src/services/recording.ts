@@ -16,6 +16,7 @@ import {
 	uploadPart,
 } from './storage'
 import { sendRecordingLinkToTelegram } from './telegramBot'
+import { noticeRecordingEnded, noticeRecordingStarted } from './adminNotify'
 
 /**
  * Game recording. Two ways to make one, chosen by RECORDING_MODE:
@@ -154,6 +155,7 @@ export async function startBrowserRecording(opts: {
 	})
 	logger.info('[recording] browser recording started', { gameId: opts.gameId, recordingId: String(recording._id) })
 	announce({ gameId: opts.gameId, status: 'recording' })
+	void noticeRecordingStarted(recording).catch(() => undefined)
 	return recording
 }
 
@@ -251,6 +253,7 @@ export async function startEgressRecording(opts: {
 	})
 	logger.info('[recording] egress started', { gameId: opts.gameId, egressId: info.egressId })
 	announce({ gameId: opts.gameId, status: 'recording' })
+	void noticeRecordingStarted(recording).catch(() => undefined)
 	return recording
 }
 
@@ -367,6 +370,7 @@ async function complete(recording: IRecording, interrupted: boolean): Promise<vo
 	logger.info('[recording] completed', { recordingId: String(recording._id), mode: recording.mode, interrupted })
 	announce({ gameId: recording.gameId, status: 'done' })
 	await notifyGamemaster(recording)
+	void noticeRecordingEnded(recording).catch(() => undefined)
 }
 
 async function fail(recording: IRecording, reason: string): Promise<void> {
@@ -375,6 +379,7 @@ async function fail(recording: IRecording, reason: string): Promise<void> {
 	await recording.save()
 	logger.error('[recording] failed', { recordingId: String(recording._id), reason })
 	announce({ gameId: recording.gameId, status: 'error', detail: reason })
+	void noticeRecordingEnded(recording, reason).catch(() => undefined)
 }
 
 async function notifyGamemaster(recording: IRecording): Promise<void> {
@@ -425,23 +430,31 @@ export async function cleanupExpiredRecordings(): Promise<void> {
 	}
 }
 
+/**
+ * Deletes one recording: stops it if it is still running, removes the file
+ * (or the unfinished upload) and the row. A running browser recording hears
+ * about it on its next part (409) and stops.
+ */
+export async function deleteRecording(rec: IRecording): Promise<void> {
+	if (ACTIVE.includes(rec.status)) {
+		if (rec.mode === 'egress') await egressClient.stopEgress(rec.egressId).catch(() => undefined)
+		if (rec.uploadId) await abortMultipartUpload(rec.fileKey, rec.uploadId).catch(() => undefined)
+		announce({ gameId: rec.gameId, status: 'error', detail: 'Recording deleted' })
+	}
+	if (rec.fileKey) {
+		await deleteObject(rec.fileKey).catch(err => {
+			logger.warn('[recording] could not remove a recording file', {
+				recordingId: String(rec._id),
+				error: err instanceof Error ? err.message : String(err),
+			})
+		})
+	}
+	await rec.deleteOne()
+}
+
 /** Everything a deleted account leaves behind: its recordings, file and row. */
 export async function deleteRecordingsOf(gmId: string): Promise<number> {
 	const recordings = await Recording.find({ gmId })
-	for (const rec of recordings) {
-		if (ACTIVE.includes(rec.status)) {
-			if (rec.mode === 'egress') await egressClient.stopEgress(rec.egressId).catch(() => undefined)
-			if (rec.uploadId) await abortMultipartUpload(rec.fileKey, rec.uploadId).catch(() => undefined)
-		}
-		if (rec.fileKey) {
-			await deleteObject(rec.fileKey).catch(err => {
-				logger.warn('[account] could not remove a recording file', {
-					recordingId: String(rec._id),
-					error: err instanceof Error ? err.message : String(err),
-				})
-			})
-		}
-		await rec.deleteOne()
-	}
+	for (const rec of recordings) await deleteRecording(rec)
 	return recordings.length
 }

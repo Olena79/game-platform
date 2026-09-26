@@ -247,7 +247,8 @@
     "btn_skip": "Later",
     "telegram_connected_label": "Telegram connected",
     "telegram_connect_label": "Connect Telegram",
-    "telegram_open_bot": "Telegram connected — open bot"
+    "telegram_open_bot": "Telegram connected — open bot",
+    "ACCOUNT_BLOCKED": "This account has been blocked by the club administrator."
   },
   "community": {
     "badge": "Community",
@@ -282,7 +283,8 @@
     "deleted_author": "Deleted user",
     "like_login": "Log in to like",
     "text_required": "Please enter text",
-    "error": "Error"
+    "error": "Error",
+    "muted": "The club administrator has stopped you from posting in the community."
   },
   "account": {
     "menu_link": "My account",
@@ -638,11 +640,144 @@
       {
         "title": "The link goes to your Telegram, for 7 days",
         "text": "Anyone you forward it to can open it. After 7 days the file is deleted. Participants see a marker in the room while recording is on."
+      },
+      {
+        "title": "The club administrator knows about it",
+        "text": "When a recording starts, the club administrator gets a Telegram message about it, and later the link to the saved file."
       }
     ],
     "accept": "Got it, start recording",
     "close": "Got it",
     "card_title": "Game recording",
     "card_more": "Details"
+  },
+  "admin": {
+    "title": "Administration",
+    "loading": "Loading…",
+    "load_error": "Could not load. The admin session may have ended — reload the page.",
+    "action_failed": "That did not work. Please try again.",
+    "empty": "Nothing here.",
+    "refresh": "Refresh",
+    "sign_out": "Leave admin",
+    "session_until": "Session until {{time}}",
+    "community_hint": "Community moderation: while you are in admin mode, every post and comment on the Community page has a Delete button.",
+    "login": {
+      "title": "Administrator sign-in",
+      "phrase_label": "Passphrase",
+      "next": "Next",
+      "code_label": "Code from Telegram (sent by the club bot)",
+      "enter": "Enter",
+      "again": "Start over",
+      "not_admin": "Page not found.",
+      "locked": "Too many failed attempts. Sign-in is closed until {{time}}.",
+      "WRONG_PASSPHRASE": "Wrong passphrase.",
+      "WRONG_CODE": "Wrong code.",
+      "CODE_EXPIRED": "The code expired or was used. Start over.",
+      "NO_TELEGRAM": "Your account has no Telegram linked — there is nowhere to send the code.",
+      "CODE_NOT_SENT": "Could not send the code to Telegram. Try again."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "users": "Members",
+      "games": "Games",
+      "rooms": "Live rooms",
+      "recordings": "Recordings",
+      "broadcast": "Message everyone",
+      "log": "Journal"
+    },
+    "stats": {
+      "users": "Members",
+      "new_week": "+{{n}} this week",
+      "telegram": "With Telegram",
+      "of_users": "of {{n}}",
+      "blocked": "Blocked",
+      "muted": "not allowed to post: {{n}}",
+      "games": "Games",
+      "upcoming": "upcoming: {{n}}",
+      "rooms": "Open rooms",
+      "active": "in play: {{n}}",
+      "recordings": "Recordings",
+      "storage": "≈ {{size}} in storage",
+      "posts": "Posts",
+      "comments": "comments: {{n}}",
+      "storage_note": "Cloudflare R2 is free up to 10 GB. Recordings are deleted after 7 days."
+    },
+    "users": {
+      "search": "Search: name, surname or email",
+      "filter_all": "All",
+      "filter_blocked": "Blocked",
+      "filter_muted": "Not allowed to post",
+      "filter_no_telegram": "No Telegram",
+      "badge_admin": "Administrator",
+      "badge_blocked": "Blocked",
+      "badge_muted": "Cannot post",
+      "no_telegram": "no Telegram",
+      "meta": "Since {{date}} · games created: {{created}} · joined: {{joined}}",
+      "blocked_since": "Blocked {{date}}",
+      "block": "Block",
+      "unblock": "Unblock",
+      "mute": "Stop posting",
+      "unmute": "Allow posting",
+      "delete": "Delete account",
+      "block_prompt": "Block {{name}}? They are thrown out of the site and any game at once and cannot sign in again.\n\nReason (only you see it, may be empty):",
+      "unblock_confirm": "Unblock {{name}}?",
+      "mute_confirm": "Stop {{name}} from posting in the community? They can still play.",
+      "delete_confirm": "Delete the account of {{name}} ({{email}}) for good?\n\nTheir games and recordings go, posts stay anonymised. This cannot be undone.\nFor someone breaking the rules, blocking is better: after deletion they can register again with the same email."
+    },
+    "games": {
+      "free": "free",
+      "room_open": "room open",
+      "people": "Players: {{players}} / {{max}} · spectators: {{spectators}}",
+      "delete": "Delete",
+      "delete_confirm": "Delete the game “{{title}}”? An open room closes, a recording stops. This cannot be undone."
+    },
+    "rooms": {
+      "note": "Rooms open on the server right now. Refreshes every 15 seconds.",
+      "none": "No game is running right now.",
+      "status_lobby": "waiting",
+      "status_started": "in play",
+      "status_ended": "ended",
+      "people": "Players: {{players}} · spectators: {{spectators}}",
+      "gm_here": "gamemaster present",
+      "gm_away": "gamemaster away",
+      "breakouts": "breakout rooms: {{n}}",
+      "close": "End the game",
+      "close_confirm": "End “{{title}}” for everyone? The recording stops and the notes go to the gamemaster."
+    },
+    "recordings": {
+      "status_recording": "recording",
+      "status_stopping": "saving",
+      "status_completed": "saved",
+      "status_failed": "failed",
+      "interrupted": "interrupted",
+      "audio": "voice only",
+      "video": "video",
+      "until": "until {{date}}",
+      "open": "Open",
+      "delete": "Delete",
+      "delete_confirm": "Delete the recording of “{{title}}”? The gamemaster's link stops working."
+    },
+    "broadcast": {
+      "lead": "The message goes over Telegram to everyone who linked the bot (including those who turned announcements off with /stop), except blocked members. It is sent gradually; when done, the bot tells you how many received it.",
+      "placeholder": "The news…",
+      "send": "Send to everyone",
+      "confirm": "Send this message to everyone who linked Telegram?",
+      "started": "Sending to {{n}} people. The summary will arrive in your Telegram."
+    },
+    "log": {
+      "login": "Admin sign-in",
+      "login-failed": "Failed sign-in attempt",
+      "block": "Blocked",
+      "unblock": "Unblocked",
+      "community-mute": "Posting stopped",
+      "community-unmute": "Posting allowed",
+      "delete-user": "Account deleted",
+      "delete-game": "Game deleted",
+      "close-room": "Room ended",
+      "delete-recording": "Recording deleted",
+      "delete-post": "Post deleted",
+      "delete-comment": "Comment deleted",
+      "broadcast": "Broadcast"
+    }
   }
 }

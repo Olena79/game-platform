@@ -20,10 +20,10 @@ describe('CORS', () => {
 			.options('/api/recordings/abc/parts/1')
 			.set('Origin', site)
 			.set('Access-Control-Request-Method', 'POST')
-			.set('Access-Control-Request-Headers', 'authorization,content-type,x-final')
+			.set('Access-Control-Request-Headers', 'authorization,content-type,x-final,x-admin-token')
 		expect(res.status).toBeLessThan(300)
 		const allowed = String(res.headers['access-control-allow-headers']).toLowerCase()
-		for (const h of ['authorization', 'content-type', 'x-final']) expect(allowed).toContain(h)
+		for (const h of ['authorization', 'content-type', 'x-final', 'x-admin-token']) expect(allowed).toContain(h)
 		expect(res.headers['access-control-allow-origin']).toBe(site)
 	})
 

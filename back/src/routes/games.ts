@@ -4,12 +4,12 @@ import { randomInt } from 'crypto'
 import { Types } from 'mongoose'
 import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
-import { GameMessage } from '../models/GameMessage'
-import { closeDeletedGame } from '../socket/gameRoom'
 import { cleanNotes } from '../services/notesDelivery'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
+import { noticeGameCreated } from '../services/adminNotify'
+import { deleteGame } from '../services/gameDeletion'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
@@ -228,6 +228,7 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			coverImage: game.coverImage,
 			creatorId: String(game.creatorId),
 		})
+		void noticeGameCreated(String(game.creatorId), game).catch(() => undefined)
 	} catch (err: any) {
 		logger.error('[games POST]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -244,6 +245,7 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 			return
 		}
 
+		const scheduledBefore = game.scheduledAt ? game.scheduledAt.getTime() : null
 		for (const field of EDITABLE_GAME_FIELDS) {
 			const value = (req.body as Record<string, unknown>)[field]
 			if (value !== undefined) (game as unknown as Record<string, unknown>)[field] = value
@@ -260,6 +262,9 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 			res.status(400).json({ message: 'MAX_BELOW_REGISTERED' })
 			return
 		}
+
+		// A new time deserves a new reminder
+		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) game.reminderSentAt = null
 
 		await game.save()
 		res.json(publicGameView(game, req.userId))
@@ -279,13 +284,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 			res.status(403).json({ message: 'FORBIDDEN' })
 			return
 		}
-		await Game.deleteOne({ _id: game._id })
-		// Nothing of the game may outlive it: likes, chat, a room still open
-		await Promise.all([
-			GameLike.deleteMany({ gameId: game._id }),
-			GameMessage.deleteMany({ gameId: String(game._id) }),
-			closeDeletedGame(game.gameCode, String(game._id)),
-		])
+		await deleteGame(game)
 		res.json({ ok: true })
 	} catch (err: any) {
 		logger.error('[games/:id DELETE]', err)

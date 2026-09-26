@@ -21,6 +21,12 @@ const updateCommentSchema = z.object({
 
 const ROOM = 'room:community'
 
+/** The administrator stopped this member from writing in the community. */
+async function isMuted(userId: string | undefined): Promise<boolean> {
+	const u = await User.findById(userId).select('communityMuted').lean()
+	return !!u?.communityMuted
+}
+
 function serializePost(post: any, userId?: string) {
 	const obj = post.toObject ? post.toObject() : { ...post }
 	const { likedBy, ...rest } = obj
@@ -66,12 +72,13 @@ export default function makeCommunityRouter(io: Server): Router {
 
 			const user = await User.findById(req.userId).lean()
 			if (!user) { res.status(401).json({ message: 'User not found' }); return }
+			if (user.communityMuted) { res.status(403).json({ message: 'COMMUNITY_MUTED' }); return }
 
 			// authorName is required by the model. Without it every post ended
 			// in a ValidationError and a 500 — the feed never worked at all.
 			const post = await Post.create({
 				authorId:      req.userId,
-				authorName:    user.name || user.email,
+				authorName:    user.name || user.email.split('@')[0],
 				authorSurname: user.surname || '',
 				topic:         String(req.body.topic ?? '').slice(0, 100),
 				text:          text.trim(),
@@ -92,6 +99,7 @@ export default function makeCommunityRouter(io: Server): Router {
 			const post = await Post.findById(req.params.id)
 			if (!post) { res.status(404).json({ message: 'Not found' }); return }
 			if (String(post.authorId) !== req.userId) { res.status(403).json({ message: 'Forbidden' }); return }
+			if (await isMuted(req.userId)) { res.status(403).json({ message: 'COMMUNITY_MUTED' }); return }
 
 			const { text, topic } = req.body
 			if (text !== undefined) post.text = text.trim()
@@ -184,11 +192,12 @@ export default function makeCommunityRouter(io: Server): Router {
 
 			const user = await User.findById(req.userId).lean()
 			if (!user) { res.status(401).json({ message: 'User not found' }); return }
+			if (user.communityMuted) { res.status(403).json({ message: 'COMMUNITY_MUTED' }); return }
 
 			const comment = await Comment.create({
 				postId:        req.params.id,
 				authorId:      req.userId,
-				authorName:    user.name || user.email,
+				authorName:    user.name || user.email.split('@')[0],
 				authorSurname: user.surname || '',
 				text:          text.trim(),
 			})
@@ -211,6 +220,7 @@ export default function makeCommunityRouter(io: Server): Router {
 			const comment = await Comment.findById(req.params.id)
 			if (!comment) { res.status(404).json({ message: 'Not found' }); return }
 			if (String(comment.authorId) !== req.userId) { res.status(403).json({ message: 'Forbidden' }); return }
+			if (await isMuted(req.userId)) { res.status(403).json({ message: 'COMMUNITY_MUTED' }); return }
 
 			const { text } = req.body
 			comment.text = text.trim()

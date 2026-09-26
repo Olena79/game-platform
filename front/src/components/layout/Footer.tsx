@@ -1,6 +1,6 @@
 import React from 'react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Smartphone } from 'lucide-react'
 import { useInstallPrompt } from '../../hooks/useInstallPrompt'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +31,7 @@ export const Footer = () => {
 	const { isDark } = useTheme()
 	const { canInstall, needsManualSteps, isMobile, isStandalone, promptInstall } = useInstallPrompt()
 	const [showSteps, setShowSteps] = useState(false)
+	const navigate = useNavigate()
 
 	return (
 		<footer
@@ -80,6 +81,16 @@ export const Footer = () => {
 					>
 						{t('nav.terms_of_service')}
 					</Link>
+					{/* The administrator's door: invisible, right after the last
+					    link. Hiding it protects nothing — the server asks for the
+					    passphrase and a Telegram code — it only keeps it out of view. */}
+					<button
+						type='button'
+						aria-hidden='true'
+						tabIndex={-1}
+						onClick={() => navigate('/admin')}
+						className='w-[28px] h-[18px] opacity-0 cursor-default'
+					/>
 				</div>
 			</div>
 		</footer>

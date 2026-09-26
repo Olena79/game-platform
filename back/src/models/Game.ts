@@ -32,6 +32,8 @@ export interface IGame extends Document {
 	registeredPlayers: IRegisteredPlayer[]
 	spectators: IRegisteredPlayer[]
 	likesCount: number
+	/** When the 10-minutes-to-go reminder went out; cleared when the time changes */
+	reminderSentAt?: Date | null
 	createdAt: Date
 	updatedAt: Date
 }
@@ -71,8 +73,11 @@ const GameSchema = new Schema<IGame>(
 		registeredPlayers:  { type: [RegisteredPlayerSchema], default: [] },
 		spectators:         { type: [RegisteredPlayerSchema], default: [] },
 		likesCount:         { type: Number, default: 0 },
+		reminderSentAt:     { type: Date, default: null },
 	},
 	{ timestamps: true, collection: 'our_games' }
 )
+
+GameSchema.index({ scheduledAt: 1 })
 
 export const Game = mongoose.model<IGame>('Game', GameSchema)
