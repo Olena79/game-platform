@@ -5,6 +5,7 @@ import { Smartphone } from 'lucide-react'
 import { useInstallPrompt } from '../../hooks/useInstallPrompt'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../context/ThemeContext'
+import { IosInstallSheet } from '../IosInstallSheet'
 
 const FooterLogo = ({ isDark }: { isDark: boolean }) => (
 	<svg width="234" height="65" viewBox="0 0 260 72" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -47,7 +48,7 @@ export const Footer = () => {
 				{!isStandalone && isMobile && (canInstall || needsManualSteps) && (
 					<div className='flex flex-col items-center gap-[6px]'>
 						<button
-							onClick={() => { if (canInstall) void promptInstall(); else setShowSteps(v => !v) }}
+							onClick={() => { if (canInstall) void promptInstall(); else setShowSteps(true) }}
 							className='flex items-center gap-[7px] rounded-[10px] px-[14px] py-[7px] text-[12px] font-[600] cursor-pointer transition-all hover:brightness-110'
 							style={isDark
 								? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
@@ -55,11 +56,8 @@ export const Footer = () => {
 						>
 							<Smartphone size={13} /> {t('footer.install_app')}
 						</button>
-						{showSteps && (
-							<p className='text-[11px] leading-[1.45] text-center max-w-[260px]' style={{ color: 'var(--footer-text)' }}>
-								{t('footer.install_ios_steps')}
-							</p>
-						)}
+						{/* iPhone: no install dialog exists, so the steps, clearly */}
+						{showSteps && <IosInstallSheet onClose={() => setShowSteps(false)} />}
 					</div>
 				)}
 				<p className='text-[12px] text-center md:text-left' style={{ color: 'var(--footer-text)' }}>

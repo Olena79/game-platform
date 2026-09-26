@@ -11,7 +11,16 @@
   "footer": {
     "copy": "© 2025 Games of Senses",
     "install_app": "Install the app",
-    "install_ios_steps": "In Safari: Share → Add to Home Screen. The site then opens like an app, without the address bar."
+    "install_ios_steps": "In Safari: Share → Add to Home Screen. The site then opens like an app, without the address bar.",
+    "ios_title": "Install on iPhone",
+    "ios_step1": "At the bottom of Safari tap “Share”. If you can’t see it, tap “⋯” at the bottom right first.",
+    "ios_step2": "Scroll down and choose “Add to Home Screen”.",
+    "ios_step3": "Tap “Add” at the top right.",
+    "ios_add": "Add",
+    "ios_result": "A “Ігри Сенсів” icon appears on your Home Screen — it opens the site full screen, without the address bar, like an app.",
+    "ios_in_app": "If the site is open inside Telegram, Instagram or another app, that option isn’t there: open the site in Safari first (“⋯” or the compass → “Open in Safari”).",
+    "ios_ok": "Got it",
+    "ios_close": "Close"
   },
   "home": {
     "hero": {
