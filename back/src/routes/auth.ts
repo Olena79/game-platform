@@ -5,7 +5,7 @@ import { User } from '../models/User'
 import { authMiddleware, AuthRequest, forgetUser } from '../middleware/authMiddleware'
 import { forgotPasswordLimiter } from '../middleware/rateLimitMiddleware'
 import { validateBody } from '../middleware/validationMiddleware'
-import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas'
+import { registerSchema, updateNameSchema, loginSchema, googleAuthSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas'
 import {
 	issueTokenPair,
 	refreshAccessToken,
@@ -204,6 +204,24 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
 		})
 	} catch (err) {
 		logger.error('[me]', err)
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+// PUT /api/auth/me — change one's own first and last name
+router.put('/me', authMiddleware, validateBody(updateNameSchema), async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const user = await User.findByIdAndUpdate(req.userId, { name: req.body.name, surname: req.body.surname }, { new: true }).select('-password')
+		if (!user) { res.status(404).json({ message: 'User not found' }); return }
+		res.json({
+			id: user._id,
+			email: user.email,
+			name: user.name,
+			surname: user.surname,
+			telegramConnected: !!user.telegramChatId,
+		})
+	} catch (err) {
+		logger.error('[me PUT]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })

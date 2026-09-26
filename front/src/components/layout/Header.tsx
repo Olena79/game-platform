@@ -164,7 +164,7 @@ export const Header = () => {
 					{/* Theme toggle */}
 					<button
 						onClick={toggleTheme}
-						title={isDark ? 'Світла тема' : 'Темна тема'}
+						title={isDark ? t('nav.theme_light') : t('nav.theme_dark')}
 						className='theme-toggle flex items-center justify-center w-[28px] h-[28px] rounded-full transition-all cursor-pointer hover:scale-[1.12]'
 						style={{
 							background: isDark ? 'rgba(255,220,100,0.08)' : 'rgba(192,83,58,0.10)',
@@ -183,7 +183,7 @@ export const Header = () => {
 						<div ref={dropdownRef} className='relative'>
 							<button
 								onClick={() => setDropdownOpen(p => !p)}
-								aria-label='Профіль'
+								aria-label={t('nav.profile')}
 								className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_10px_rgba(57,255,106,0.55)] cursor-pointer'
 							>
 								<UserIconLoggedIn isDark={isDark} />
@@ -217,7 +217,7 @@ export const Header = () => {
 					) : (
 						<Link
 							to='/auth'
-							aria-label='Профіль'
+							aria-label={t('nav.profile')}
 							className='flex items-center transition-all duration-[250ms] hover:scale-[1.08] hover:drop-shadow-[0_0_10px_rgba(255,23,68,0.5)] cursor-pointer'
 						>
 							<UserIconDefault isDark={isDark} />
@@ -243,14 +243,14 @@ export const Header = () => {
 						className='flex items-center gap-[6px] transition-colors cursor-pointer'
 						style={{ color: 'var(--text-secondary)' }}
 						onClick={toggleLang}
-						aria-label='Мова'
+						aria-label={t('nav.lang_label')}
 					>
 						<Globe size={16} strokeWidth={1.8} />
 						<span className='text-[13px] font-[500]'>{currentLang}</span>
 					</button>
 					<button
 						onClick={toggleTheme}
-						title={isDark ? 'Світла тема' : 'Темна тема'}
+						title={isDark ? t('nav.theme_light') : t('nav.theme_dark')}
 						className='theme-toggle flex items-center justify-center w-[26px] h-[26px] rounded-full transition-all cursor-pointer'
 						style={{
 							background: isDark ? 'rgba(255,220,100,0.08)' : 'rgba(192,83,58,0.10)',

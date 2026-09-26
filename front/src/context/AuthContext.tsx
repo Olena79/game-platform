@@ -20,6 +20,8 @@ interface AuthContextType {
 	logout: () => void
 	/** Refreshes the access token now and returns it, or null if that failed */
 	forceRefresh: () => Promise<string | null>
+	/** The account changed (e.g. its name): show the new version */
+	setUserData: (user: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -219,7 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	}
 
 	return (
-		<AuthContext.Provider value={{ user, token, isLoggedIn: !!user, isLoading, login, logout, forceRefresh }}>
+		<AuthContext.Provider value={{ user, token, isLoggedIn: !!user, isLoading, login, logout, forceRefresh, setUserData: setUser }}>
 			{children}
 		</AuthContext.Provider>
 	)

@@ -633,7 +633,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 			{actionError && (
 				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px]'
 					style={{ background: 'rgba(255,150,60,0.10)', borderBottom: '1px solid rgba(255,150,60,0.22)' }}>
-					<span style={{ color: 'rgba(255,175,90,0.95)', fontSize: '12px' }}>{actionError}</span>
+					<span style={{ color: 'rgba(255,175,90,0.95)', fontSize: '12px' }}>{t(`room.action_errors.${actionError}`, { defaultValue: actionError })}</span>
 				</div>
 			)}
 
@@ -1527,12 +1527,12 @@ function GameRoomInner() {
 				<span className='text-[15px] font-[600]' style={{ color: '#ff3850' }}>
 					{error === 'NOT_A_PARTICIPANT' ? t('room.not_participant') : t('room.not_found')}
 				</span>
-				<span
-					className='text-[12px]'
-					style={{ color: 'rgba(100,140,220,0.4)' }}
-				>
-					Код: {code}
-				</span>
+				{/* It was a dead end: no way back but the browser's own button */}
+				<a href='/games'
+					className='mt-[6px] px-[18px] py-[8px] rounded-[9px] text-[13px] font-[600] no-underline'
+					style={{ background: 'rgba(68,170,255,0.1)', border: '1px solid rgba(68,170,255,0.3)', color: 'rgba(120,190,255,0.95)' }}>
+					{t('room.to_games')}
+				</a>
 			</div>
 		)
 	}

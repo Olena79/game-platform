@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RoomTimer } from './types'
 
 interface Props { timer: RoomTimer 	/** Difference between this device's clock and the room's */
@@ -29,6 +30,7 @@ function beep(freqs: number[], duration: number, gap = 0.08) {
 }
 
 export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
+	const { t } = useTranslation()
 	const [remaining, setRemaining] = useState(0)
 	const warned30Ref  = useRef(false)
 	const warnedEndRef = useRef(false)
@@ -129,7 +131,7 @@ export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 			</span>
 			{!isRunning && (
 				<span className='text-[9px] mt-[1px]' style={{ color: `${color}66` }}>
-					{timer.running ? '' : 'пауза'}
+					{timer.running ? '' : t('room.timer.paused')}
 				</span>
 			)}
 		</div>

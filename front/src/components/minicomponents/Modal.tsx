@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
@@ -42,6 +43,7 @@ export const Modal: React.FC<ModalProps> = ({
 	closeLabel = 'OK',
 	children,
 }) => {
+	const { t } = useTranslation()
 	const { isDark } = useTheme()
 
 	useEffect(() => {
@@ -79,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
 			>
 				<button
 					onClick={onClose}
-					aria-label='Закрити'
+					aria-label={t('room.close')}
 					className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer hover:bg-[rgba(128,128,128,0.12)]'
 					style={{
 						color: isDark ? '#44aaff' : 'var(--text-muted)',

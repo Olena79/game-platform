@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { ModalClose } from './ModalClose'
-import { ArrowRight, Landmark } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { RoomPlayer } from './types'
 import { NumberField } from '../minicomponents/NumberField'
@@ -112,7 +112,7 @@ export const CoinModal = ({ me, players, onTransfer, onPayBank, onClose }: Props
 						className='w-full py-[10px] rounded-[10px] text-[13px] font-[600] cursor-pointer transition-all disabled:opacity-40'
 						style={{ background: 'rgba(15,255,200,0.1)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}
 					>
-						{t('room.coin.transfer_btn')} {amount} 🪙 {tab === 'bank' ? 'в банк' : `→ ${toPlayer?.name ?? ''}`}
+						{t('room.coin.transfer_btn')} {amount} 🪙 {tab === 'bank' ? t('room.coin.into_bank') : `→ ${toPlayer?.name ?? ''}`}
 					</button>
 				) : (
 					<div className='flex flex-col gap-[8px]'>

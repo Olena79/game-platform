@@ -145,7 +145,7 @@ export const BreakoutModal = ({
 										{inBreakout === br.id && (
 											<span className='text-[9px] px-[5px] py-[1px] rounded-[4px]'
 												style={{ background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
-												● Ви тут
+												● {t('room.breakout.you_are_here')}
 											</span>
 										)}
 									</div>

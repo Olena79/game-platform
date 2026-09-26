@@ -9,6 +9,12 @@ export const registerSchema = z.object({
 	surname: z.string().max(100).optional().default(''),
 })
 
+/** Changing one's own name (Account page) */
+export const updateNameSchema = z.object({
+	name: z.string().trim().max(100),
+	surname: z.string().trim().max(100),
+})
+
 export const loginSchema = z.object({
 	email: z.string().email('Invalid email format'),
 	password: z.string().min(1, 'Password is required'),

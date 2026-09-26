@@ -23,6 +23,7 @@ Tests: backend 18 suites / 153 tests, frontend 5 files / 32 tests.
   (bumped by a password reset — older access tokens are refused), password
   recovery over **Telegram** (there is no email service; do not add one
   without being asked).
+  First and last name can be changed on the Account page (`PUT /api/auth/me`).
 - **Telegram bot** — news only, not for conversation (it says so to anyone
   who writes to it). Linked with a 32-char single-use `/start` token
   (Telegram drops longer or non-`[A-Za-z0-9_-]` payloads). Sends: an

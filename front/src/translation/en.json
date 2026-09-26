@@ -6,7 +6,10 @@
     "enter": "Enter the game",
     "lang_label": "Interface language",
     "privacy_policy": "Privacy Policy",
-    "terms_of_service": "Terms of Service"
+    "terms_of_service": "Terms of Service",
+    "theme_light": "Light theme",
+    "theme_dark": "Dark theme",
+    "profile": "Profile"
   },
   "footer": {
     "copy": "© 2025 Games of Senses",
@@ -134,7 +137,16 @@
     "err_coins_nothing": "Give players coins or fill the gamemaster's bank",
     "date_label": "Date",
     "time_label": "Time",
-    "err_time_missing": "Set the start time"
+    "err_time_missing": "Set the start time",
+    "err_card_digits": "16 digits needed",
+    "section_timer": "Default timer",
+    "timer_toggle": "Set a timer for the game",
+    "timer_hint": "The timer is shown on entering the room (not running)",
+    "section_payment": "Payment and donations",
+    "cost_label": "Participation fee (UAH)",
+    "cost_hint": "UAH · 0 = free",
+    "card_label": "Gamemaster’s card (for donations)",
+    "card_hint": "Players see the number only after pressing “Donate”"
   },
   "our_games": {
     "title": "Games",
@@ -195,7 +207,8 @@
     "player_code_label": "🎮 Player code:",
     "copy_code": "copy",
     "no_name": "No name",
-    "spectators_count": "Spectators"
+    "spectators_count": "Spectators",
+    "err_already_player": "You are already registered as a player."
   },
   "donate": {
     "title": "Donate to Game Master",
@@ -326,7 +339,13 @@
     "deleting": "Deleting...",
     "delete_failed": "Could not delete the account. Please try again later.",
     "wrong_password": "Wrong password",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "name_empty": "not set",
+    "name_edit": "Change name",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "name_save": "Save",
+    "name_save_failed": "Could not save. Please try again."
   },
   "room": {
     "error_prefix": "Error:",
@@ -335,7 +354,7 @@
     "conn_error": "Connection error",
     "auth_required": "Authorization required",
     "not_found": "Room not found",
-    "not_participant": "You are not registered for this game. Sign up on the games page and the code will arrive in your Telegram.",
+    "not_participant": "This code does not open the room. Check the code or ask the gamemaster.",
     "conn_failed": "Failed to connect to server",
     "retry": "Try again",
     "getting_token": "Getting LiveKit token...",
@@ -391,7 +410,8 @@
       "cancel": "Cancel",
       "confirm": "Confirm",
       "close": "Close",
-      "no_others": "No other players in the room yet. You can put coins in the bank."
+      "no_others": "No other players in the room yet. You can put coins in the bank.",
+      "into_bank": "to the bank"
     },
     "breakout": {
       "title": "🚪 Rooms",
@@ -406,7 +426,8 @@
       "players_count": "players",
       "join": "Join →",
       "end": "End",
-      "invite": "Invite"
+      "invite": "Invite",
+      "you_are_here": "You are here"
     },
     "chat": {
       "players_tab": "Players",
@@ -514,7 +535,13 @@
       "anonymous": "🔒 Anonymous",
       "multiple": "☑️ Multiple",
       "cancel": "Cancel",
-      "start": "Start"
+      "start": "Start",
+      "multiple_label": "Multiple choice",
+      "closed": "Closed",
+      "close_btn": "Close",
+      "total_one": "{{count}} vote",
+      "total_other": "{{count}} votes",
+      "cast": "Vote"
     },
     "timer": {
       "title": "⏱️ Timer",
@@ -524,7 +551,8 @@
       "cancel": "Cancel",
       "default_label": "Timer",
       "set": "Set",
-      "set_and_start": "Set and start"
+      "set_and_start": "Set and start",
+      "paused": "paused"
     },
     "screen_err_unsupported": "Screen sharing works from a computer or laptop only — phones cannot do it.",
     "screen_err_system": "The system did not let the browser share the screen. On a Mac: System Settings → Privacy & Security → Screen Recording → turn on your browser and restart it.",
@@ -534,6 +562,16 @@
       "to_player": "Give to",
       "give": "Give",
       "no_players": "No players in the room right now."
+    },
+    "image_expand": "Expand",
+    "back": "Back",
+    "to_games": "Back to games",
+    "action_errors": {
+      "BREAKOUT_SWITCH_FAILED": "Could not switch rooms. Please try again.",
+      "Action failed": "That did not work. Please try again.",
+      "Not enough coins in the bank": "Not enough coins in the bank.",
+      "Max 5 breakout rooms": "At most 5 breakout rooms.",
+      "Not invited to this room": "You are not invited to this room."
     }
   },
   "legal": {
@@ -553,14 +591,14 @@
     "usage_games": "Organizing and conducting game sessions",
     "usage_notifications": "Sending notifications about game codes, reminders, and updates",
     "usage_communications": "Communicating with you about the platform and your account",
-    "usage_analytics": "Analyzing platform usage for improvements",
+    "usage_analytics": "Finding and fixing technical errors",
     "third_party_title": "Third-party services",
     "third_party_text": "We use the following third-party services which may process your information:",
     "service_database": "Data storage",
     "service_video": "Video conferencing and session recording",
     "service_telegram": "Notification delivery",
-    "service_google": "Authentication and analytics",
-    "service_cloudinary": "Profile picture and post image storage",
+    "service_google": "Sign-in with Google",
+    "service_cloudinary": "Storage of game covers and images",
     "service_drive": "Storage of game recordings (7 days)",
     "security_title": "Data security",
     "security_text": "We use encryption (HTTPS), secure passwords (bcrypt), secure tokens (JWT), and access controls to protect your information. However, no system is 100% secure.",
@@ -568,10 +606,10 @@
     "user_rights_text": "You have the right to:",
     "right_access": "Access your personal data",
     "right_delete": "Request deletion of your account and data",
-    "right_modify": "Change your profile information",
+    "right_modify": "Change your first and last name under “Account”",
     "right_export": "Export your data in machine-readable format",
     "retention_title": "Data retention",
-    "retention_text": "We retain your information while your account is active. Game recordings are automatically deleted 7 days after game completion.",
+    "retention_text": "We retain your information while your account is active. Game recordings are deleted automatically 7 days after the recording started. When you delete your account, your games and recordings are deleted; your posts and comments stay without your name.",
     "children_title": "Children",
     "children_text": "Our platform is not intended for children under 13. We do not knowingly collect information from children under 13.",
     "changes_title": "Policy changes",
@@ -581,7 +619,7 @@
     "terms_acceptance_title": "Acceptance of terms",
     "terms_acceptance_text": "By using the Games of Senses platform, you accept these terms. If you do not agree with these terms, please do not use the platform.",
     "use_license_title": "License to use",
-    "use_license_text": "We grant you a personal, non-exclusive, non-transferable license to access and use the platform in accordance with these terms. You may not resell, transfer, modify, or use the platform for commercial purposes without our permission.",
+    "use_license_text": "We grant you a personal, non-exclusive, revocable license to access and use the platform in accordance with these terms. You may not resell, transfer, modify, or use the platform for commercial purposes without our permission.",
     "platform_title": "Platform as intermediary",
     "platform_desc": "Games of Senses is a platform that connects Game Masters (GMs) and players. We do not control game content, the quality of GM services, or financial transactions between participants.",
     "platform_facilitation": "We only provide tools for conducting game sessions",
@@ -626,18 +664,24 @@
     "content_rights_grant": "By uploading content, you grant the platform a license to display and distribute it for platform operation.",
     "content_rights_removal": "You can delete your content at any time, or we can delete content that violates this agreement.",
     "recordings_title": "Session recordings",
-    "recordings_text": "The gamemaster may record a game: their browser combines the participants' video and voices and uploads the recording to Cloudflare R2 storage, where it is deleted automatically after 7 days. The gamemaster receives the link. Participants see a marker in the room while recording is on.",
+    "recordings_text": "The gamemaster may record a game: their browser combines the participants’ video and voices and uploads the recording to Cloudflare R2 storage, where it is deleted automatically after 7 days. The gamemaster receives the link; the club administrator is notified of the recording and has access to it. Participants see a marker in the room while recording is on.",
     "recordings_storage": "Recordings are stored for 7 days, then automatically deleted",
-    "recordings_deletion": "GMs and participants can delete recordings earlier",
-    "recordings_consent": "All participants must consent to recording before the game",
+    "recordings_deletion": "To delete a recording earlier, the gamemaster or a participant can contact the club administrator (contact below)",
+    "recordings_consent": "Before entering a room everyone sees a notice that the session may be recorded, and a marker while it is. If you do not agree to be recorded, do not enter the room or ask the gamemaster not to record",
     "disclaimer_title": "Disclaimer",
-    "disclaimer_text": "The platform is provided 'as is'. We do not guarantee that the platform will be error-free, continuous, or suitable for your needs. We are not responsible for damages arising from platform use.",
+    "disclaimer_text": "The platform is provided “as is”. We do not guarantee that it will work without errors or interruptions or suit your needs. We are not liable for damages arising from use of the platform.",
     "limitation_title": "Limitation of liability",
     "limitation_text": "In no event shall Games of Senses be liable for direct, indirect, special, or consequential damages. Our maximum liability is limited to the amount you paid to the platform (if any).",
     "termination_title": "Termination",
-    "termination_text": "We may terminate your platform access without notice if you violate these terms. You may delete your account at any time.",
+    "termination_text": "We may block or end your access to the platform without notice if you violate these terms. You may delete your account at any time.",
     "disputes_title": "Dispute resolution",
-    "disputes_text": "Disputes are resolved through negotiation. If negotiation is unsuccessful, disputes are resolved in accordance with the laws of Ukraine. You agree to the jurisdiction of the courts of Ukraine to resolve disputes related to the platform."
+    "disputes_text": "Disputes are resolved through negotiation. If negotiation is unsuccessful, disputes are resolved in accordance with the laws of Ukraine. You agree to the jurisdiction of the courts of Ukraine to resolve disputes related to the platform.",
+    "data_community": "Community: your posts, comments and likes",
+    "data_recordings": "Game recordings: participants’ video and voice, when the gamemaster turns recording on (kept 7 days)",
+    "data_technical": "Technical data: IP address — to prevent abuse (limits on sign-in attempts) and in the administrator’s sign-in journal",
+    "usage_moderation": "Moderation: the club administrator is notified of new accounts (name and email), new games and recordings, has access to recordings, and can block accounts and delete games, posts and recordings",
+    "service_hosting": "Hosting of the server and the website",
+    "service_errors": "Technical error reports"
   },
   "recording_info": {
     "title": "🎥 How game recording works",

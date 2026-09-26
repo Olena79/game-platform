@@ -83,3 +83,10 @@ export const getTelegramStatusRequest = (token: string): Promise<{ telegramConne
 	fetch(`${API}/api/telegram/status`, {
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<{ telegramConnected: boolean }>)
+
+export const updateNameRequest = (token: string, name: string, surname: string): Promise<AuthUser> =>
+	fetch(`${API}/api/auth/me`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+		body: JSON.stringify({ name, surname }),
+	}).then(handleResponse<AuthUser>)

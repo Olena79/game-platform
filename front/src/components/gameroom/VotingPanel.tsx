@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Lock, Users } from 'lucide-react'
 import type { ActiveVote } from './types'
 
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, onClose, onClear }: Props) => {
+	const { t } = useTranslation()
 	const [selected, setSelected] = useState<string[]>([])
 
 	const totalVotes = vote.options.reduce((s, o) => s + o.voterIds.length, 0)
@@ -54,15 +56,15 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 				<div className='flex-1'>
 					<div className='flex items-center gap-[6px] mb-[4px]'>
 						{vote.isAnonymous && <Lock size={11} style={{ color: 'rgba(140,170,255,0.75)' }} />}
-						{vote.multipleChoice && <span className='text-[11px]' style={{ color: 'rgba(140,170,255,0.75)' }}>Кілька варіантів</span>}
+						{vote.multipleChoice && <span className='text-[11px]' style={{ color: 'rgba(140,170,255,0.75)' }}>{t('room.vote.multiple_label')}</span>}
 						{vote.closed && (
 							<span className='text-[11px] px-[6px] py-[1px] rounded-[4px]'
 								style={{ background: 'rgba(255,95,160,0.12)', color: 'rgba(255,95,160,0.88)', border: '1px solid rgba(255,95,160,0.28)' }}>
-								Закрито
+								{t('room.vote.closed')}
 							</span>
 						)}
 					</div>
-					<p className='text-[13px] font-[600]' style={{ color: 'rgba(220,230,255,0.9)' }}>{vote.question}</p>
+					<p className='text-[13px] font-[600] break-words' style={{ color: 'rgba(220,230,255,0.9)' }}>{vote.question}</p>
 				</div>
 				{isGM && (
 					<div className='flex gap-[4px]'>
@@ -70,7 +72,7 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 							<button onClick={onClose}
 								className='text-[11px] px-[7px] py-[4px] rounded-[5px] cursor-pointer transition-all'
 								style={{ background: 'rgba(200,168,48,0.1)', border: '1px solid rgba(200,168,48,0.3)', color: 'rgba(200,168,48,0.95)' }}>
-								Закрити
+								{t('room.vote.close_btn')}
 							</button>
 						)}
 						<button onClick={onClear}
@@ -109,7 +111,7 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 								/>
 							)}
 							<div className='relative flex items-center justify-between gap-[6px]'>
-								<span className='text-[13px]' style={{ color: mine ? '#0fffc8' : 'rgba(210,225,255,0.9)' }}>
+								<span className='text-[13px] break-words min-w-0' style={{ color: mine ? '#0fffc8' : 'rgba(210,225,255,0.9)' }}>
 									{opt.text}
 								</span>
 								{showResults && (
@@ -140,13 +142,13 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 			<div className='flex items-center justify-between gap-[8px]'>
 				<div className='flex items-center gap-[4px] text-[12px]' style={{ color: 'rgba(140,170,255,0.72)' }}>
 					<Users size={11} />
-					<span>{totalVotes} голосів</span>
+					<span>{t('room.vote.total', { count: totalVotes })}</span>
 				</div>
 				{!hasVoted && !vote.closed && selected.length > 0 && (
 					<button onClick={handleVote}
 						className='text-[12px] px-[12px] py-[6px] rounded-[7px] font-[600] cursor-pointer transition-all'
 						style={{ background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>
-						Проголосувати
+						{t('room.vote.cast')}
 					</button>
 				)}
 			</div>

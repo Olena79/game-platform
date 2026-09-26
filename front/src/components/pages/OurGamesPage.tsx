@@ -381,8 +381,8 @@ export const OurGamesPage = () => {
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
 			const text =
-				msg === 'ALREADY_REGISTERED'           ? 'Ви вже зареєстровані.' :
-				msg === 'ALREADY_REGISTERED_AS_PLAYER' ? 'Ви вже зареєстровані як гравець.' :
+				msg === 'ALREADY_REGISTERED'           ? t('our_games.err_already_registered') :
+				msg === 'ALREADY_REGISTERED_AS_PLAYER' ? t('our_games.err_already_player') :
 				msg === 'CREATOR_CANNOT_REGISTER'      ? t('our_games.err_creator_register') :
 				msg
 			setModal({ open: true, title: t('our_games.err_register_title'), message: text, variant: 'error' })
@@ -809,7 +809,7 @@ const GameCard = ({
 	} else if (isRegistered) {
 		// The code is not shown to players any more, so the way in is here
 		registerBtn = (
-			<div className='flex gap-[6px] items-center'>
+			<div className='flex flex-wrap gap-[6px] items-center justify-end'>
 			<button
 				onClick={onEnterGame}
 				className='px-[12px] py-[7px] rounded-[10px] text-[12px] font-[600] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white hover:shadow-[0_0_16px_rgba(100,80,255,0.35)] hover:-translate-y-[0.5px] transition-all cursor-pointer whitespace-nowrap'
@@ -1071,7 +1071,7 @@ const GameCard = ({
 						{t('our_games.register_as_label')}
 					</span>
 				)}
-				<div className='flex items-center justify-between pt-[2px]'>
+				<div className='flex flex-wrap items-center justify-between gap-x-[10px] gap-y-[10px] pt-[2px]'>
 					{/* Left: registered players, and under them registered spectators
 					    (👀, from 0 — the count is public, the names are not) */}
 					<div className='flex flex-col items-start gap-[4px]'>
@@ -1091,7 +1091,8 @@ const GameCard = ({
 						</span>
 					</div>
 
-					<div className='flex gap-[6px] items-center'>
+					{/* Wraps under the counts on a narrow phone rather than past the card */}
+					<div className='flex flex-wrap gap-[6px] items-center justify-end ml-auto'>
 						{/* Spectator button */}
 						{!isCreator && isLoggedIn && !isRegistered && (
 							isSpectator ? (

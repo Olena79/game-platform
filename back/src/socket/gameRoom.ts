@@ -412,11 +412,12 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 	if (!game) return null
 	const gameId = String(game._id)
 
-	// Load last 100 public messages from DB (recipients empty = public)
-	const dbMsgs = await GameMessage.find({ gameId, recipients: { $size: 0 } })
-		.sort({ createdAt: 1 })
+	// The last 100 public messages (recipients empty = public), oldest first.
+	// It used to take the first 100 of the game instead.
+	const dbMsgs = (await GameMessage.find({ gameId, recipients: { $size: 0 } })
+		.sort({ createdAt: -1 })
 		.limit(100)
-		.lean()
+		.lean()).reverse()
 
 	const messages: ChatMessage[] = dbMsgs.map(m => ({
 		id: String(m._id),
@@ -613,14 +614,14 @@ export function registerGameRoom(io: Server) {
 
 			// Send per-user chat history (public + messages where user is sender or recipient)
 			try {
-				const dbHistory = await GameMessage.find({
+				const dbHistory = (await GameMessage.find({
 					gameId: state.gameId,
 					$or: [
 						{ recipients: { $size: 0 } },
 						{ senderId: userId },
 						{ recipients: userId },
 					],
-				}).sort({ createdAt: 1 }).limit(200).lean()
+				}).sort({ createdAt: -1 }).limit(200).lean()).reverse()   // the latest 200, oldest first
 
 				const history: ChatMessage[] = dbHistory.map(m => ({
 					id: String(m._id),

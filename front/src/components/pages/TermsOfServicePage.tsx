@@ -26,7 +26,7 @@ export const TermsOfServicePage = () => {
         >
           {/* Last Updated */}
           <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "24px" }}>
-            {t("legal.last_updated")}: 2026-09-02
+            {t("legal.last_updated")}: 2026-09-26
           </p>
 
           {/* Acceptance */}

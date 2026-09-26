@@ -83,56 +83,6 @@ function getSpeechBorderColor(count: number): string {
 	return '#cc1133'
 }
 
-function PlayerTile({ player, size = 'strip' }: { player: RoomPlayer; size?: 'strip' | 'mini' }) {
-	const participants = useParticipants()
-	const { localParticipant } = useLocalParticipant()
-	const participant = participants.find(p => p.identity === player.userId) ?? (localParticipant?.identity === player.userId ? localParticipant : undefined)
-	const speaking = useIsSpeaking(participant)
-	const camPub = participant?.getTrackPublication(Track.Source.Camera)
-	const hasVideo = camPub?.isSubscribed && !camPub?.isMuted
-
-	const sz = size === 'strip' ? 'min-w-[72px]' : 'min-w-[60px]'
-
-	return (
-		<div
-			className={`${sz} flex-shrink-0 rounded-[8px] p-[6px] flex flex-col items-center gap-[4px] cursor-default transition-all`}
-			style={{
-				background: speaking ? 'rgba(15,255,200,0.05)' : '#0f1120',
-				border: speaking ? '1px solid rgba(15,255,200,0.35)' : '1px solid #1c1f35',
-			}}
-		>
-			{/* Avatar / video */}
-			<div className='w-[34px] h-[34px] rounded-full overflow-hidden flex items-center justify-center flex-shrink-0'
-				style={{ background: speaking ? 'rgba(15,255,200,0.15)' : '#1a1a2e', border: speaking ? '1px solid rgba(15,255,200,0.3)' : 'none' }}>
-				{hasVideo && camPub
-					? <VideoTrack trackRef={{ participant: participant!, publication: camPub, source: Track.Source.Camera }} className='w-full h-full object-cover' style={{ transform: localParticipant?.identity === player.userId ? 'scaleX(-1)' : 'scaleX(1)' }} />
-					: <span className='text-[11px] font-[700]' style={{ color: speaking ? '#0fffc8' : '#7a80a0' }}>{player.initials}</span>
-				}
-			</div>
-			<span className='text-[10px] text-center leading-[1.2] w-full truncate'
-				style={{ color: speaking ? '#0fffc8' : '#4a5070' }}>
-				{player.name.split(' ')[0]}
-			</span>
-			<div className='flex gap-[4px]'>
-				{state_placeholder_coins(player)}
-			</div>
-		</div>
-	)
-}
-
-// Separate stat component to avoid closure issues
-function PlayerStats({ player }: { player: RoomPlayer }) {
-	return (
-		<div className='flex gap-[4px]'>
-			{player.coins > 0 && <span className='text-[9px]' style={{ color: '#4a5070' }}>🪙{player.coins}</span>}
-			{player.influence > 0 && <span className='text-[9px]' style={{ color: '#4a5070' }}>⚡{player.influence}</span>}
-		</div>
-	)
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function state_placeholder_coins(_p: RoomPlayer) { return null }
-
 function CoverImageBlock({ state }: { state: GameRoomState }) {
 	const { t } = useTranslation()
 	const coverUrl = state.coverImage || 'https://res.cloudinary.com/dsgqhwqr7/image/upload/v1777038005/fon_of_game_uwvu0o.png'

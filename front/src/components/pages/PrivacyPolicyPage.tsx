@@ -26,7 +26,7 @@ export const PrivacyPolicyPage = () => {
         >
           {/* Last Updated */}
           <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "24px" }}>
-            {t("legal.last_updated")}: 2026-09-02
+            {t("legal.last_updated")}: 2026-09-26
           </p>
 
           {/* Introduction */}
@@ -69,6 +69,9 @@ export const PrivacyPolicyPage = () => {
               <li>{t("legal.data_games")}</li>
               <li>{t("legal.data_messages")}</li>
               <li>{t("legal.data_telegram")}</li>
+              <li>{t("legal.data_community")}</li>
+              <li>{t("legal.data_recordings")}</li>
+              <li>{t("legal.data_technical")}</li>
             </ul>
           </section>
 
@@ -97,6 +100,7 @@ export const PrivacyPolicyPage = () => {
               <li>{t("legal.usage_notifications")}</li>
               <li>{t("legal.usage_communications")}</li>
               <li>{t("legal.usage_analytics")}</li>
+              <li>{t("legal.usage_moderation")}</li>
             </ul>
           </section>
 
@@ -137,6 +141,12 @@ export const PrivacyPolicyPage = () => {
               </li>
               <li>
                 <strong>Cloudflare R2</strong> - {t("legal.service_drive")}
+              </li>
+              <li>
+                <strong>Render, Vercel</strong> - {t("legal.service_hosting")}
+              </li>
+              <li>
+                <strong>Sentry</strong> - {t("legal.service_errors")}
               </li>
             </ul>
           </section>

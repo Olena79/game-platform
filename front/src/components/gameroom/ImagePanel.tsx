@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Maximize2, Minimize2, X } from 'lucide-react'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const ImagePanel = ({ imageUrl, isGM, images = [], onChangeImage, onClose, fill = false }: Props) => {
+	const { t } = useTranslation()
 	const [expanded, setExpanded] = useState(false)
 
 	if (expanded) {
@@ -58,7 +60,7 @@ export const ImagePanel = ({ imageUrl, isGM, images = [], onChangeImage, onClose
 					onClick={() => setExpanded(true)}
 					className='w-[26px] h-[26px] rounded-[6px] flex items-center justify-center cursor-pointer transition-all'
 					style={{ background: 'rgba(7,8,15,0.7)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(200,220,255,0.6)' }}
-					title='Розгорнути'
+					title={t('room.image_expand')}
 				>
 					<Maximize2 size={12} strokeWidth={2} />
 				</button>
@@ -67,7 +69,7 @@ export const ImagePanel = ({ imageUrl, isGM, images = [], onChangeImage, onClose
 						onClick={onClose}
 						className='w-[26px] h-[26px] rounded-[6px] flex items-center justify-center cursor-pointer transition-all'
 						style={{ background: 'rgba(7,8,15,0.7)', border: '1px solid rgba(255,95,160,0.2)', color: 'rgba(255,95,160,0.6)' }}
-						title='Сховати картинку'
+						title={t('room.hide_image')}
 					>
 						<X size={12} strokeWidth={2} />
 					</button>

@@ -258,7 +258,7 @@ export const CreateGamePage = () => {
 		if (useInfluence && influencePerPlayer < 1) errs.influencePerPlayer = '≥ 1'
 		if (gameDate && !gameTime) errs.gameTime = t('create_game.err_time_missing')
 		const rawCard = gmCardNumber.replace(/\D/g, '')
-		if (rawCard.length > 0 && rawCard.length !== 16) errs.gmCardNumber = 'Потрібно 16 цифр'
+		if (rawCard.length > 0 && rawCard.length !== 16) errs.gmCardNumber = t('create_game.err_card_digits')
 		setErrors(errs)
 		return Object.keys(errs).length === 0
 	}
@@ -391,7 +391,7 @@ export const CreateGamePage = () => {
 					{/* Close */}
 					<button
 						onClick={() => navigate('/games')}
-						aria-label='Закрити'
+						aria-label={t('room.close')}
 						className='absolute top-[14px] right-[14px] w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all cursor-pointer hover:bg-[rgba(255,255,255,0.06)]'
 						style={isDark
 							? { color: 'rgba(180,200,255,0.35)', border: '1px solid rgba(255,255,255,0.08)' }
@@ -539,7 +539,7 @@ export const CreateGamePage = () => {
 						{/* ── Гравці ── */}
 						<section>
 							<SectionLabel>{t('create_game.section_players')}</SectionLabel>
-							<div className='flex items-end gap-[12px]'>
+							<div className='flex items-end gap-[10px] sm:gap-[12px] flex-wrap'>
 								<div className='flex flex-col gap-[6px] items-center'>
 									<span className='text-[12px] uppercase tracking-[0.4px]' style={{ color: isDark ? 'rgba(140,170,255,0.72)' : 'var(--text-muted)' }}>{t('create_game.min_label')}</span>
 									<NumInput value={minPlayers} onChange={setMinPlayers} min={1} max={99} className='w-[72px]' />
@@ -700,16 +700,16 @@ export const CreateGamePage = () => {
 
 						{/* ── Таймер за замовчуванням ── */}
 						<section className='flex flex-col gap-[12px]'>
-							<SectionLabel>⏱ Таймер за замовчуванням</SectionLabel>
+							<SectionLabel>⏱ {t('create_game.section_timer')}</SectionLabel>
 							<Toggle
 								checked={useDefaultTimer}
 								onChange={setUseDefaultTimer}
-								label='Встановити таймер для гри'
+								label={t('create_game.timer_toggle')}
 							/>
 							{useDefaultTimer && (
 								<div className='flex items-center gap-[10px] pl-[54px]'>
 									<div className='flex flex-col items-center gap-[4px]'>
-										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>Хв</span>
+										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>{t('room.timer.minutes')}</span>
 										<NumInput
 											value={defaultTimerMins}
 											onChange={v => setDefaultTimerMins(Math.max(0, Math.min(99, v)))}
@@ -720,7 +720,7 @@ export const CreateGamePage = () => {
 									</div>
 									<span className='text-[22px] font-[300] pt-[14px]' style={{ color: isDark ? 'rgba(100,140,220,0.4)' : 'var(--text-muted)' }}>:</span>
 									<div className='flex flex-col items-center gap-[4px]'>
-										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>Сек</span>
+										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>{t('room.timer.seconds')}</span>
 										<NumInput
 											value={defaultTimerSecs}
 											onChange={v => setDefaultTimerSecs(Math.max(0, Math.min(59, v)))}
@@ -730,7 +730,7 @@ export const CreateGamePage = () => {
 										/>
 									</div>
 									<span className='text-[12px] pt-[14px]' style={{ color: isDark ? 'rgba(140,170,255,0.6)' : 'var(--text-secondary)' }}>
-										Таймер буде показано при вході в кімнату (не запущений)
+										{t('create_game.timer_hint')}
 									</span>
 								</div>
 							)}
@@ -743,13 +743,13 @@ export const CreateGamePage = () => {
 							<SectionLabel>
 								<span className='flex items-center gap-[6px]'>
 									<Banknote size={12} strokeWidth={2} />
-									Оплата та донат
+									{t('create_game.section_payment')}
 								</span>
 							</SectionLabel>
 
 							{/* Participation cost */}
 							<div className='flex flex-col gap-[8px]'>
-								<span className='text-[13px]' style={{ color: isDark ? 'rgba(140,170,255,0.82)' : 'var(--text-secondary)' }}>Вартість участі (грн)</span>
+								<span className='text-[13px]' style={{ color: isDark ? 'rgba(140,170,255,0.82)' : 'var(--text-secondary)' }}>{t('create_game.cost_label')}</span>
 								<div className='flex items-center gap-[10px]'>
 									<NumInput
 										value={participationCost}
@@ -757,14 +757,14 @@ export const CreateGamePage = () => {
 										min={0}
 										className='w-[100px]'
 									/>
-									<span className='text-[13px]' style={{ color: isDark ? 'rgba(140,170,255,0.65)' : 'var(--text-muted)' }}>грн · 0 = безкоштовно</span>
+									<span className='text-[13px]' style={{ color: isDark ? 'rgba(140,170,255,0.65)' : 'var(--text-muted)' }}>{t('create_game.cost_hint')}</span>
 								</div>
 							</div>
 
 							{/* GM card number */}
 							<div className='flex flex-col gap-[8px]'>
 								<span className='text-[13px]' style={{ color: isDark ? 'rgba(140,170,255,0.82)' : 'var(--text-secondary)' }}>
-									Картка ігромайстра (для донатів)
+									{t('create_game.card_label')}
 								</span>
 								<div className='relative'>
 									<CreditCard size={14} strokeWidth={1.8}
@@ -813,7 +813,7 @@ export const CreateGamePage = () => {
 									<span className='text-[11px] text-[rgba(255,90,160,0.85)]'>{errors.gmCardNumber}</span>
 								)}
 								<span className='text-[12px]' style={{ color: isDark ? 'rgba(100,140,220,0.65)' : 'var(--text-muted)' }}>
-									Номер буде показано гравцям лише після натискання кнопки «Донат»
+									{t('create_game.card_hint')}
 								</span>
 							</div>
 						</section>

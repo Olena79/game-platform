@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Download, Trash2, ShieldAlert, Send } from 'lucide-react'
+import { Download, Trash2, ShieldAlert, Send, Pencil } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useTelegramLink } from '../../hooks/useTelegramLink'
-import { exportAccountRequest, deleteAccountRequest } from '../../actions/auth'
+import { exportAccountRequest, deleteAccountRequest, updateNameRequest } from '../../actions/auth'
 
 /**
  * The account page: what we hold, and how to leave.
@@ -16,7 +16,7 @@ import { exportAccountRequest, deleteAccountRequest } from '../../actions/auth'
 export const AccountPage = () => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
-	const { user, token, logout } = useAuth()
+	const { user, token, logout, setUserData } = useAuth()
 	const navigate = useNavigate()
 	const telegramLink = useTelegramLink(Boolean(user) && !user?.telegramConnected)
 
@@ -24,12 +24,38 @@ export const AccountPage = () => {
 	const [password, setPassword] = useState('')
 	const [error, setError] = useState('')
 	const [busy, setBusy] = useState(false)
+	// Editing one's name: the gamemaster's name on games, the name in rooms
+	// and in the community all come from here
+	const [editingName, setEditingName] = useState(false)
+	const [nameInput, setNameInput] = useState('')
+	const [surnameInput, setSurnameInput] = useState('')
+	const [nameError, setNameError] = useState('')
 
 	if (!user || !token) return null
 
 	const card = isDark
 		? { background: 'rgba(11,13,26,0.7)', border: '1px solid rgba(68,170,255,0.14)' }
 		: { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }
+
+	const startEditName = () => {
+		setNameInput(user.name ?? '')
+		setSurnameInput(user.surname ?? '')
+		setNameError('')
+		setEditingName(true)
+	}
+	const saveName = async () => {
+		setBusy(true)
+		setNameError('')
+		try {
+			setUserData(await updateNameRequest(token, nameInput.trim(), surnameInput.trim()))
+			setEditingName(false)
+		} catch {
+			setNameError(t('account.name_save_failed'))
+		} finally {
+			setBusy(false)
+		}
+	}
+	const inputStyle = { background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
 
 	const downloadData = async () => {
 		setBusy(true)
@@ -69,10 +95,37 @@ export const AccountPage = () => {
 
 			{/* Who you are here */}
 			<section className='rounded-[16px] p-[20px] flex flex-col gap-[10px]' style={card}>
-				<div className='flex justify-between gap-[12px] text-[14px]'>
-					<span style={{ color: 'var(--text-muted)' }}>{t('account.name')}</span>
-					<span className='font-[600] text-right'>{[user.name, user.surname].filter(Boolean).join(' ')}</span>
-				</div>
+				{!editingName ? (
+					<div className='flex justify-between items-center gap-[12px] text-[14px]'>
+						<span style={{ color: 'var(--text-muted)' }}>{t('account.name')}</span>
+						<span className='flex items-center gap-[8px] min-w-0'>
+							<span className='font-[600] text-right break-words min-w-0'>
+								{[user.name, user.surname].filter(Boolean).join(' ') || <span style={{ color: 'var(--text-muted)' }}>{t('account.name_empty')}</span>}
+							</span>
+							<button onClick={startEditName} aria-label={t('account.name_edit')} title={t('account.name_edit')}
+								className='flex-shrink-0 w-[30px] h-[30px] rounded-[8px] flex items-center justify-center cursor-pointer'
+								style={{ border: '1px solid var(--border-subtle)', color: 'var(--accent)' }}>
+								<Pencil size={13} />
+							</button>
+						</span>
+					</div>
+				) : (
+					<div className='flex flex-col gap-[8px]'>
+						<div className='grid grid-cols-1 sm:grid-cols-2 gap-[8px]'>
+							<input value={nameInput} onChange={e => setNameInput(e.target.value.slice(0, 100))} placeholder={t('account.first_name')}
+								className='w-full rounded-[10px] px-[12px] py-[9px] text-[14px] focus:outline-none' style={inputStyle} autoFocus />
+							<input value={surnameInput} onChange={e => setSurnameInput(e.target.value.slice(0, 100))} placeholder={t('account.last_name')}
+								className='w-full rounded-[10px] px-[12px] py-[9px] text-[14px] focus:outline-none' style={inputStyle} />
+						</div>
+						{nameError && <p className='text-[12px]' style={{ color: 'rgb(220,70,90)' }}>{nameError}</p>}
+						<div className='flex gap-[8px] justify-end'>
+							<button onClick={() => setEditingName(false)} className='px-[14px] py-[7px] rounded-[9px] text-[13px] cursor-pointer'
+								style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{t('account.cancel')}</button>
+							<button onClick={() => void saveName()} disabled={busy} className='px-[14px] py-[7px] rounded-[9px] text-[13px] font-[600] cursor-pointer disabled:opacity-50'
+								style={{ background: 'var(--accent-subtle)', border: '1px solid var(--accent)', color: 'var(--accent)' }}>{t('account.name_save')}</button>
+						</div>
+					</div>
+				)}
 				<div className='flex justify-between gap-[12px] text-[14px]'>
 					<span style={{ color: 'var(--text-muted)' }}>{t('account.email')}</span>
 					<span className='font-[600] text-right break-all'>{user.email}</span>

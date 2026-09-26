@@ -21,6 +21,7 @@ Errors look like `{ "message": "..." }`; validation errors add
 | POST | `/login` | — | `{ email, password }` | `{ accessToken, refreshToken, user }` · `400 INVALID_CREDENTIALS` · `403 ACCOUNT_BLOCKED` |
 | POST | `/google` | — | `{ token }` (Google ID token) | `{ accessToken, refreshToken, user }` — the Google email must be verified |
 | GET | `/me` | JWT | — | `user` |
+| PUT | `/me` | JWT | `{ name, surname }` (≤100 each) | `user` |
 | POST | `/refresh` | — | `{ refreshToken }` | `{ accessToken, refreshToken }` · `401` |
 | POST | `/logout` | JWT | — | `{ message }` — revokes every refresh token of the account |
 | POST | `/forgot-password` | — | `{ email }` | always `{ ok: true }`; a reset link goes to the account's Telegram if linked |

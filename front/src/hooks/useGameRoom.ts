@@ -69,7 +69,7 @@ export function useGameRoom(rawCode: string) {
 		setResolved(null)
 		resolveGameCode(rawCode)
 			.then(r => setResolved({ isSpectatorJoin: r.isSpectator }))
-			.catch(() => setError('Кімнату не знайдено'))
+			.catch(() => setError('ROOM_NOT_FOUND'))
 	}, [rawCode])
 
 	// The code the person was given is all the client ever sends: the server
@@ -281,7 +281,7 @@ export function useGameRoom(rawCode: string) {
 		setBreakoutInvite(null)
 		const token = await fetchLKToken(roomId)
 		if (!token) {
-			setActionError('Не вдалося перейти до кімнати. Спробуйте ще раз.')
+			setActionError('BREAKOUT_SWITCH_FAILED')
 			setTimeout(() => setActionError(''), 5000)
 			return
 		}
