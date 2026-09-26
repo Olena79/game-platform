@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 18 suites / 153 tests, frontend 5 files / 32 tests.
+Tests: backend 18 suites / 155 tests, frontend 5 files / 32 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -70,7 +70,15 @@ Tests: backend 18 suites / 153 tests, frontend 5 files / 32 tests.
   (`RecordingInfoCard`) and once per device before the first recording.
 - **Account**: data export and deletion (`routes/account.ts`,
   `services/accountDeletion.ts`). Deletion removes games, recordings, likes;
-  posts/comments stay anonymised.
+  posts/comments stay anonymised. The export is shown as a readable page,
+  «Мої дані на сайті» (`/account/data`, `MyDataPage`), printable / "save as
+  PDF" through the browser; the JSON file is a small link at its bottom.
+  On phones the bottom nav has «Акаунт» for a signed-in person, and signing
+  out is on the account page (desktop: the profile menu too).
+- **Language**: the last chosen language is kept in `localStorage`
+  (`gos-lang`, `i18n.ts`) and the site opens in it; Ukrainian otherwise.
+- **Contact**: the legal pages give only the club's address,
+  gamesclubsenses@gmail.com.
 - **Pre-join screen** (`PreJoinScreen`): camera and microphone are asked for
   in one request, so Safari shows one question per visit, not two; iPhone
   users are told how to allow the site for good (Safari asks every visit
@@ -197,6 +205,11 @@ unless the user is a registered player. Both `gr:join` and
   are not reported. GMs are told in the recording notes that the club's
   administrator is notified when a recording starts (the link to the
   administrator is not mentioned there — decided 2026-09-26).
+  A new game is not reported separately when the administrator's chat gets
+  the public announcement anyway (only after `/stop`).
+- **One message per chat**: announcements and broadcasts skip a chat they
+  already reached — two accounts linked to one Telegram used to get every
+  announcement twice.
 
 ## 🏗️ Stack
 
@@ -253,7 +266,7 @@ front/src/
   hooks/useGameRoom.ts    socket + LiveKit tokens for the room
   hooks/useTelegramLink.ts bot deep link
   recording/RoomRecorder.ts the in-browser recorder (canvas grid + audio mix → parts)
-  components/pages/       Home, Auth, ResetPassword, Account, Game, OurGames, CreateGame, GameRoom, Community, Admin, legal
+  components/pages/       Home, Auth, ResetPassword, Account, MyData, Game, OurGames, CreateGame, GameRoom, Community, Admin, legal
   components/gameroom/    GridView, SpeakerView, ChatPanel, ModPanel, RecordingControls (+ explainer), modals, overlays
   components/RecordingInfoCard.tsx  recording notes for GMs on the create-game page
   translation/{ua,en}.json

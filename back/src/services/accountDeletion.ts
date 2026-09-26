@@ -50,15 +50,35 @@ export async function exportAccountData(userId: string) {
 	const registeredIn = await Game.find({
 		$or: [{ 'registeredPlayers.userId': uid }, { 'spectators.userId': uid }],
 	// No codes here: a spectator must not learn the entry code from an export
-	}).select('title scheduledAt').lean()
+	}).select('title scheduledAt registeredPlayers.userId').lean()
+
+	// A comment is read with the post it answers
+	const postIds = [...new Set(comments.map(c => String(c.postId)))]
+	const commentedPosts = postIds.length
+		? await Post.find({ _id: { $in: postIds } }).select('topic text').lean()
+		: []
+	const postById = new Map(commentedPosts.map(p => [String(p._id), p]))
+	// The password itself never leaves; whether there is one does
+	const hasPassword = !!(await User.findById(uid).select('password').lean())?.password
 
 	return {
 		exportedAt: new Date().toISOString(),
-		account: user,
+		account: user ? { ...user, hasPassword } : null,
 		gamesCreated: games,
-		gamesJoined: registeredIn,
+		gamesJoined: registeredIn.map(g => ({
+			_id: g._id,
+			title: g.title,
+			scheduledAt: g.scheduledAt,
+			as: (g.registeredPlayers ?? []).some(p => String(p.userId) === userId) ? 'player' : 'spectator',
+		})),
 		posts,
-		comments,
+		comments: comments.map(c => {
+			const post = postById.get(String(c.postId))
+			return {
+				...c,
+				post: post ? { topic: post.topic, text: post.text.slice(0, 200) } : null,
+			}
+		}),
 		recordings,
 	}
 }

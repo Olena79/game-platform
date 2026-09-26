@@ -59,10 +59,24 @@ export const resetPasswordRequest = (token: string, password: string) =>
 		body: JSON.stringify({ token, password }),
 	}).then(handleResponse<{ ok: boolean }>)
 
+/** What `GET /api/account/export` returns — shown on the "My data" page */
+export interface AccountExport {
+	exportedAt: string
+	account: {
+		name?: string; surname?: string; email: string; googleId?: string; telegramChatId?: string
+		newsOptOut?: boolean; communityMuted?: boolean; hasPassword?: boolean; createdAt?: string
+	} | null
+	gamesCreated: { _id: string; title: string; description?: string; scenario?: string; createdAt?: string; scheduledAt?: string }[]
+	gamesJoined: { _id: string; title: string; scheduledAt?: string; as: 'player' | 'spectator' }[]
+	posts: { _id: string; topic?: string; text: string; createdAt?: string; likesCount?: number; commentsCount?: number }[]
+	comments: { _id: string; text: string; createdAt?: string; post: { topic?: string; text: string } | null }[]
+	recordings: { _id: string; gameTitle?: string; shareLink?: string; status: string; createdAt?: string; expiresAt?: string }[]
+}
+
 export const exportAccountRequest = (authToken: string) =>
 	fetch(`${API}/api/account/export`, {
 		headers: { Authorization: `Bearer ${authToken}` },
-	}).then(handleResponse<Record<string, unknown>>)
+	}).then(handleResponse<AccountExport>)
 
 /** Irreversible. The password is required for accounts that have one. */
 export const deleteAccountRequest = (authToken: string, password?: string) =>

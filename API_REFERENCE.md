@@ -36,7 +36,7 @@ reset links 3 / hour per address; the whole section 100 requests / 15 min per IP
 
 | Method | Path | Auth | Body | Returns |
 |---|---|---|---|---|
-| GET | `/export` | JWT | — | JSON download of everything held about the caller |
+| GET | `/export` | JWT | — | Everything held about the caller (profile with `hasPassword`, games created, games joined with `as: player/spectator`, posts, comments with a preview of their post, recordings). Shown as a readable page at `/account/data`; the raw JSON is offered there too |
 | DELETE | `/` | JWT | `{ confirm: true, password? }` | `{ ok, ...summary }` · `403 INVALID_PASSWORD` — password required when the account has one |
 
 Deleting removes the account, its games, recordings and likes; posts and

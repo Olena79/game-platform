@@ -332,7 +332,7 @@ export const TermsOfServicePage = () => {
             <p style={{ marginTop: "12px" }}>
               Email:{" "}
               <a
-                href="mailto:foksysmile@gmail.com"
+                href="mailto:gamesclubsenses@gmail.com"
                 style={{ color: isDark ? "#44aaff" : "var(--accent)" }}
               >
                 gamesclubsenses@gmail.com

@@ -16,6 +16,7 @@ import { OurGamesPage } from './components/pages/OurGamesPage'
 // The game room carries LiveKit and most of the bundle; the site pages load
 // without it, and the room without the site's heavier pages.
 const AccountPage = lazyPage(() => import('./components/pages/AccountPage'), 'AccountPage')
+const MyDataPage = lazyPage(() => import('./components/pages/MyDataPage'), 'MyDataPage')
 const CreateGamePage = lazyPage(() => import('./components/pages/CreateGamePage'), 'CreateGamePage')
 const CommunityPage = lazyPage(() => import('./components/pages/CommunityPage'), 'CommunityPage')
 const GameRoomPage = lazyPage(() => import('./components/pages/GameRoomPage'), 'GameRoomPage')
@@ -83,6 +84,7 @@ const SiteLayout = () => (
 				<Route path='/auth' element={<AuthPage />} />
 				<Route path='/auth/reset' element={<ResetPasswordPage />} />
 				<Route path='/account' element={<RequireAuth><AccountPage /></RequireAuth>} />
+				<Route path='/account/data' element={<RequireAuth><MyDataPage /></RequireAuth>} />
 				<Route path='/game' element={<GamePage />} />
 				<Route path='/games' element={<OurGamesPage />} />
 				<Route path='/create-game' element={<RequireAuth><CreateGamePage /></RequireAuth>} />

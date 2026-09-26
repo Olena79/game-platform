@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import { Download, Trash2, ShieldAlert, Send, Pencil } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { FileText, LogOut, Trash2, ShieldAlert, Send, Pencil } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useTelegramLink } from '../../hooks/useTelegramLink'
-import { exportAccountRequest, deleteAccountRequest, updateNameRequest } from '../../actions/auth'
+import { deleteAccountRequest, updateNameRequest } from '../../actions/auth'
+import { Modal } from '../minicomponents/Modal'
 
 /**
  * The account page: what we hold, and how to leave.
@@ -24,6 +25,7 @@ export const AccountPage = () => {
 	const [password, setPassword] = useState('')
 	const [error, setError] = useState('')
 	const [busy, setBusy] = useState(false)
+	const [logoutOpen, setLogoutOpen] = useState(false)
 	// Editing one's name: the gamemaster's name on games, the name in rooms
 	// and in the community all come from here
 	const [editingName, setEditingName] = useState(false)
@@ -56,23 +58,6 @@ export const AccountPage = () => {
 		}
 	}
 	const inputStyle = { background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
-
-	const downloadData = async () => {
-		setBusy(true)
-		try {
-			const data = await exportAccountRequest(token)
-			const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
-			const a = document.createElement('a')
-			a.href = url
-			a.download = 'games-of-senses-data.json'
-			a.click()
-			URL.revokeObjectURL(url)
-		} catch {
-			setError(t('account.export_failed'))
-		} finally {
-			setBusy(false)
-		}
-	}
 
 	const confirmDelete = async () => {
 		setBusy(true)
@@ -155,14 +140,34 @@ export const AccountPage = () => {
 				<p className='text-[13px] leading-[1.5]' style={{ color: 'var(--text-muted)' }}>
 					{t('account.export_hint')}
 				</p>
-				<button onClick={downloadData} disabled={busy}
-					className='self-start flex items-center gap-[8px] rounded-[10px] px-[16px] py-[9px] text-[13px] font-[600] cursor-pointer disabled:opacity-40'
+				<Link to='/account/data'
+					className='self-start flex items-center gap-[8px] rounded-[10px] px-[16px] py-[9px] text-[13px] font-[600]'
 					style={isDark
 						? { background: 'rgba(68,170,255,0.1)', border: '1px solid rgba(68,170,255,0.3)', color: '#68b5ff' }
 						: { background: 'var(--bg-base)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}>
-					<Download size={14} /> {t('account.export_button')}
+					<FileText size={14} /> {t('account.export_button')}
+				</Link>
+			</section>
+
+			{/* Sign out — on phones this is the only place for it */}
+			<section className='rounded-[16px] p-[20px] flex items-center justify-between gap-[12px]' style={card}>
+				<span className='text-[13px] leading-[1.5]' style={{ color: 'var(--text-muted)' }}>{t('account.logout_hint')}</span>
+				<button onClick={() => setLogoutOpen(true)}
+					className='flex-shrink-0 flex items-center gap-[8px] rounded-[10px] px-[16px] py-[9px] text-[13px] font-[600] cursor-pointer'
+					style={{ border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }}>
+					<LogOut size={14} /> {t('auth.btn_logout')}
 				</button>
 			</section>
+			<Modal
+				isOpen={logoutOpen}
+				onClose={() => setLogoutOpen(false)}
+				title={t('auth.logout_confirm_title')}
+				message={t('auth.logout_confirm_msg')}
+				variant='warn'
+				onConfirm={() => { setLogoutOpen(false); logout(); navigate('/', { replace: true }) }}
+				confirmLabel={t('auth.logout_confirm_yes')}
+				cancelLabel={t('auth.logout_confirm_no')}
+			/>
 
 			{/* Leave */}
 			<section className='rounded-[16px] p-[20px] flex flex-col gap-[12px]'

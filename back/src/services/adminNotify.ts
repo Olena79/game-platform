@@ -19,12 +19,24 @@ export async function isAdminUser(userId: string | undefined | null): Promise<bo
 }
 
 /** The administrator's account id, if it exists (cached for a minute). */
-let adminCache: { at: number; id: string | null; chat: string | null } | null = null
-async function adminAccount(): Promise<{ id: string | null; chat: string | null }> {
+interface AdminAccount {
+	at: number
+	id: string | null
+	chat: string | null
+	/** Their chat gets the public new-game announcement (linked, no /stop) */
+	hearsAnnouncements: boolean
+}
+let adminCache: AdminAccount | null = null
+async function adminAccount(): Promise<AdminAccount> {
 	if (adminCache && Date.now() - adminCache.at < 60_000) return adminCache
 	const email = adminEmail()
-	const user = email ? await User.findOne({ email }).select('telegramChatId').lean() : null
-	adminCache = { at: Date.now(), id: user ? String(user._id) : null, chat: user?.telegramChatId || null }
+	const user = email ? await User.findOne({ email }).select('telegramChatId newsOptOut blockedAt').lean() : null
+	adminCache = {
+		at: Date.now(),
+		id: user ? String(user._id) : null,
+		chat: user?.telegramChatId || null,
+		hearsAnnouncements: !!user?.telegramChatId && !user.newsOptOut && !user.blockedAt,
+	}
 	return adminCache
 }
 
@@ -81,6 +93,10 @@ export async function noticeTelegramLinked(userId: string): Promise<void> {
 
 export async function noticeGameCreated(creatorId: string, game: { title: string; scheduledAt?: Date | null }): Promise<void> {
 	if (await isAdminId(creatorId)) return
+	// The announcement already names the game and its gamemaster: a second
+	// message about the same game only when the administrator turned
+	// announcements off (/stop)
+	if ((await adminAccount().catch(() => null))?.hearsAnnouncements) return
 	const user = await User.findById(creatorId).select('name surname email').lean()
 	await notifyAdmin([
 		'🎲 <b>Нова гра</b>',

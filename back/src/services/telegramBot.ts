@@ -413,9 +413,13 @@ async function sendAnnouncements(game: GameAnnouncement & { creatorId: string })
 
 	let sent = 0
 	let unlinked = 0
+	// Two accounts linked to one Telegram (a member's second account) would
+	// otherwise get the announcement twice in the same chat
+	const seen = new Set<number>()
 	for (const r of recipients) {
 		const chatId = parseInt(String(r.telegramChatId), 10)
-		if (!Number.isFinite(chatId)) continue
+		if (!Number.isFinite(chatId) || seen.has(chatId)) continue
+		seen.add(chatId)
 		const text = announcementText(game, langOf(r.language))
 
 		// A picture when the game has one and the text fits a caption (1024)
@@ -464,8 +468,12 @@ async function sendBroadcast(text: string): Promise<{ recipients: number; sent: 
 
 	let sent = 0
 	let unlinked = 0
+	const seen = new Set<string>()   // one message per chat, as above
 	for (const r of recipients) {
-		const res = await sendTelegramHtml(String(r.telegramChatId), broadcastText(text, langOf(r.language)))
+		const chat = String(r.telegramChatId)
+		if (seen.has(chat)) continue
+		seen.add(chat)
+		const res = await sendTelegramHtml(chat, broadcastText(text, langOf(r.language)))
 		if (res.ok) sent++
 		else if (res.unreachable) {
 			await User.updateOne({ _id: r._id }, { $unset: { telegramChatId: 1 } })
