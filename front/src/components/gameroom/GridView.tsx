@@ -282,29 +282,34 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				</div>
 			</div>
 
-			{/* GM actions overlay */}
+			{/* GM actions overlay: mute, and ⚡ influence −1 / +1 */}
 			{isGM && !player.isGamemaster && (
-				<div className='absolute top-[4px] right-[4px] flex gap-[2px]'>
+				<div className='absolute top-[4px] right-[4px] flex gap-[4px] items-center'>
 					{onMutePlayer && !player.isSpectator && (
 						<button onClick={() => onMutePlayer(player.userId)}
-							className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
-							style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#ff3850' }}
-							title={t('room.grid.mute_title')}>
-							<VolumeX size={9} strokeWidth={2} />
+							className='w-[28px] h-[28px] rounded-[7px] flex items-center justify-center cursor-pointer transition-all hover:brightness-125'
+							style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid rgba(255,56,80,0.45)', color: '#ff3850' }}
+							title={t('room.grid.mute_title')} aria-label={t('room.grid.mute_title')}>
+							<VolumeX size={15} strokeWidth={2} />
 						</button>
 					)}
-					<button onClick={() => onSetInfluence(player.userId, 1)}
-						className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
-						style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#4a5070' }}
-						title='⚡+1'>
-						<Plus size={9} strokeWidth={2} />
-					</button>
-					<button onClick={() => onSetInfluence(player.userId, -1)}
-						className='w-[18px] h-[18px] rounded-[4px] flex items-center justify-center cursor-pointer transition-all'
-						style={{ background: 'rgba(11,13,26,0.85)', border: '1px solid #1c1f35', color: '#4a5070' }}
-						title='⚡-1'>
-						<Minus size={9} strokeWidth={2} />
-					</button>
+					{!player.isSpectator && (
+						<div className='flex items-center h-[28px] rounded-[7px] overflow-hidden'
+							style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid #1c1f35' }}
+							title={t('room.grid.influence_title')}>
+							<button onClick={() => onSetInfluence(player.userId, -1)}
+								className='w-[22px] h-full flex items-center justify-center cursor-pointer transition-all hover:brightness-150'
+								style={{ color: 'rgba(160,175,220,0.8)' }} aria-label='⚡ −1'>
+								<Minus size={11} strokeWidth={2.2} />
+							</button>
+							<Zap size={11} style={{ color: '#c8a830' }} />
+							<button onClick={() => onSetInfluence(player.userId, 1)}
+								className='w-[22px] h-full flex items-center justify-center cursor-pointer transition-all hover:brightness-150'
+								style={{ color: 'rgba(160,175,220,0.8)' }} aria-label='⚡ +1'>
+								<Plus size={11} strokeWidth={2.2} />
+							</button>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

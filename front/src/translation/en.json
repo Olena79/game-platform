@@ -474,7 +474,8 @@
       "mic_label": "Mic",
       "cam_label": "Camera",
       "screen_label": "Screen",
-      "leave_label": "Leave"
+      "leave_label": "Leave",
+      "influence_title": "Player influence: − take 1, + give 1"
     },
     "end": {
       "title": "Congratulations!",

@@ -640,10 +640,10 @@ function StripTileWrapper({ player, reaction, gameStarted, isGM, onMutePlayer, i
 			{canMute && (
 				<button
 					onClick={() => onMutePlayer!(player.userId)}
-					className='absolute top-[2px] right-[2px] w-[16px] h-[16px] rounded-[3px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer'
-					style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid #1c1f35', color: '#ff3850' }}
-					title={t('room.speaker.mic_label')}>
-					<VolumeX size={9} strokeWidth={2} />
+					className='absolute top-[2px] right-[2px] w-[24px] h-[24px] rounded-[6px] flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-all cursor-pointer'
+					style={{ background: 'rgba(11,13,26,0.9)', border: '1px solid rgba(255,56,80,0.45)', color: '#ff3850' }}
+					title={t('room.grid.mute_title')} aria-label={t('room.grid.mute_title')}>
+					<VolumeX size={13} strokeWidth={2} />
 				</button>
 			)}
 		</div>

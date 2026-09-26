@@ -474,7 +474,8 @@
       "mic_label": "Мікрофон",
       "cam_label": "Камера",
       "screen_label": "Екран",
-      "leave_label": "Вийти"
+      "leave_label": "Вийти",
+      "influence_title": "Вплив гравця: − забрати 1, + додати 1"
     },
     "end": {
       "title": "Вітаємо!",
