@@ -755,7 +755,8 @@
       "until": "until {{date}}",
       "open": "Open",
       "delete": "Delete",
-      "delete_confirm": "Delete the recording of “{{title}}”? The gamemaster's link stops working."
+      "delete_confirm": "Delete the recording of “{{title}}”? The gamemaster's link stops working.",
+      "status_uploading": "old record (Google Drive)"
     },
     "broadcast": {
       "lead": "The message goes over Telegram to everyone who linked the bot (including those who turned announcements off with /stop), except blocked members. It is sent gradually; when done, the bot tells you how many received it.",

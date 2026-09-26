@@ -406,9 +406,11 @@ export async function cleanupExpiredRecordings(): Promise<void> {
 	const expired = await Recording.find({
 		$or: [
 			{ expiresAt: { $lte: new Date() }, status: { $nin: ACTIVE } },
-			// Old Google Drive rows: often no expiry at all, and their files are
-			// out of reach since Drive access was revoked — the row is all there is
-			{ driveFileId: { $exists: true, $nin: [null, ''] }, fileKey: { $in: [null, ''] } },
+			// Rows of the old Google Drive recorder ('uploading', 'completed', …):
+			// every current recording has a key in R2 from its first moment, so
+			// a row without one is a leftover — its Drive file, if any, is out of
+			// reach since Drive access was revoked; the row is all there is
+			{ fileKey: { $in: [null, ''] }, status: { $nin: ACTIVE } },
 		],
 	})
 	let removed = 0
