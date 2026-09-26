@@ -569,6 +569,13 @@
       "Not enough coins in the bank": "Not enough coins in the bank.",
       "Max 5 breakout rooms": "At most 5 breakout rooms.",
       "Not invited to this room": "You are not invited to this room."
+    },
+    "camera_err": {
+      "blocked": "The browser has blocked the camera for this site, so it no longer asks. Click the icon left of the site address (lock or sliders) → Camera → \"Allow\", reload the page and press \"Camera\".",
+      "system": "The system is holding the camera back, not the site. Windows: Settings → Privacy & security → Camera — turn on \"Camera access\" and \"Let desktop apps access your camera\". Mac: System Settings → Privacy & Security → Camera — turn on your browser. Then restart the browser.",
+      "busy": "The camera is busy or switched off on the laptop itself. Close Zoom, Teams, Skype and other programs that may hold it; check the camera shutter and the camera-off key (on Lenovo often F8 or a switch on the side). Then press \"Camera\" again.",
+      "missing": "No camera found. Check it is connected and switched on, then press \"Camera\" again.",
+      "other": "The camera will not start. Close other programs that use it, reload the page and press \"Camera\" again."
     }
   },
   "legal": {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mic, MicOff, Video, VideoOff, ArrowRight } from 'lucide-react'
+import { cameraProblemKey } from '../../utils/cameraProblem'
 
 interface Props {
 	roomTitle: string
@@ -18,6 +19,8 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	const [micOn, setMicOn] = useState(true)
 	const [camOn, setCamOn] = useState(false)
 	const [camAvailable, setCamAvailable] = useState(true)
+	// Why the camera would not start, said plainly (a translation key)
+	const [camProblem, setCamProblem] = useState('')
 	const videoRef = useRef<HTMLVideoElement>(null)
 	const streamRef = useRef<MediaStream | null>(null)
 
@@ -40,6 +43,16 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	 * The microphone is released at once; LiveKit opens it again in the room.
 	 */
 	const askedBothRef = useRef(false)
+	// Some Windows cameras refuse the preferred size: then any size will do
+	const openCamera = async (): Promise<MediaStream> => {
+		try {
+			return await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: false })
+		} catch (err) {
+			const name = (err as { name?: string })?.name
+			if (name === 'NotAllowedError' || name === 'NotFoundError') throw err
+			return navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+		}
+	}
 	const startCam = async () => {
 		try {
 			let s: MediaStream
@@ -50,19 +63,22 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 					s.getAudioTracks().forEach(tr => { tr.stop(); s.removeTrack(tr) })
 				} catch {
 					// Microphone refused or missing: the camera alone may still work
-					s = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: false })
+					s = await openCamera()
 				}
 			} else {
-				s = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: false })
+				s = await openCamera()
 			}
 			stopStream()
 			streamRef.current = s
 			if (videoRef.current) videoRef.current.srcObject = s
 			setCamOn(true)
 			setCamAvailable(true)
-		} catch {
+			setCamProblem('')
+		} catch (err) {
+			console.warn('[prejoin] camera failed', err)
 			setCamAvailable(false)
 			setCamOn(false)
+			setCamProblem(cameraProblemKey(err))
 		}
 	}
 
@@ -172,8 +188,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 
 					<button
 						onClick={toggleCam}
-						disabled={!camAvailable && !camOn}
-						className='flex flex-col items-center gap-[6px] px-[28px] py-[12px] rounded-[14px] cursor-pointer transition-all disabled:opacity-35 disabled:cursor-not-allowed'
+						className='flex flex-col items-center gap-[6px] px-[28px] py-[12px] rounded-[14px] cursor-pointer transition-all'
 						style={camOn
 							? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
 							: { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}
@@ -184,6 +199,14 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 						</span>
 					</button>
 				</div>}
+
+				{/* Why the camera is off, and what to do — instead of a dead button */}
+				{!spectator && camProblem && !camOn && (
+					<p role='alert' className='text-[12.5px] leading-[1.5] text-center rounded-[10px] px-[14px] py-[10px] -mt-[8px]'
+						style={{ background: 'rgba(255,170,60,0.08)', border: '1px solid rgba(255,170,60,0.3)', color: 'rgba(255,215,160,0.95)' }}>
+						{t(camProblem)}
+					</p>
+				)}
 
 				{/* Enter button */}
 				<button

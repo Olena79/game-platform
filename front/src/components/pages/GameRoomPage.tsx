@@ -1,3 +1,4 @@
+import { cameraProblemKey } from '../../utils/cameraProblem'
 import React, {
 	useState,
 	useCallback,
@@ -442,7 +443,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 			localParticipant?.setMicrophoneEnabled(true, AUDIO_CAPTURE_OPTS).catch(() => setMicOn(false))
 		}
 		if (initCam) {
-			localParticipant?.setCameraEnabled(true).catch(() => setCamOn(false))
+			localParticipant?.setCameraEnabled(true).catch(err => {
+				setCamOn(false)
+				showScreenError(t(cameraProblemKey(err)), 20000)
+			})
 		}
 	}, [connectionState]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -466,8 +470,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		try {
 			await localParticipant.setCameraEnabled(enabled)
 			setCamOn(enabled)
-		} catch {
+		} catch (err) {
 			setCamOn(localParticipant.isCameraEnabled)
+			// It used to fail in silence: a camera button that did nothing
+			if (enabled) showScreenError(t(cameraProblemKey(err)), 20000)
 		}
 	}, [localParticipant])
 
@@ -503,10 +509,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	}, [localParticipant, t]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const screenErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-	function showScreenError(message: string) {
+	function showScreenError(message: string, ms = 8000) {
 		setScreenError(message)
 		if (screenErrorTimer.current) clearTimeout(screenErrorTimer.current)
-		screenErrorTimer.current = setTimeout(() => setScreenError(''), 8000)
+		screenErrorTimer.current = setTimeout(() => setScreenError(''), ms)
 	}
 
 	// Somebody started showing their screen: bring it to the big view. The
@@ -623,9 +629,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 			{/* Screen sharing did not start, and why */}
 			{screenError && (
-				<div className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px] text-center'
+				<div role='alert' className='flex-shrink-0 flex items-center justify-center gap-[8px] py-[5px] px-[16px] text-center'
 					style={{ background: 'rgba(68,170,255,0.10)', borderBottom: '1px solid rgba(68,170,255,0.25)' }}>
 					<span style={{ color: 'rgba(150,200,255,0.95)', fontSize: '12px' }}>{screenError}</span>
+					<button onClick={() => setScreenError('')} aria-label='✕' className='flex-shrink-0 text-[12px] cursor-pointer px-[4px]'
+						style={{ color: 'rgba(150,200,255,0.6)' }}>✕</button>
 				</div>
 			)}
 

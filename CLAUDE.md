@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 18 suites / 155 tests, frontend 5 files / 32 tests.
+Tests: backend 18 suites / 155 tests, frontend 6 files / 36 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -86,6 +86,13 @@ Tests: backend 18 suites / 155 tests, frontend 5 files / 32 tests.
   in one request, so Safari shows one question per visit, not two; iPhone
   users are told how to allow the site for good (Safari asks every visit
   otherwise — its default). Spectators are asked for nothing.
+  When the camera will not start, the reason is said with what to do
+  (`utils/cameraProblem.ts`: blocked for the site / held back by Windows or
+  macOS / busy or switched off on the laptop / missing), on this screen and
+  in the room; the camera button stays pressable to retry. It used to go
+  grey in silence (a Windows laptop, 2026-09-27: microphone fine, camera
+  dead, no question shown). A camera refusing the preferred size is retried
+  with any size.
 - **Screen sharing**: players and the GM (never spectators — their token
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the
