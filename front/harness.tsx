@@ -1,4 +1,3 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { CoinFlights } from './src/components/gameroom/CoinFlights'
 const tile = (id: string, left: number, top: number, label: string) => (

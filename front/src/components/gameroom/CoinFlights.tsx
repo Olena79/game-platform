@@ -50,7 +50,8 @@ function anchorPoint(id: string, gamemasterId: string | null): { x: number; y: n
 }
 
 /**
- * Coins flying between players (and the bank), seen by everyone in the room.
+ * Coins flying between players (and the bank), and the ⚡ flash when the
+ * gamemaster gives or takes influence — seen by everyone in the room.
  * Plain DOM and the Web Animations API on transform/opacity — composited by
  * the GPU, nothing re-renders, pointer events pass through. Someone who is
  * off screen is replaced by the top (sender) or bottom (receiver) edge; with
@@ -80,8 +81,27 @@ export const CoinFlights = ({ gamemasterId }: { gamemasterId: string | null }) =
 			if (dstVisible) showAmount(layer, dst, amount, reduced ? 0 : 700 + coinsFor(amount) * 25)
 		}
 
+		// Influence given or taken by the gamemaster: a ⚡ flash on the tile
+		const onInfluence = (e: Event) => {
+			const layer = layerRef.current
+			if (!layer) return
+			const { userId, delta } = (e as CustomEvent<{ userId: string; delta: number }>).detail
+			const at = anchorPoint(userId, gmRef.current)
+			if (!at) return   // not on this screen: nothing to point at
+			if (delta > 0) {
+				if (!reduced) influenceBurst(layer, at)
+				showLabel(layer, at, `+${delta} ⚡`, '#c9a6ff', 'rgba(170,110,255,0.8)', reduced ? 0 : 150)
+			} else {
+				showLabel(layer, at, `${delta} ⚡`, 'rgba(190,190,215,0.85)', 'rgba(0,0,0,0.6)', 0)
+			}
+		}
+
 		window.addEventListener('gos:coins-moved', onMoved)
-		return () => window.removeEventListener('gos:coins-moved', onMoved)
+		window.addEventListener('gos:influence-changed', onInfluence)
+		return () => {
+			window.removeEventListener('gos:coins-moved', onMoved)
+			window.removeEventListener('gos:influence-changed', onInfluence)
+		}
 	}, [])
 
 	return <div ref={layerRef} data-coin-layer='' className='fixed inset-0 pointer-events-none overflow-hidden' style={{ zIndex: 70 }} aria-hidden='true' />
@@ -123,9 +143,47 @@ function flyCoin(layer: HTMLElement, src: { x: number; y: number }, dst: { x: nu
 }
 
 function showAmount(layer: HTMLElement, at: { x: number; y: number }, amount: number, delay: number) {
+	showLabel(layer, at, `+${amount}`, '#ffd45a', 'rgba(255,190,40,0.7)', delay)
+}
+
+/**
+ * Influence: a glowing ring spreads from the tile and a few ⚡ sparks fly
+ * out — short, so a GM pressing "+" several times reads as several pulses.
+ */
+function influenceBurst(layer: HTMLElement, at: { x: number; y: number }) {
+	const ring = document.createElement('div')
+	ring.style.cssText = 'position:absolute;left:0;top:0;width:60px;height:60px;border-radius:50%;border:3px solid rgba(180,120,255,0.9);box-shadow:0 0 18px rgba(170,110,255,0.8),inset 0 0 12px rgba(170,110,255,0.5);will-change:transform,opacity'
+	layer.appendChild(ring)
+	const r = ring.animate([
+		{ transform: `translate(${at.x - 30}px, ${at.y - 30}px) scale(0.3)`, opacity: 0.95 },
+		{ transform: `translate(${at.x - 30}px, ${at.y - 30}px) scale(2.2)`, opacity: 0 },
+	], { duration: 750, easing: 'ease-out' })
+	r.onfinish = () => ring.remove()
+	r.oncancel = () => ring.remove()
+
+	const sparks = 6
+	for (let i = 0; i < sparks; i++) {
+		const spark = document.createElement('div')
+		spark.textContent = '⚡'
+		spark.style.cssText = 'position:absolute;left:0;top:0;font-size:18px;line-height:1;filter:drop-shadow(0 0 6px rgba(190,130,255,0.9));will-change:transform,opacity'
+		layer.appendChild(spark)
+		const angle = (i / sparks) * Math.PI * 2 + Math.random() * 0.5
+		const dist = 45 + Math.random() * 25
+		const x0 = at.x - 9, y0 = at.y - 9
+		const a = spark.animate([
+			{ transform: `translate(${x0}px, ${y0}px) scale(0.3)`, opacity: 0 },
+			{ transform: `translate(${x0 + Math.cos(angle) * dist * 0.5}px, ${y0 + Math.sin(angle) * dist * 0.5}px) scale(1.2)`, opacity: 1, offset: 0.35 },
+			{ transform: `translate(${x0 + Math.cos(angle) * dist}px, ${y0 + Math.sin(angle) * dist}px) scale(0.6)`, opacity: 0 },
+		], { duration: 700, delay: i * 25, easing: 'ease-out', fill: 'backwards' })
+		a.onfinish = () => spark.remove()
+		a.oncancel = () => spark.remove()
+	}
+}
+
+function showLabel(layer: HTMLElement, at: { x: number; y: number }, text: string, color: string, glow: string, delay: number) {
 	const label = document.createElement('div')
-	label.textContent = `+${amount}`
-	label.style.cssText = 'position:absolute;left:0;top:0;font-weight:800;font-size:20px;color:#ffd45a;text-shadow:0 0 10px rgba(255,190,40,0.7),0 2px 6px rgba(0,0,0,0.8);white-space:nowrap;will-change:transform,opacity'
+	label.textContent = text
+	label.style.cssText = `position:absolute;left:0;top:0;font-weight:800;font-size:20px;color:${color};text-shadow:0 0 10px ${glow},0 2px 6px rgba(0,0,0,0.8);white-space:nowrap;will-change:transform,opacity`
 	layer.appendChild(label)
 	const x = at.x - 20
 	const anim = label.animate([

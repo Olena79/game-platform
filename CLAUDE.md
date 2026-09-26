@@ -91,6 +91,9 @@ Tests: backend 18 suites / 152 tests, frontend 5 files / 32 tests.
   `gr:coins-moved` and everyone in the room sees coins fly
   (`CoinFlights`: ≤25 → 3, ≤50 → 6, ≤100 → 10, ≤500 → 24, more → 32; the
   bank is the GM's tile; someone not on screen is the top/bottom edge).
+  Influence given by the GM (`gr:influence-changed`) flashes on the
+  player's tile for everyone: a ring and ⚡ sparks with "+1 ⚡", or a quiet
+  "−1 ⚡" when taken.
 - **Community feed** with live updates.
 - **Administrator** — one person, `/admin` (invisible button at the end of
   the footer links). See "Administrator" below.

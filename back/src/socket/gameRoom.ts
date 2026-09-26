@@ -826,7 +826,14 @@ export function registerGameRoom(io: Server) {
 			const state = hereAsGM()
 			if (!state) return
 			const target = state.players.find(p => p.userId === d.targetUserId)
-			if (target) { target.influence = Math.max(0, target.influence + d.delta); pushState(io, state) }
+			if (!target) return
+			const before = target.influence
+			target.influence = Math.max(0, target.influence + d.delta)
+			pushState(io, state)
+			// Everyone sees the ⚡ flash on the tile (nothing when already at 0)
+			if (target.influence !== before) {
+				emit(io, state.gameCode, 'gr:influence-changed', { userId: target.userId, delta: target.influence - before })
+			}
 		}, socket))
 
 		// ── Mute all (GM only) ──────────────────────────────────────────────
