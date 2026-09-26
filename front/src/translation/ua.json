@@ -178,7 +178,8 @@
     "donate_btn": "Донат",
     "spectator_code_label": "👁 Код глядача:",
     "player_code_label": "🎮 Код гравця:",
-    "copy_code": "копіювати"
+    "copy_code": "копіювати",
+    "no_name": "Немає імені"
   },
   "donate": {
     "title": "Донат ігромайстру",

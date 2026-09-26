@@ -45,4 +45,10 @@ describe('new game announcement', () => {
 		const long = announcementText({ ...game, title: 'x'.repeat(100), description: 'y'.repeat(500) }, 'uk')
 		expect(long.length).toBeLessThanOrEqual(1024)
 	})
+
+	it('names a gamemaster without a name by the alias, never the email', () => {
+		const text = announcementText({ ...game, creatorName: '', creatorAlias: 'olena79' }, 'uk')
+		expect(text).toContain('Немає імені (olena79)')
+		expect(announcementText({ ...game, creatorName: '', creatorAlias: 'olena79' }, 'en')).toContain('No name (olena79)')
+	})
 })

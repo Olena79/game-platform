@@ -5,7 +5,7 @@ import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, U
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData, gamemasterLabel } from '../../actions/games'
 
 // ─── Donate modal ─────────────────────────────────────────────────────────────
 
@@ -238,7 +238,7 @@ export const OurGamesPage = () => {
 			// Search by title or gamemaster name
 			if (debouncedSearch) {
 				const q = debouncedSearch.toLowerCase()
-				if (!g.title.toLowerCase().includes(q) && !g.creatorName.toLowerCase().includes(q)) return false
+				if (!g.title.toLowerCase().includes(q) && !gamemasterLabel(g, t('our_games.no_name')).toLowerCase().includes(q)) return false
 			}
 			// Date filters (both can be active, AND logic)
 			if (activeFilters.has('next7days')) {
@@ -266,7 +266,7 @@ export const OurGamesPage = () => {
 			if (sortKey === 'likes')        return b.likesCount - a.likesCount
 			return 0
 		})
-	}, [games, debouncedSearch, activeFilters, sortKey])
+	}, [games, debouncedSearch, activeFilters, sortKey, t])
 
 	// ── Data fetch ──────────────────────────────────────────────────────────────
 	useEffect(() => {
@@ -952,7 +952,7 @@ const GameCard = ({
 					{game.title}
 				</h3>
 				<p className='text-[13px]' style={{ color: isDark ? 'rgba(160,185,240,0.88)' : 'var(--text-secondary)' }}>
-					{t('our_games.gamemaster_prefix')} — {game.creatorName}
+					{t('our_games.gamemaster_prefix')} — {gamemasterLabel(game, t('our_games.no_name'))}
 				</p>
 			</div>
 

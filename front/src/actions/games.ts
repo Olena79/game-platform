@@ -17,7 +17,10 @@ export interface GameData {
 	_id: string
 	title: string
 	creatorId: string
+	/** "Name Surname" from the gamemaster's account; empty if they gave none */
 	creatorName: string
+	/** When there is no name: the part of their email before the @ */
+	creatorAlias?: string
 	minPlayers: number
 	maxPlayers: number
 	description: string
@@ -45,7 +48,7 @@ export interface GameData {
 	createdAt: string
 }
 
-export type GameBody = Omit<GameData, '_id' | 'creatorId' | 'creatorName' | 'createdAt'>
+export type GameBody = Omit<GameData, '_id' | 'creatorId' | 'creatorName' | 'creatorAlias' | 'createdAt'>
 
 async function handleResponse<T>(res: Response): Promise<T> {
 	const data = await res.json()
@@ -153,3 +156,8 @@ export const unlikeGame = (
 		method: 'DELETE',
 		headers: { Authorization: `Bearer ${token}` },
 	}).then(handleResponse<{ likesCount: number; isLiked: boolean }>)
+
+/** The gamemaster as the site shows them: the name, or "No name (alias)". */
+export function gamemasterLabel(game: Pick<GameData, 'creatorName' | 'creatorAlias'>, noName: string): string {
+	return game.creatorName || `${noName} (${game.creatorAlias ?? ''})`
+}

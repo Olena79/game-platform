@@ -30,7 +30,25 @@ const PUBLIC_GAME_FIELDS = [
 
 type GameDoc = { toObject(): Record<string, unknown> }
 
-function publicGameView(game: GameDoc, viewerId?: string) {
+/**
+ * How the gamemaster is named on a game: "Name Surname" from their account
+ * now (not the copy frozen when the game was made), or — when they gave no
+ * name at all — an empty name plus the part of their email before the @,
+ * which the site shows as "No name (alias)". The full email never leaves.
+ */
+export interface CreatorLabel { name: string; alias: string }
+
+export function creatorLabel(u: { name?: string; surname?: string; email?: string }): CreatorLabel {
+	const name = [u.name, u.surname].map(v => (v ?? '').trim()).filter(Boolean).join(' ')
+	return { name, alias: name ? '' : (u.email ?? '').split('@')[0] }
+}
+
+async function creatorLabels(ids: unknown[]): Promise<Map<string, CreatorLabel>> {
+	const users = await User.find({ _id: { $in: ids } }).select('name surname email').lean()
+	return new Map(users.map(u => [String(u._id), creatorLabel(u)]))
+}
+
+function publicGameView(game: GameDoc, viewerId?: string, creator?: CreatorLabel) {
 	const obj = game.toObject()
 	const card = obj.gmCardNumber as string | undefined
 	const uid = viewerId ? String(viewerId) : ''
@@ -44,8 +62,14 @@ function publicGameView(game: GameDoc, viewerId?: string) {
 
 	const out: Record<string, unknown> = {}
 	for (const field of PUBLIC_GAME_FIELDS) out[field] = obj[field]
-	// Older games stored the creator's email when they had no name
-	out.creatorName = String(obj.creatorName ?? '').split('@')[0]
+	if (creator) {
+		out.creatorName = creator.name
+		out.creatorAlias = creator.alias
+	} else {
+		// Account gone: the copy kept on the game (older ones stored an email)
+		out.creatorName = String(obj.creatorName ?? '').split('@')[0]
+		out.creatorAlias = ''
+	}
 
 	// Counts are public; who exactly is playing is not. The arrays stay
 	// present but empty for everyone else, so callers can keep reading them.
@@ -121,8 +145,9 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response): Promise<v
 			likedSet = new Set(likedIds.map(id => String(id)))
 		}
 
+		const labels = await creatorLabels([...new Set(games.map(g => String(g.creatorId)))])
 		res.json(games.map(g => ({
-			...publicGameView(g, req.userId),
+			...publicGameView(g, req.userId, labels.get(String(g.creatorId))),
 			isLiked: likedSet.has(String(g._id)),
 		})))
 	} catch (err: any) {
@@ -137,7 +162,8 @@ router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response): Promis
 		if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ message: 'Invalid ID' }); return }
 		const game = await Game.findById(req.params.id)
 		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
-		res.json(publicGameView(game, req.userId))
+		const labels = await creatorLabels([game.creatorId])
+		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
 	} catch (err: any) {
 		logger.error('[games/:id GET]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -215,7 +241,7 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			spectatorCode,
 		})
 
-		res.status(201).json(publicGameView(game, req.userId))
+		res.status(201).json(publicGameView(game, req.userId, creatorLabel(user)))
 
 		// Everyone linked to the bot hears about it (after the response: the
 		// creator does not wait for fifty messages to go out)
@@ -224,7 +250,8 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			description: game.description,
 			scheduledAt: game.scheduledAt,
 			participationCost: game.participationCost,
-			creatorName: game.creatorName.split('@')[0],
+			creatorName: creatorLabel(user).name,
+			creatorAlias: creatorLabel(user).alias,
 			coverImage: game.coverImage,
 			creatorId: String(game.creatorId),
 		})
@@ -267,7 +294,8 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) game.reminderSentAt = null
 
 		await game.save()
-		res.json(publicGameView(game, req.userId))
+		const labels = await creatorLabels([game.creatorId])
+		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
 	} catch (err: any) {
 		logger.error('[games PUT]', err)
 		res.status(500).json({ message: 'Server error' })

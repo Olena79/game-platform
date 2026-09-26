@@ -346,7 +346,10 @@ export interface GameAnnouncement {
 	description: string
 	scheduledAt?: Date | null
 	participationCost?: number
+	/** "Name Surname", or empty when the gamemaster gave no name */
 	creatorName: string
+	/** Then: the part of their email before the @ */
+	creatorAlias?: string
 	coverImage?: string
 }
 
@@ -373,7 +376,7 @@ export function announcementText(game: GameAnnouncement, lang: Lang): string {
 		game.description ? `\n${escapeHtml(game.description)}\n` : '',
 		`📅 ${escapeHtml(formatGameDate(game.scheduledAt, lang))}`,
 		price,
-		`🎭 ${lang === 'uk' ? 'Ігромастер' : 'Gamemaster'}: ${escapeHtml(game.creatorName)}`,
+		`🎭 ${lang === 'uk' ? 'Ігромастер' : 'Gamemaster'}: ${escapeHtml(game.creatorName || `${lang === 'uk' ? 'Немає імені' : 'No name'} (${game.creatorAlias ?? ''})`)}`,
 		'',
 		link
 			? (lang === 'uk' ? `Зареєструватися: ${link}` : `Register: ${link}`)
