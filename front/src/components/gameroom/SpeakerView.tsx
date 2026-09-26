@@ -215,9 +215,11 @@ function SpeakerDisplay({ state, speakerPlayer, playerReactions, isMockSpeaking 
 
 	const reaction = speakerPlayer ? playerReactions[speakerPlayer.userId] : undefined
 
-	// aspect-video on mobile so the speaker block doesn't stretch full viewport height
+	// Fills the space between the top badges and the player strip on every
+	// screen, so on a phone the strip sits right above the bottom bar instead
+	// of floating mid-screen; the video keeps its proportions (object-contain).
 	return (
-		<div className='aspect-video sm:aspect-auto sm:flex-1 relative overflow-hidden min-h-0 w-full' style={{ background: '#000' }}>
+		<div className='flex-1 relative overflow-hidden min-h-0 w-full' style={{ background: '#000' }}>
 			<div className='absolute inset-0 pointer-events-none'
 				style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(15,255,200,0.07) 0%, transparent 65%)', zIndex: 1 }} />
 
