@@ -74,11 +74,6 @@
       "step3_desc": "Negotiations, votes, unexpected alliances and conflicts.",
       "step4_title": "Debrief and discovery",
       "step4_desc": "Reflection after the game often changes how you see real life."
-    },
-    "launcher": {
-      "title": "Launch a game now",
-      "desc": "The GameForge platform is embedded right here — create or join in seconds.",
-      "placeholder": "↳ GameForge will be embedded here (iframe: gameforge-xi.vercel.app)"
     }
   },
   "game": {
