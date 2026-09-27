@@ -138,11 +138,11 @@
     "section_timer": "Default timer",
     "timer_toggle": "Set a timer for the game",
     "timer_hint": "The timer is shown on entering the room (not running)",
-    "section_payment": "Payment and donations",
+    "section_payment": "Payment and cheers",
     "cost_label": "Participation fee (UAH)",
     "cost_hint": "UAH · 0 = free",
-    "card_label": "Gamemaster’s card (for donations)",
-    "card_hint": "Players see the number only after pressing “Donate”"
+    "card_label": "Gamemaster’s card (for cheers)",
+    "card_hint": "Players see the number only after pressing “Cheers”"
   },
   "our_games": {
     "title": "Games",
@@ -198,7 +198,7 @@
     "like_login": "Log in to like",
     "cost_label": "Participation cost:",
     "currency": "UAH",
-    "donate_btn": "Donate",
+    "donate_btn": "Cheers",
     "spectator_code_label": "👁 Spectator code:",
     "player_code_label": "🎮 Player code:",
     "copy_code": "copy",
@@ -208,7 +208,7 @@
     "err_removed": "The gamemaster removed you from this game, so you cannot register for it again."
   },
   "donate": {
-    "title": "Donate to Game Master",
+    "title": "Cheers to the Game Master",
     "card_label": "Card number",
     "copied": "Copied",
     "copy": "Copy",
