@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 20 suites / 164 tests, frontend 6 files / 36 tests.
+Tests: backend 20 suites / 165 tests, frontend 6 files / 36 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -37,7 +37,7 @@ Tests: backend 20 suites / 164 tests, frontend 6 files / 36 tests.
   everyone registered for it and its GM (`services/gameReminders.ts`, cron
   every minute, `Game.reminderSentAt`, cleared when the time changes), and
   the administrator's broadcasts, and **the GM hears when someone registers**
-  for their game as player or spectator (name, count —
+  for their game as player or spectator, or cancels (name, count —
   `services/registrationNotify.ts`, sent after the registration is saved and
   answered, never throws; added 2026-09-28, before that nothing was sent).
   `/stop` turns

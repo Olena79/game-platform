@@ -421,9 +421,14 @@ router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Res
 			return
 		}
 
-		game.registeredPlayers.splice(idx, 1)
+		const [left] = game.registeredPlayers.splice(idx, 1)
 		await game.save()
 		res.json(seatCounts(game, req.userId))
+
+		void notifyGmOfRegistration({
+			creatorId: game.creatorId, title: game.title, maxPlayers: game.maxPlayers,
+			playersCount: game.registeredPlayers.length, spectatorsCount: game.spectators.length,
+		}, { name: left?.name, surname: left?.surname }, 'player', 'left')
 	} catch (err: any) {
 		logger.error('[games/:id/register DELETE]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -494,9 +499,14 @@ router.delete('/:id/register-spectator', authMiddleware, async (req: AuthRequest
 		const idx = game.spectators.findIndex(p => String(p.userId) === String(req.userId))
 		if (idx === -1) { res.status(400).json({ message: 'NOT_REGISTERED' }); return }
 
-		game.spectators.splice(idx, 1)
+		const [left] = game.spectators.splice(idx, 1)
 		await game.save()
 		res.json(seatCounts(game, req.userId))
+
+		void notifyGmOfRegistration({
+			creatorId: game.creatorId, title: game.title, maxPlayers: game.maxPlayers,
+			playersCount: game.registeredPlayers.length, spectatorsCount: game.spectators.length,
+		}, { name: left?.name, surname: left?.surname }, 'spectator', 'left')
 	} catch (err: any) {
 		logger.error('[games/:id/register-spectator DELETE]', err)
 		res.status(500).json({ message: 'Server error' })

@@ -38,6 +38,14 @@ describe('registration notice to the gamemaster', () => {
 		expect(sent[0].text).toContain('Глядачів: 2')
 	})
 
+	it('says when someone cancels, with the new count', async () => {
+		await notifyGmOfRegistration({ ...game, playersCount: 3 }, { name: 'Андрій' }, 'player', 'left')
+		expect(sent[0].text).toContain('Гравець скасував реєстрацію')
+		expect(sent[0].text).toContain('3 / 10')
+		await notifyGmOfRegistration(game, { name: 'Оля' }, 'spectator', 'left')
+		expect(sent[1].text).toContain('Глядач скасував реєстрацію')
+	})
+
 	it('speaks English to an English-speaking gamemaster', () => {
 		expect(registrationText(game, { name: 'Ann' }, 'player', 'en')).toContain('New player')
 	})
