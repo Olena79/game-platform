@@ -13,6 +13,10 @@ import { ThemeProvider } from './context/ThemeContext'
 
 import './i18n'
 import { reloadForNewVersion } from './utils/lazyPage'
+import { preventIosAutoZoom } from './utils/iosNoAutoZoom'
+
+// iPhone Safari zoomed in on every small text field and stayed zoomed
+preventIosAutoZoom()
 
 // Vite's own signal that a file of the old build is gone (after a redeploy)
 window.addEventListener('vite:preloadError', event => {

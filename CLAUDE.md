@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 20 suites / 165 tests, frontend 6 files / 36 tests.
+Tests: backend 20 suites / 165 tests, frontend 7 files / 39 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -82,6 +82,11 @@ Tests: backend 20 suites / 165 tests, frontend 6 files / 36 tests.
   PDF" through the browser; the JSON file is a small link at its bottom.
   On phones the bottom nav has «Акаунт» for a signed-in person, and signing
   out is on the account page (desktop: the profile menu too).
+- **iPhone zoom**: Safari zooms in on a text field under 16px and stays
+  zoomed; our fields are 13–15px and pages change without a reload, so the
+  zoom followed people from page to page (2026-09-28). On iOS only,
+  `utils/iosNoAutoZoom.ts` adds `maximum-scale=1` to the viewport — iOS
+  still allows pinch zoom; not on Android, where it would block it.
 - **Language**: the last chosen language is kept in `localStorage`
   (`gos-lang`, `i18n.ts`) and the site opens in it; Ukrainian otherwise.
 - **Contact**: the legal pages give only the club's address,
