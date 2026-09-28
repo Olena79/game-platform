@@ -8,6 +8,7 @@ import { cleanNotes } from '../services/notesDelivery'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
+import { notifyGmOfRegistration } from '../services/registrationNotify'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
 import { applyGameSettings } from '../socket/gameRoom'
@@ -395,6 +396,12 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 		}
 
 		res.json({ gameCode: updated.gameCode, ...seatCounts(updated, req.userId) })
+
+		// The gamemaster hears about it (after the answer: never holds it up)
+		void notifyGmOfRegistration({
+			creatorId: updated.creatorId, title: updated.title, maxPlayers: updated.maxPlayers,
+			playersCount: updated.registeredPlayers.length, spectatorsCount: updated.spectators.length,
+		}, user, 'player')
 	} catch (err: any) {
 		logger.error('[games/:id/register]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -466,6 +473,11 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 		}
 
 		res.json({ spectatorCode: game.spectatorCode, ...seatCounts(game, req.userId) })
+
+		void notifyGmOfRegistration({
+			creatorId: game.creatorId, title: game.title, maxPlayers: game.maxPlayers,
+			playersCount: game.registeredPlayers.length, spectatorsCount: game.spectators.length,
+		}, user, 'spectator')
 	} catch (err: any) {
 		logger.error('[games/:id/register-spectator]', err)
 		res.status(500).json({ message: 'Server error' })
