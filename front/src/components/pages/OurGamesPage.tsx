@@ -1,11 +1,64 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote } from 'lucide-react'
+import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote, BookOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
 import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData, gamemasterLabel, withSeatCounts } from '../../actions/games'
+
+// ─── Description modal ────────────────────────────────────────────────────────
+
+/**
+ * The whole description of a game. On the card it is cut to three lines —
+ * long descriptions could not be read at all (2026-09-28). Rendered at the
+ * top of the page, like the other windows, so no card layout can clip it.
+ */
+function DescriptionModal({ title, description, onClose }: { title: string; description: string; onClose: () => void }) {
+	const { t } = useTranslation()
+	const { isDark } = useTheme()
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [onClose])
+	return createPortal(
+		// Above the header and the phone's bottom menu, so a tap anywhere
+		// outside the window lands on this backdrop and closes it
+		<div className='fixed inset-0 z-[200] flex items-center justify-center p-[16px]'
+			style={isDark
+				? { background: 'rgba(3,4,15,0.72)', backdropFilter: 'blur(4px)' }
+				: { background: 'rgba(240,235,228,0.8)', backdropFilter: 'blur(4px)' }}
+			onClick={onClose} role='dialog' aria-modal='true' aria-label={title}>
+			<div
+				className='w-full max-w-[520px] max-h-[85dvh] rounded-[20px] p-[24px] flex flex-col gap-[14px]'
+				style={isDark
+					? { background: '#0b0d1a', border: '1px solid rgba(68,170,255,0.2)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }
+					: { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: '0 16px 48px rgba(0,0,0,0.12)' }}
+				onClick={e => e.stopPropagation()}>
+				<div className='flex items-start justify-between gap-[12px]'>
+					<div className='flex items-start gap-[8px] min-w-0'>
+						<BookOpen size={16} className='flex-shrink-0 mt-[2px]' style={{ color: isDark ? '#44aaff' : 'var(--accent)' }} />
+						<span className='text-[15px] font-[700] break-words' style={{ color: isDark ? 'rgba(220,230,255,0.95)' : 'var(--text-primary)' }}>{title}</span>
+					</div>
+					<button onClick={onClose} aria-label={t('our_games.description_close')}
+						className='flex-shrink-0 w-[26px] h-[26px] rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-[rgba(255,255,255,0.08)]'
+						style={isDark
+							? { color: 'rgba(180,200,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+							: { color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+						<span className='text-[14px]'>✕</span>
+					</button>
+				</div>
+				<p className='text-[14px] leading-[1.65] whitespace-pre-wrap break-words overflow-y-auto pr-[4px]'
+					style={{ color: isDark ? 'rgba(200,215,255,0.88)' : 'var(--text-secondary)' }}>
+					{description}
+				</p>
+			</div>
+		</div>,
+		document.body,
+	)
+}
 
 // ─── Donate modal ─────────────────────────────────────────────────────────────
 
@@ -775,6 +828,20 @@ const GameCard = ({
 }) => {
 	const { t, i18n } = useTranslation()
 	const { isDark } = useTheme()
+	// The description is cut to three lines; say so when something is hidden
+	const [descriptionOpen, setDescriptionOpen] = useState(false)
+	const closeDescription = useCallback(() => setDescriptionOpen(false), [])
+	const descriptionRef = useRef<HTMLParagraphElement>(null)
+	const [descriptionCut, setDescriptionCut] = useState(false)
+	useLayoutEffect(() => {
+		const el = descriptionRef.current
+		if (!el) return
+		const measure = () => setDescriptionCut(el.scrollHeight > el.clientHeight + 1)
+		measure()
+		const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+		ro?.observe(el)
+		return () => ro?.disconnect()
+	}, [game.description])
 
 	const spectators   = game.spectators ?? []
 	const isCreator    = !!currentUserId && String(game.creatorId) === String(currentUserId)
@@ -977,11 +1044,24 @@ const GameCard = ({
 				</p>
 			</div>
 
-			{/* Short description */}
+			{/* Short description — tap it for the whole text */}
 			{game.description && (
-				<p className='text-[13px] leading-[1.6] line-clamp-3' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
-					{game.description}
-				</p>
+				<button type='button' onClick={() => setDescriptionOpen(true)}
+					className='text-left flex flex-col gap-[4px] cursor-pointer group'
+					aria-label={t('our_games.description_open')}>
+					<p ref={descriptionRef} className='text-[13px] leading-[1.6] line-clamp-3 whitespace-pre-line break-words'
+						style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
+						{game.description}
+					</p>
+					{descriptionCut && (
+						<span className='text-[12px] font-[600] group-hover:underline' style={{ color: isDark ? '#44aaff' : 'var(--accent)' }}>
+							{t('our_games.description_more')}
+						</span>
+					)}
+				</button>
+			)}
+			{descriptionOpen && (
+				<DescriptionModal title={game.title} description={game.description} onClose={closeDescription} />
 			)}
 
 			{/* Stats */}

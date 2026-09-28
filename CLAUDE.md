@@ -116,7 +116,10 @@ Tests: backend 20 suites / 165 tests, frontend 6 files / 36 tests.
   player or spectator enters with "Увійти в гру" on the card; their own
   code is shown once, in the "registered" window (and sent over Telegram).
   (Un)registering answers with counts and the caller's own place
-  (`seatCounts`), never the lists of names.
+  (`seatCounts`), never the lists of names. The description is cut to three
+  lines on the card; a tap on it opens the whole text in a window
+  (`DescriptionModal`, above the header and the phone menu), with «Читати
+  повністю →» under a description that is actually cut.
 - **Game date and time**: two native fields (`date`, `time`) — one
   `datetime-local` did not open on some phones. The time is sent with its
   zone (`toISOString()` of the local time). Until 2026-09-27 it was sent

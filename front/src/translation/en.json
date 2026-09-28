@@ -205,7 +205,10 @@
     "no_name": "No name",
     "spectators_count": "Spectators",
     "err_already_player": "You are already registered as a player.",
-    "err_removed": "The gamemaster removed you from this game, so you cannot register for it again."
+    "err_removed": "The gamemaster removed you from this game, so you cannot register for it again.",
+    "description_more": "Read more →",
+    "description_open": "Open the full game description",
+    "description_close": "Close"
   },
   "donate": {
     "title": "Cheers to the Game Master",
