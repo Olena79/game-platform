@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 20 suites / 165 tests, frontend 7 files / 39 tests.
+Tests: backend 20 suites / 165 tests, frontend 7 files / 41 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -101,7 +101,12 @@ Tests: backend 20 suites / 165 tests, frontend 7 files / 39 tests.
   in the room; the camera button stays pressable to retry. It used to go
   grey in silence (a Windows laptop, 2026-09-27: microphone fine, camera
   dead, no question shown). A camera refusing the preferred size is retried
-  with any size.
+  with any size. A browser never asks again after "Block" (only the person
+  can undo it, from the icon beside the address), so the pre-join screen
+  also reads the Permissions API (`watchPermission`): a blocked camera or
+  microphone is named at once, and a camera allowed again starts by itself,
+  no reload. The microphone failing in the room says why too
+  (`micProblemKey`).
 - **Screen sharing**: players and the GM (never spectators — their token
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the

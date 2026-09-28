@@ -576,7 +576,7 @@
       "KICK_FAILED": "Could not remove: the change was not saved. Try again."
     },
     "camera_err": {
-      "blocked": "The browser has blocked the camera for this site, so it no longer asks. Click the icon left of the site address (lock or sliders) → Camera → \"Allow\", reload the page and press \"Camera\".",
+      "blocked": "The browser has blocked the camera for this site, so it no longer asks. Click the icon left of the site address (lock or sliders) → Camera → \"Allow\". The camera comes on by itself; if not, reload the page.",
       "system": "The system is holding the camera back, not the site. Windows: Settings → Privacy & security → Camera — turn on \"Camera access\" and \"Let desktop apps access your camera\". Mac: System Settings → Privacy & Security → Camera — turn on your browser. Then restart the browser.",
       "busy": "The camera is busy or switched off on the laptop itself. Close Zoom, Teams, Skype and other programs that may hold it; check the camera shutter and the camera-off key (on Lenovo often F8 or a switch on the side). Then press \"Camera\" again.",
       "missing": "No camera found. Check it is connected and switched on, then press \"Camera\" again.",
@@ -596,6 +596,13 @@
       "cancel": "No, keep them",
       "confirm": "Yes, remove for good",
       "you_were_removed": "The gamemaster removed you from this game. You cannot come back to it."
+    },
+    "mic_err": {
+      "blocked": "The browser has blocked the microphone for this site, so it no longer asks. Click the icon left of the site address (lock or sliders) → Microphone → \"Allow\". If this note stays, reload the page.",
+      "system": "The system is holding the microphone back, not the site. Windows: Settings → Privacy & security → Microphone — turn access on, including for desktop apps. Mac: System Settings → Privacy & Security → Microphone — turn on your browser. Then restart the browser.",
+      "busy": "The microphone is busy in another program or switched off. Close Zoom, Teams, Skype and other programs using it, then press \"Mic\" again.",
+      "missing": "No microphone found. Check it is connected, then press \"Mic\" again.",
+      "other": "The microphone will not start. Close other programs using it, reload the page and press \"Mic\" again."
     }
   },
   "legal": {

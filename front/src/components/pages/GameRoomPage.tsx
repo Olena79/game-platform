@@ -1,4 +1,4 @@
-import { cameraProblemKey } from '../../utils/cameraProblem'
+import { cameraProblemKey, micProblemKey } from '../../utils/cameraProblem'
 import React, {
 	useState,
 	useCallback,
@@ -445,7 +445,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		if (connectionState !== ConnectionState.Connected || isSpectator || autoMediaRef.current) return
 		autoMediaRef.current = true
 		if (initMic) {
-			localParticipant?.setMicrophoneEnabled(true, AUDIO_CAPTURE_OPTS).catch(() => setMicOn(false))
+			localParticipant?.setMicrophoneEnabled(true, AUDIO_CAPTURE_OPTS).catch(err => {
+				setMicOn(false)
+				showScreenError(t(micProblemKey(err)), 20000)
+			})
 		}
 		if (initCam) {
 			localParticipant?.setCameraEnabled(true).catch(err => {
@@ -464,8 +467,10 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		try {
 			await localParticipant.setMicrophoneEnabled(enabled, enabled ? AUDIO_CAPTURE_OPTS : undefined)
 			setMicOn(enabled)
-		} catch {
+		} catch (err) {
 			setMicOn(localParticipant.isMicrophoneEnabled)
+			// A microphone that will not start says why, like the camera does
+			if (enabled) showScreenError(t(micProblemKey(err)), 20000)
 		}
 	}, [localParticipant])
 

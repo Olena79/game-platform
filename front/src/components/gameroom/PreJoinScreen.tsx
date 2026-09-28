@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mic, MicOff, Video, VideoOff, ArrowRight } from 'lucide-react'
-import { cameraProblemKey } from '../../utils/cameraProblem'
+import { cameraProblemKey, watchPermission } from '../../utils/cameraProblem'
 
 interface Props {
 	roomTitle: string
@@ -21,6 +21,8 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	const [camAvailable, setCamAvailable] = useState(true)
 	// Why the camera would not start, said plainly (a translation key)
 	const [camProblem, setCamProblem] = useState('')
+	// The microphone blocked for this site (it is only switched on in the room)
+	const [micBlocked, setMicBlocked] = useState(false)
 	const videoRef = useRef<HTMLVideoElement>(null)
 	const streamRef = useRef<MediaStream | null>(null)
 
@@ -91,6 +93,21 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	useEffect(() => {
 		if (!spectator) startCam()
 		return () => stopStream()
+	}, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Blocked for this site? Say so at once — the browser will not ask again.
+	// Allowed again from the address bar? Turn the camera on, no reload.
+	const camOnRef = useRef(camOn)
+	camOnRef.current = camOn
+	useEffect(() => {
+		if (spectator) return
+		const stopCamWatch = watchPermission('camera', (state, changed) => {
+			if (state === 'denied') { setCamAvailable(false); setCamProblem('room.camera_err.blocked') }
+			// Only on a change: on load the camera is already being started
+			if (state === 'granted' && changed && !camOnRef.current) void startCam()
+		})
+		const stopMicWatch = watchPermission('microphone', state => setMicBlocked(state === 'denied'))
+		return () => { stopCamWatch(); stopMicWatch() }
 	}, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleCam = () => { if (camOn) stopCam(); else startCam() }
@@ -201,6 +218,12 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 				</div>}
 
 				{/* Why the camera is off, and what to do — instead of a dead button */}
+				{!spectator && micBlocked && (
+					<p role='alert' className='text-[12.5px] leading-[1.5] text-center rounded-[10px] px-[14px] py-[10px] -mt-[8px]'
+						style={{ background: 'rgba(255,170,60,0.08)', border: '1px solid rgba(255,170,60,0.3)', color: 'rgba(255,215,160,0.95)' }}>
+						{t('room.mic_err.blocked')}
+					</p>
+				)}
 				{!spectator && camProblem && !camOn && (
 					<p role='alert' className='text-[12.5px] leading-[1.5] text-center rounded-[10px] px-[14px] py-[10px] -mt-[8px]'
 						style={{ background: 'rgba(255,170,60,0.08)', border: '1px solid rgba(255,170,60,0.3)', color: 'rgba(255,215,160,0.95)' }}>
