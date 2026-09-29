@@ -446,13 +446,16 @@ export const AuthPage = () => {
 										const res = await googleAuthRequest(accessToken)
 										login(res.accessToken, res.refreshToken, res.user)
 
-										// Check if this is a new registration
-										const isNewUser = res.user.telegramConnected === false
-										if (isNewUser) {
+										// Only an account the server has just created is a registration.
+										// It used to be guessed from "Telegram not linked", so anyone
+										// without Telegram was told "registered" on every Google sign-in.
+										if (res.isNew) {
 											setRegistrationModal({
 												open: true,
 												userId: res.user.id,
 											})
+										} else if (!isLogin) {
+											setModal({ open: true, title: t('auth.modal_already_registered_title'), message: t('auth.modal_already_registered_msg'), variant: 'success', success: true })
 										} else {
 											setModal({ open: true, title: t('auth.modal_success_login_title'), message: t('auth.modal_success_login_msg'), variant: 'success', success: true })
 										}

@@ -278,7 +278,9 @@
     "telegram_connected_label": "Telegram підключено",
     "telegram_connect_label": "Підключити Telegram",
     "telegram_open_bot": "Telegram підключено — відкрити бот",
-    "ACCOUNT_BLOCKED": "Цей акаунт заблоковано адміністратором клубу."
+    "ACCOUNT_BLOCKED": "Цей акаунт заблоковано адміністратором клубу.",
+    "modal_already_registered_title": "Ви вже зареєстровані",
+    "modal_already_registered_msg": "Акаунт із цією поштою вже існує, тож ми просто увійшли в нього. Новий акаунт не створювався."
   },
   "community": {
     "badge": "Спільнота",

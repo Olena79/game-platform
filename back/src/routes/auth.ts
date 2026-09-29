@@ -148,7 +148,10 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 
 		const info = await verifyGoogleIdToken(idToken)
 
+		// One account per email: an existing one (Google or email + password)
+		// is signed in, never duplicated — the email is unique in the database
 		let user = await User.findOne({ $or: [{ googleId: info.sub }, { email: info.email }] })
+		const isNew = !user
 
 		if (!user) {
 			user = await User.create({
@@ -173,6 +176,8 @@ router.post('/google', validateBody(googleAuthSchema), async (req: Request, res:
 		res.json({
 			accessToken: jwtAccessToken,
 			refreshToken,
+			// The page says "registered" only when an account was really created
+			isNew,
 			user: {
 				id: user._id,
 				email: user.email,

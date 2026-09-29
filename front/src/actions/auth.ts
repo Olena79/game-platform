@@ -86,12 +86,12 @@ export const deleteAccountRequest = (authToken: string, password?: string) =>
 		body: JSON.stringify({ password, confirm: true }),
 	}).then(handleResponse<{ ok: boolean }>)
 
-export const googleAuthRequest = (idToken: string): Promise<AuthResponse> =>
+export const googleAuthRequest = (idToken: string): Promise<AuthResponse & { isNew?: boolean }> =>
 	fetch(`${API}/api/auth/google`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ token: idToken }),
-	}).then(handleResponse<AuthResponse>)
+	}).then(handleResponse<AuthResponse & { isNew?: boolean }>)
 
 export const getTelegramStatusRequest = (token: string): Promise<{ telegramConnected: boolean }> =>
 	fetch(`${API}/api/telegram/status`, {

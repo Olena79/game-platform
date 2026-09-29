@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 21 suites / 171 tests, frontend 7 files / 41 tests.
+Tests: backend 22 suites / 174 tests, frontend 7 files / 41 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -24,6 +24,13 @@ Tests: backend 21 suites / 171 tests, frontend 7 files / 41 tests.
   recovery over **Telegram** (there is no email service; do not add one
   without being asked).
   First and last name can be changed on the Account page (`PUT /api/auth/me`).
+  **One account per email**: `User.email` is unique, lowercased and trimmed
+  (queries too), so «Olena@Gmail.COM» is «olena@gmail.com»; names never
+  identify anyone. Google sign-in finds the account by Google id or email
+  and never makes a second one; it answers `isNew`, and only then does the
+  page say "registered" (it guessed from "Telegram not linked" until
+  2026-09-29). On the register tab an existing account hears «Ви вже
+  зареєстровані» (`tests/googleAuth.test.ts`).
 - **Telegram bot** — news only, not for conversation (it says so to anyone
   who writes to it). Linked with a 32-char single-use `/start` token
   (Telegram drops longer or non-`[A-Za-z0-9_-]` payloads). Sends: an

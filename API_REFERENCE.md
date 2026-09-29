@@ -19,7 +19,7 @@ Errors look like `{ "message": "..." }`; validation errors add
 |---|---|---|---|---|
 | POST | `/register` | — | `{ email, password (≥8), name?, surname? }` | `201 { accessToken, refreshToken, user }` · `400 EMAIL_EXISTS` |
 | POST | `/login` | — | `{ email, password }` | `{ accessToken, refreshToken, user }` · `400 INVALID_CREDENTIALS` · `403 ACCOUNT_BLOCKED` |
-| POST | `/google` | — | `{ token }` (Google ID token) | `{ accessToken, refreshToken, user }` — the Google email must be verified |
+| POST | `/google` | — | `{ token }` (Google ID token) | `{ accessToken, refreshToken, isNew, user }` — the Google email must be verified; an existing account with that email is signed in, never duplicated; `isNew` only when one was created |
 | GET | `/me` | JWT | — | `user` |
 | PUT | `/me` | JWT | `{ name, surname }` (≤100 each) | `user` |
 | POST | `/refresh` | — | `{ refreshToken }` | `{ accessToken, refreshToken }` · `401` |

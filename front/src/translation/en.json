@@ -278,7 +278,9 @@
     "telegram_connected_label": "Telegram connected",
     "telegram_connect_label": "Connect Telegram",
     "telegram_open_bot": "Telegram connected — open bot",
-    "ACCOUNT_BLOCKED": "This account has been blocked by the club administrator."
+    "ACCOUNT_BLOCKED": "This account has been blocked by the club administrator.",
+    "modal_already_registered_title": "You are already registered",
+    "modal_already_registered_msg": "An account with this email already exists, so we signed you in to it. No new account was created."
   },
   "community": {
     "badge": "Community",
