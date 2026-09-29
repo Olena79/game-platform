@@ -9,6 +9,7 @@ import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
 import { notifyGmOfRegistration } from '../services/registrationNotify'
+import { notifyGameCancelled, notifyGameRescheduled } from '../services/gameChangeNotify'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
 import { applyGameSettings } from '../socket/gameRoom'
@@ -315,6 +316,11 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		applyGameSettings(game)
 		const labels = await creatorLabels([game.creatorId])
 		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
+
+		// A new date or time: everyone registered hears it (after the answer)
+		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) {
+			void notifyGameRescheduled(game, scheduledBefore === null ? null : new Date(scheduledBefore))
+		}
 	} catch (err: any) {
 		logger.error('[games PUT]', err)
 		res.status(500).json({ message: 'Server error' })
@@ -333,6 +339,8 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 		}
 		await deleteGame(game)
 		res.json({ ok: true })
+		// The registered players and spectators hear it is cancelled
+		void notifyGameCancelled(game, { byGamemaster: true })
 	} catch (err: any) {
 		logger.error('[games/:id DELETE]', err)
 		res.status(500).json({ message: 'Server error' })

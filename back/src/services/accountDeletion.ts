@@ -11,6 +11,7 @@ import { RefreshToken } from '../models/RefreshToken'
 import { deleteRecordingsOf } from './recording'
 import { closeDeletedGame } from '../socket/gameRoom'
 import { forgetUser } from '../middleware/authMiddleware'
+import { notifyGameCancelled } from './gameChangeNotify'
 
 /**
  * Where anonymised authorship points.
@@ -95,7 +96,7 @@ export async function deleteAccount(userId: string): Promise<DeletionSummary> {
 	if (!(await User.exists({ _id: uid }))) throw new Error('User not found')
 
 	// ── their own games, and their recordings ─────────────────────────────
-	const ownGames = await Game.find({ creatorId: uid }).select('_id gameCode')
+	const ownGames = await Game.find({ creatorId: uid }).select('_id gameCode title scheduledAt creatorId registeredPlayers.userId spectators.userId')
 	// Recordings are the GM's: file in the bucket and row both go
 	const recordingsDeleted = await deleteRecordingsOf(String(uid))
 
@@ -104,6 +105,8 @@ export async function deleteAccount(userId: string): Promise<DeletionSummary> {
 		await GameLike.deleteMany({ gameId: game._id })
 		await game.deleteOne()
 		await closeDeletedGame(game.gameCode, String(game._id))
+		// Its players and spectators hear it is cancelled (never throws)
+		void notifyGameCancelled(game, { byGamemaster: true })
 	}
 
 	// ── their traces in other people's games ────────────────────────────────

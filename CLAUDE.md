@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 20 suites / 165 tests, frontend 7 files / 41 tests.
+Tests: backend 21 suites / 171 tests, frontend 7 files / 41 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -40,6 +40,12 @@ Tests: backend 20 suites / 165 tests, frontend 7 files / 41 tests.
   for their game as player or spectator, or cancels (name, count —
   `services/registrationNotify.ts`, sent after the registration is saved and
   answered, never throws; added 2026-09-28, before that nothing was sent).
+  **Important changes reach everyone registered** (`services/gameChangeNotify.ts`,
+  added 2026-09-29, nothing was sent before): a new date or time («Гру
+  перенесено», was/now) and a deletion («Гру скасовано» — by the GM, the
+  administrator, or the GM deleting their account; the GM is told too when
+  it was the administrator; a game over 6 h in the past is not "cancelled").
+  Once per Telegram chat, after the change is saved and answered.
   `/stop` turns
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
   always come. A chat that blocked the bot is unlinked. When an account is linked to a

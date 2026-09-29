@@ -21,6 +21,7 @@ import { broadcastToAll, escapeHtml } from '../services/telegramBot'
 import { revokeAllUserTokens } from '../services/tokenService'
 import { deleteAccount } from '../services/accountDeletion'
 import { deleteGame } from '../services/gameDeletion'
+import { notifyGameCancelled } from '../services/gameChangeNotify'
 import { deleteRecording } from '../services/recording'
 import { endRoomAsAdmin, kickUser, listRooms } from '../socket/gameRoom'
 
@@ -318,11 +319,13 @@ export default function makeAdminRouter(io: Server): Router {
 		try {
 			const id = String(req.params.id)
 			if (!isId(id)) { res.status(400).json({ message: 'Invalid ID' }); return }
-			const game = await Game.findById(id).select('title gameCode creatorName')
+			const game = await Game.findById(id).select('title gameCode creatorName creatorId scheduledAt registeredPlayers.userId spectators.userId')
 			if (!game) { res.status(404).json({ message: 'Not found' }); return }
 			await deleteGame(game)
 			await log(req, 'delete-game', `game:${id}`, `«${game.title}» — ${game.creatorName}`)
 			res.json({ ok: true })
+			// Participants, and the gamemaster too, hear it is cancelled
+			void notifyGameCancelled(game, { byGamemaster: false })
 		} catch (err) {
 			logger.error('[admin/delete-game]', err)
 			res.status(500).json({ message: 'Server error' })
