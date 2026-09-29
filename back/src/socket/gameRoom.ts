@@ -488,7 +488,10 @@ async function loadRoom(gameCode: string): Promise<GameRoomState | null> {
 		scenario: game.scenario ?? '',
 		title: game.title,
 		gamemasterId: String(game.creatorId),
-		shownImageUrl: game.coverImage || game.images?.[0] || null,
+		// Nothing on show until the gamemaster shows something: the cover is
+		// already the room's backdrop, and showing it on top of itself hid the
+		// title and «Очікуємо початку...» behind the same picture
+		shownImageUrl: null,
 		defaultTimerSeconds: game.defaultTimerSeconds ?? null,
 		isRecording: recording?.status === 'recording',
 	}

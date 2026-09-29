@@ -337,6 +337,10 @@ front/src/
    is retried (401 → refresh sign-in; network/5xx → 1, 2, 4, 8 s), then the
    room shows "Try again" instead of waiting forever.
 4. Deleting a game closes its room and stops its recording.
+   A room opens with nothing on show (`shownImageUrl: null`): the cover is
+   the speaker view's backdrop with the title and «Очікуємо початку...». It
+   used to open with the cover "shown" on top of that same cover (until
+   2026-09-29); the GM can still show the cover from the image panel.
 5. Editing a game while its room is in memory updates the room at once
    (`applyGameSettings`): coins, bank (refilled only before the start),
    influence, images, scenario, title, default timer.
