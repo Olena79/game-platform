@@ -9,6 +9,28 @@ function getCtx(): AudioContext {
 	return _ctx
 }
 
+/**
+ * Browsers (iPhone Safari above all) keep sound off until the person taps
+ * the page, and a context made later, outside a tap, stays silent. So the
+ * one shared context is woken by the first tap or key press — joining the
+ * room is one — and every sound afterwards plays. A silent blip does the
+ * waking on iOS.
+ */
+function unlockOnce() {
+	try {
+		const ctx = getCtx()
+		const buf = ctx.createBuffer(1, 1, 22050)
+		const src = ctx.createBufferSource()
+		src.buffer = buf
+		src.connect(ctx.destination)
+		src.start(0)
+	} catch { /* no audio here */ }
+	for (const ev of ['pointerdown', 'keydown', 'touchend'] as const) window.removeEventListener(ev, unlockOnce, true)
+}
+if (typeof window !== 'undefined') {
+	for (const ev of ['pointerdown', 'keydown', 'touchend'] as const) window.addEventListener(ev, unlockOnce, true)
+}
+
 function beep(freqs: number[], duration: number, gap = 0.09, volume = 0.32) {
 	try {
 		const ctx = getCtx()
@@ -43,4 +65,17 @@ export const sfx = {
 
 	// Rising two-note ding — direct message received
 	dmMsg: () => beep([880, 1175], 0.09, 0.05, 0.24),
+
+	// Timer started — two quick rising tones
+	timerStart: () => beep([660, 880], 0.18, 0.07, 0.3),
+
+	// 30 seconds left — three mid-low beeps
+	timerWarning: () => beep([550, 550, 440], 0.15, 0.12, 0.34),
+
+	// Time is up — a bell-like descending call, played twice so nobody
+	// talking over it misses it
+	timerEnd: () => {
+		beep([988, 784, 659, 523], 0.32, 0.1, 0.45)
+		setTimeout(() => beep([988, 784, 659, 523], 0.32, 0.1, 0.45), 1700)
+	},
 }

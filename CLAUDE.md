@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 23 suites / 177 tests, frontend 7 files / 41 tests.
+Tests: backend 23 suites / 177 tests, frontend 8 files / 44 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -160,6 +160,14 @@ Tests: backend 23 suites / 177 tests, frontend 7 files / 41 tests.
   Influence given by the GM (`gr:influence-changed`) flashes on the
   player's tile for everyone: a ring and ⚡ sparks with "+1 ⚡", or a quiet
   "−1 ⚡" when taken.
+- **Room sounds** (`utils/sounds.ts`, one shared AudioContext, woken by the
+  first tap or key press — iPhone Safari keeps a context made outside a tap
+  silent): raised hand, announcement, vote, chat, and the timer — start,
+  30 s left, and at zero a bell-like call played twice. The timer used to
+  make its own context per beep and stayed silent on iPhone; it also rang
+  for someone joining after the time ran out (`TimerFloatOverlay`, tested).
+  The timer never ends the game or moves anyone (a breakout's timer does
+  send its people back to the main room).
 - **Raised hands have a queue**: the server notes when each hand went up
   (`handRaisedAt`) and numbers them per room — main room and each breakout
   apart — in `gr:state` (`handQueue`, `withHandQueue`). Everyone sees the

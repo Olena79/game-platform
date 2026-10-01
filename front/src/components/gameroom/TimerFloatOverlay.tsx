@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomTimer } from './types'
+import { sfx } from '../../utils/sounds'
 
 interface Props { timer: RoomTimer 	/** Difference between this device's clock and the room's */
 	clockOffset?: number
@@ -11,36 +12,22 @@ function fmt(s: number) {
 	return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-function beep(freqs: number[], duration: number, gap = 0.08) {
-	try {
-		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-		freqs.forEach((f, i) => {
-			const osc = ctx.createOscillator()
-			const gain = ctx.createGain()
-			osc.connect(gain)
-			gain.connect(ctx.destination)
-			osc.type = 'sine'
-			osc.frequency.setValueAtTime(f, ctx.currentTime + i * (duration + gap))
-			gain.gain.setValueAtTime(0.35, ctx.currentTime + i * (duration + gap))
-			gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * (duration + gap) + duration)
-			osc.start(ctx.currentTime + i * (duration + gap))
-			osc.stop(ctx.currentTime + i * (duration + gap) + duration)
-		})
-	} catch {}
-}
-
 export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 	const { t } = useTranslation()
 	const [remaining, setRemaining] = useState(0)
 	const warned30Ref  = useRef(false)
 	const warnedEndRef = useRef(false)
 	const startedRef   = useRef(false)
+	// The countdown was seen running: only then is reaching zero "the end".
+	// Joining a room whose timer already ran out used to ring at once.
+	const sawRunningRef = useRef(false)
 
 	useEffect(() => {
 		warned30Ref.current  = false
 		warnedEndRef.current = false
 		startedRef.current   = false
-	}, [timer.label])
+		sawRunningRef.current = false
+	}, [timer.label, timer.endsAt])
 
 	useEffect(() => {
 		const update = () => {
@@ -54,17 +41,18 @@ export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 			// start beep — once when timer becomes running
 			if (!startedRef.current) {
 				startedRef.current = true
-				beep([660, 880], 0.18, 0.07) // two quick rising tones
+				if (rem > 0) sfx.timerStart()
 			}
+			if (rem > 0) sawRunningRef.current = true
 			// 30-sec warning
 			if (rem <= 30 && rem > 0 && !warned30Ref.current) {
 				warned30Ref.current = true
-				beep([550, 550, 440], 0.15, 0.12) // three mid-low beeps
+				sfx.timerWarning()
 			}
 			// finish
-			if (rem === 0 && !warnedEndRef.current) {
+			if (rem === 0 && !warnedEndRef.current && sawRunningRef.current) {
 				warnedEndRef.current = true
-				beep([880, 660, 440], 0.25, 0.15) // three descending tones
+				sfx.timerEnd()
 			}
 		}
 
@@ -73,13 +61,6 @@ export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 		return () => clearInterval(id)
 	}, [timer])
 
-	// also fire start beep when timer.running first becomes true
-	useEffect(() => {
-		if (timer.running && !startedRef.current) {
-			startedRef.current = true
-			beep([660, 880], 0.18, 0.07)
-		}
-	}, [timer.running])
 
 	const isRunning = timer.running && !!timer.endsAt
 	const nearEnd   = remaining <= 30 && remaining > 0 && isRunning
