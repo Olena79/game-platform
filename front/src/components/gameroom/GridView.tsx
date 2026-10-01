@@ -24,7 +24,7 @@ const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, Minus, Plus, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, UserX } from 'lucide-react'
-import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
+import { NEON_ICONS, NeonRaiseHand, RaisedHand } from './NeonReactionIcon'
 import type { RoomPlayer, GameRoomState } from './types'
 
 const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
@@ -226,7 +226,7 @@ function GridPlayerCard({ player, isGM, myId, onSetRole, onSetInfluence, onMuteP
 				)}
 				{player.handRaised && (
 					<div style={{ position: 'absolute', bottom: '4px', left: '4px', zIndex: 15, pointerEvents: 'none' }}>
-						<NeonRaiseHand size={16} active />
+						<RaisedHand size={24} place={player.handQueue} />
 					</div>
 				)}
 			</div>
@@ -561,7 +561,7 @@ export const GridView = ({
 								background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
 								borderRadius: '10px',
 							}}>
-							<NeonRaiseHand size={30} active={handRaised} />
+							{handRaised ? <RaisedHand size={30} place={me?.handQueue} /> : <NeonRaiseHand size={30} />}
 						</button>
 					)}
 				</div>

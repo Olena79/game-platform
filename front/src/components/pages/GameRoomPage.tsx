@@ -51,7 +51,7 @@ import { BreakoutModal } from '../gameroom/BreakoutModal'
 import { ModPanel } from '../gameroom/ModPanel'
 import { PreJoinScreen } from '../gameroom/PreJoinScreen'
 import { IosInstallHint } from '../gameroom/IosInstallHint'
-import { NEON_ICONS, NeonRaiseHand } from '../gameroom/NeonReactionIcon'
+import { NEON_ICONS, NeonRaiseHand, RaisedHand } from '../gameroom/NeonReactionIcon'
 import type { RecordingControlsProps } from '../gameroom/RecordingControls'
 import { RoomRecorder, RecorderSnapshot } from '../../recording/RoomRecorder'
 import { cleanNotes } from '../../utils/notes'
@@ -1050,7 +1050,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 								<button onClick={() => raiseHand(!(me.handRaised ?? false))}
 									className='flex flex-col items-center justify-center cursor-pointer transition-all'
 									style={{ width: '46px', height: '46px', background: (me.handRaised ?? false) ? 'rgba(200,168,48,0.08)' : 'transparent', borderRadius: '10px' }}>
-									<NeonRaiseHand size={32} active={me.handRaised ?? false} />
+									{me.handRaised ? <RaisedHand size={32} place={me.handQueue} /> : <NeonRaiseHand size={32} />}
 								</button>
 							)}
 						</div>

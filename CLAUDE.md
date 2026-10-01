@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 22 suites / 174 tests, frontend 7 files / 41 tests.
+Tests: backend 23 suites / 177 tests, frontend 7 files / 41 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -160,6 +160,12 @@ Tests: backend 22 suites / 174 tests, frontend 7 files / 41 tests.
   Influence given by the GM (`gr:influence-changed`) flashes on the
   player's tile for everyone: a ring and ⚡ sparks with "+1 ⚡", or a quiet
   "−1 ⚡" when taken.
+- **Raised hands have a queue**: the server notes when each hand went up
+  (`handRaisedAt`) and numbers them per room — main room and each breakout
+  apart — in `gr:state` (`handQueue`, `withHandQueue`). Everyone sees the
+  number by the hand on the tiles and on their own hand button; the GM's
+  panel lists «Черга піднятих рук» in order. A hand that goes down (or
+  speaks — it drops by itself) leaves the queue and the rest move up.
 - **Removing someone from a game** (`gr:kick`, `KickModal`): the GM's
   panel has «Видалити з гри» (a list of everyone connected — spectators
   have no tiles, so this is where they are), and a player's tile in the grid

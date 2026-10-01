@@ -115,6 +115,31 @@ export const ModPanel = ({
 				{toolBtn(<Square size={14} />, t('room.mod.stop_game'), onEndGame, 'danger')}
 			</div>
 
+			{/* Raised hands, in the order they went up (the main room) */}
+			{(() => {
+				const queue = state.players
+					.filter(p => p.handQueue && !p.breakoutRoomId)
+					.sort((a, b) => (a.handQueue ?? 0) - (b.handQueue ?? 0))
+				if (queue.length === 0) return null
+				return (
+					<div className='flex flex-col gap-[4px] rounded-[8px] px-[10px] py-[7px]'
+						style={{ background: 'rgba(255,216,74,0.06)', border: '1px solid rgba(255,216,74,0.22)' }}>
+						<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: 'rgba(255,216,74,0.85)' }}>
+							✋ {t('room.mod.hand_queue')}
+						</span>
+						<ol className='flex flex-col gap-[2px]'>
+							{queue.map(p => (
+								<li key={p.userId} className='flex items-center gap-[8px] text-[12px]' style={{ color: 'rgba(220,230,255,0.9)' }}>
+									<span className='w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-[800] flex-shrink-0'
+										style={{ background: '#ffd84a', color: '#1a1400' }}>{p.handQueue}</span>
+									<span className='truncate'>{p.name}</span>
+								</li>
+							))}
+						</ol>
+					</div>
+				)
+			})()}
+
 			{/* Recording */}
 			<div className='mt-[2px] flex flex-col gap-[5px]' style={{ borderTop: '1px solid #1c1f35', paddingTop: '8px' }}>
 				<span className='text-[11px] uppercase tracking-[0.1em]' style={{ color: '#7a88b0' }}>{t('room.mod.recording')}</span>

@@ -7,7 +7,7 @@ import { Track } from 'livekit-client'
 import { Mic, MicOff, Video, VideoOff, PhoneOff, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { RoomPlayer, GameRoomState } from './types'
 import { ImagePanel } from './ImagePanel'
-import { NEON_ICONS, NeonRaiseHand } from './NeonReactionIcon'
+import { NEON_ICONS, NeonRaiseHand, RaisedHand } from './NeonReactionIcon'
 
 const REACTIONS = ['👍', '❤️', '😂', '🔥', '🤔', '😢', '😡']
 
@@ -436,7 +436,7 @@ export const SpeakerView = ({
 								background: handRaised ? 'rgba(200,168,48,0.08)' : 'transparent',
 								borderRadius: '10px',
 							}}>
-							<NeonRaiseHand size={30} active={handRaised} />
+							{handRaised ? <RaisedHand size={30} place={me?.handQueue} /> : <NeonRaiseHand size={30} />}
 						</button>
 					)}
 				</div>
@@ -629,7 +629,7 @@ function StripTile({ player, reaction, isMockSpeaking }: { player: RoomPlayer; r
 				)}
 				{player.handRaised && (
 					<div style={{ position: 'absolute', top: '-6px', left: '-6px', pointerEvents: 'none' }}>
-						<NeonRaiseHand size={14} active />
+						<RaisedHand size={14} place={player.handQueue} />
 					</div>
 				)}
 			</div>

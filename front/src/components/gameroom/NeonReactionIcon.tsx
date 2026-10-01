@@ -151,3 +151,23 @@ export const NEON_ICONS: Record<string, React.ComponentType<Props>> = {
 	'😢': NeonSad,
 	'😡': NeonAngry,
 }
+
+/**
+ * A raised hand with its place in the queue (1 = first). Everyone sees it,
+ * so nobody speaks ahead of an earlier hand.
+ */
+export const RaisedHand = ({ size, place }: { size: number; place?: number | null }) => (
+	<span style={{ position: 'relative', display: 'inline-flex' }}>
+		<NeonRaiseHand size={size} active />
+		{place ? (
+			<span aria-label={`#${place}`} style={{
+				position: 'absolute', right: -Math.round(size * 0.8), bottom: -Math.round(size * 0.15),
+				minWidth: Math.max(14, Math.round(size * 0.75)), height: Math.max(14, Math.round(size * 0.75)),
+				padding: '0 3px', borderRadius: 999, background: '#ffd84a', color: '#1a1400',
+				fontSize: Math.max(9, Math.round(size * 0.5)), fontWeight: 800, lineHeight: 1,
+				display: 'flex', alignItems: 'center', justifyContent: 'center',
+				boxShadow: '0 0 6px rgba(255,216,74,0.7)', border: '1px solid rgba(0,0,0,0.35)',
+			}}>{place}</span>
+		) : null}
+	</span>
+)

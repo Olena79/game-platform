@@ -406,7 +406,31 @@ function publicState(state: GameRoomState): Omit<GameRoomState, 'scenario' | 'ga
 		serverNow: Date.now(),
 		activeVote: hideVoters(rest.activeVote),
 		spectatorVote: hideVoters(rest.spectatorVote),
+		players: withHandQueue(rest.players),
 	}
+}
+
+/**
+ * Each raised hand gets its place in the queue (1, 2, 3…), counted within
+ * its own room — the main room and every breakout separately — by when it
+ * went up. Everyone sees the numbers, so nobody cuts in ahead of an earlier
+ * hand.
+ */
+export function withHandQueue<P extends { userId: string; handRaised: boolean; handRaisedAt?: number | null; breakoutRoomId: string | null }>(players: P[]): Array<P & { handQueue: number | null }> {
+	const place = new Map<string, number>()
+	const byRoom = new Map<string, P[]>()
+	for (const p of players) {
+		if (!p.handRaised) continue
+		const room = p.breakoutRoomId ?? ''
+		if (!byRoom.has(room)) byRoom.set(room, [])
+		byRoom.get(room)!.push(p)
+	}
+	for (const raised of byRoom.values()) {
+		raised
+			.sort((a, b) => (a.handRaisedAt ?? Infinity) - (b.handRaisedAt ?? Infinity))
+			.forEach((p, i) => place.set(p.userId, i + 1))
+	}
+	return players.map(p => ({ ...p, handQueue: place.get(p.userId) ?? null }))
 }
 
 /**
@@ -629,6 +653,7 @@ export function registerGameRoom(io: Server) {
 						existing.coins = 0
 						existing.influence = 0
 						existing.handRaised = false
+						existing.handRaisedAt = null
 					}
 				}
 			} else {
@@ -754,6 +779,10 @@ export function registerGameRoom(io: Server) {
 			if (!state || !curUser) return
 			const p = state.players.find(p => p.userId === curUser)
 			if (!p || p.isSpectator) return
+			// The queue keeps its order: raising again while up does not move
+			// anyone back, lowering leaves it
+			if (d.raised && !p.handRaised) p.handRaisedAt = Date.now()
+			if (!d.raised) p.handRaisedAt = null
 			p.handRaised = d.raised
 			pushState(io, state)
 		}, socket))
@@ -795,6 +824,7 @@ export function registerGameRoom(io: Server) {
 			state.bankCoins = state.startingBank
 			state.players.forEach(p => {
 				p.handRaised = false
+				p.handRaisedAt = null
 				p.breakoutRoomId = null
 				if (!p.isGamemaster && !p.isSpectator) {
 					p.coins = state.coinsPerPlayer

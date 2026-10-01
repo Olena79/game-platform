@@ -7,6 +7,10 @@ export interface RoomPlayer {
 	coins: number
 	influence: number
 	handRaised: boolean
+	/** When the hand went up (server time) — the order of the queue; null when down */
+	handRaisedAt?: number | null
+	/** Place in this room's hand queue (1 = first), counted by the server; null when the hand is down */
+	handQueue?: number | null
 	breakoutRoomId: string | null
 	isGamemaster: boolean
 	isSpectator: boolean
