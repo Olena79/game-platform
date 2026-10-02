@@ -6,7 +6,7 @@ import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, U
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
-import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, GameData, gamemasterLabel, withSeatCounts } from '../../actions/games'
+import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, setGameAccess, GameData, gamemasterLabel, withSeatCounts } from '../../actions/games'
 
 // ─── Description modal ────────────────────────────────────────────────────────
 
@@ -748,7 +748,11 @@ export const OurGamesPage = () => {
 				title={t('our_games.players_modal_title')}
 				variant='default'
 			>
-				<PlayersListContent game={playersModal.game} />
+				<PlayersListContent game={playersModal.game} token={token}
+					onAccessChanged={(gameId, blocked) => {
+						setGames(prev => prev.map(g => g._id === gameId ? { ...g, accessBlockedUserIds: blocked } : g))
+						setPlayersModal(m => m.game && m.game._id === gameId ? { ...m, game: { ...m.game, accessBlockedUserIds: blocked } } : m)
+					}} />
 			</Modal>
 
 			{/* Donate modal */}
@@ -766,29 +770,85 @@ export const OurGamesPage = () => {
 
 // ─── Players list ─────────────────────────────────────────────────────────────
 
-const PlayersListContent = ({ game }: { game: GameData | null }) => {
+/**
+ * Who registered. The gamemaster of a paid game can close a person's access
+ * to the room here — someone who has not paid yet — and open it again: no
+ * code lets a closed person in (resolveSeat on the server), and they are
+ * told in Telegram. Nobody else sees names (the lists reach the creator only).
+ */
+const PlayersListContent = ({ game, token, onAccessChanged }: {
+	game: GameData | null
+	token: string | null
+	onAccessChanged: (gameId: string, blocked: string[]) => void
+}) => {
 	const { t } = useTranslation()
 	const { isDark } = useTheme()
+	const [busy, setBusy] = useState<string | null>(null)
+	const [failed, setFailed] = useState(false)
 	if (!game) return null
-	if ((game.registeredPlayers ?? []).length === 0) {
+	const players = game.registeredPlayers ?? []
+	const spectators = game.spectators ?? []
+	const blocked = game.accessBlockedUserIds
+	// Only the creator receives the list of closed accesses; only paid games use it
+	const canControl = !!blocked && !!token && (game.participationCost ?? 0) > 0
+
+	const toggle = async (userId: string, close: boolean) => {
+		if (!token) return
+		setBusy(userId); setFailed(false)
+		try {
+			const r = await setGameAccess(token, game._id, userId, close)
+			onAccessChanged(game._id, r.accessBlockedUserIds)
+		} catch { setFailed(true) } finally { setBusy(null) }
+	}
+
+	if (players.length === 0 && spectators.length === 0) {
 		return <p className='text-[14px]' style={{ color: isDark ? 'rgba(200,215,255,0.75)' : 'var(--text-muted)' }}>{t('our_games.players_empty')}</p>
+	}
+	const row = (p: { userId?: unknown; name?: string; surname?: string }, i: number, spectator: boolean) => {
+		const id = String(p.userId ?? '')
+		const isClosed = !!blocked?.includes(id)
+		return (
+			<div key={`${spectator ? 's' : 'p'}${id || i}`} className='flex items-center gap-[8px] text-[13px]'
+				style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)', opacity: isClosed ? 0.75 : 1 }}>
+				<span className='w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] flex-shrink-0'
+					style={isDark
+						? { background: 'rgba(68,170,255,0.12)', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(68,170,255,0.7)' }
+						: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.2)', color: 'var(--accent)' }}>
+					{spectator ? '👀' : i + 1}
+				</span>
+				<span className='flex-1 min-w-0 flex flex-col'>
+					<span className='truncate' style={isClosed ? { textDecoration: 'line-through' } : undefined}>
+						{[p.name, p.surname].filter(Boolean).join(' ')}
+					</span>
+					{isClosed && <span className='text-[11px]' style={{ color: '#e0566e' }}>🔒 {t('our_games.access_closed')}</span>}
+				</span>
+				{canControl && id && (
+					<button onClick={() => void toggle(id, !isClosed)} disabled={busy === id}
+						className='flex-shrink-0 px-[9px] py-[4px] rounded-[7px] text-[11px] font-[600] cursor-pointer disabled:opacity-50'
+						style={isClosed
+							? { border: '1px solid rgba(40,170,110,0.5)', color: isDark ? '#4fd39a' : '#1d8a5a', background: 'transparent' }
+							: { border: '1px solid rgba(224,86,110,0.5)', color: '#e0566e', background: 'transparent' }}>
+						{isClosed ? t('our_games.access_open') : t('our_games.access_close')}
+					</button>
+				)}
+			</div>
+		)
 	}
 	return (
 		<div className='flex flex-col gap-[8px]'>
-			{(game.registeredPlayers ?? []).map((p, i) => (
-				<div key={String(p.userId ?? i)} className='flex items-center gap-[8px] text-[13px]' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-secondary)' }}>
-					<span
-						className='w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] flex-shrink-0'
-						style={isDark
-							? { background: 'rgba(68,170,255,0.12)', border: '1px solid rgba(68,170,255,0.2)', color: 'rgba(68,170,255,0.7)' }
-							: { background: 'rgba(192,83,58,0.08)', border: '1px solid rgba(192,83,58,0.2)', color: 'var(--accent)' }
-						}
-					>
-						{i + 1}
-					</span>
-					<span>{[p.name, p.surname].filter(Boolean).join(' ')}</span>
-				</div>
-			))}
+			{canControl && (
+				<p className='text-[12px] leading-[1.5] mb-[4px]' style={{ color: isDark ? 'rgba(160,180,230,0.7)' : 'var(--text-muted)' }}>
+					{t('our_games.access_hint')}
+				</p>
+			)}
+			{players.map((p, i) => row(p, i, false))}
+			{spectators.length > 0 && blocked && (
+				<>
+					<p className='text-[12px] mt-[6px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>{t('our_games.spectators_list')}</p>
+					{spectators.map((p, i) => row(p, i, true))}
+				</>
+			)}
+			{failed && <p className='text-[12px]' style={{ color: '#e0566e' }}>{t('our_games.access_failed')}</p>}
 		</div>
 	)
 }

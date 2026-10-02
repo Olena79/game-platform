@@ -334,7 +334,19 @@ export async function kickUser(userId: string): Promise<void> {
  * server-side close is not retried by the client), their tile gone, their
  * media seats removed. The ban itself is on the game — see resolveSeat.
  */
-async function removeFromRoom(io: Server, state: GameRoomState, userId: string): Promise<void> {
+/**
+ * The gamemaster closed someone's access (a paid game not paid yet): if
+ * they are in the room right now, they leave it, told why. Reversible —
+ * nothing is written here; the list lives on the game (resolveSeat).
+ */
+export async function removeForClosedAccess(gameId: string, userId: string): Promise<void> {
+	if (!ioRef) return
+	const state = [...rooms.values()].find(s => s.gameId === gameId)
+	if (!state || !state.players.some(p => p.userId === userId)) return
+	await removeFromRoom(ioRef, state, userId, 'PAYMENT_BLOCKED')
+}
+
+async function removeFromRoom(io: Server, state: GameRoomState, userId: string, why: 'REMOVED' | 'PAYMENT_BLOCKED' = 'REMOVED'): Promise<void> {
 	const p = state.players.find(pl => pl.userId === userId)
 	// Off the roster before the sockets close, so the disconnect that follows
 	// finds nobody to mark "away" and nobody sees a ghost tile flicker
@@ -347,7 +359,8 @@ async function removeFromRoom(io: Server, state: GameRoomState, userId: string):
 	}
 	for (const sid of sids) {
 		const sock = io.sockets.sockets.get(sid)
-		sock?.emit('gr:kicked')
+		if (why === 'REMOVED') sock?.emit('gr:kicked')
+		else sock?.emit('gr:error', why)
 		sock?.leave(`gr-${state.gameCode}`)
 		sock?.disconnect(true)
 	}

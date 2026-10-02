@@ -211,7 +211,13 @@
     "err_removed": "The gamemaster removed you from this game, so you cannot register for it again.",
     "description_more": "Read more →",
     "description_open": "Open the full game description",
-    "description_close": "Close"
+    "description_close": "Close",
+    "access_hint": "Paid game: close access for those who have not paid yet. They cannot enter the room with any code until you open it again, and they are told in Telegram. Anyone already in the room leaves it.",
+    "access_close": "Close access",
+    "access_open": "Open access",
+    "access_closed": "access closed",
+    "access_failed": "Could not change access. Try again.",
+    "spectators_list": "Spectators"
   },
   "donate": {
     "title": "Cheers to the Game Master",
@@ -614,7 +620,8 @@
     "window": {
       "not_yet": "The room opens for players and spectators at {{when}} — 10 minutes before the game. This page will open it by itself.",
       "closed": "The game has taken place and the room is closed. It opens again when the gamemaster sets a new time.",
-      "codes_changed": "The gamemaster changed the game time, so the codes were renewed. Registered participants get the new codes in Telegram."
+      "codes_changed": "The gamemaster changed the game time, so the codes were renewed. Registered participants get the new codes in Telegram.",
+      "payment_blocked": "The gamemaster has closed your access to this game — probably your payment is not confirmed yet. If you have paid, write to the gamemaster."
     }
   },
   "legal": {

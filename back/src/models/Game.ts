@@ -38,6 +38,8 @@ export interface IGame extends Document {
 	reminderSentAt?: Date | null
 	/** Removed by the gamemaster: never let back into this game */
 	bannedUserIds: string[]
+	/** Registered, but the gamemaster closed their access (not paid yet) — reversible */
+	accessBlockedUserIds: string[]
 	/** Closed to players and spectators from this moment (30 min after the session ended), until rescheduled */
 	closedAt?: Date | null
 	createdAt: Date
@@ -82,6 +84,7 @@ const GameSchema = new Schema<IGame>(
 		likesCount:         { type: Number, default: 0 },
 		reminderSentAt:     { type: Date, default: null },
 		bannedUserIds:      { type: [String], default: [] },
+		accessBlockedUserIds: { type: [String], default: [] },
 		closedAt:           { type: Date, default: null },
 	},
 	{ timestamps: true, collection: 'our_games' }

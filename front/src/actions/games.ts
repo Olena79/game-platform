@@ -45,6 +45,8 @@ export interface GameData {
 	spectatorCode?: string
 	registeredPlayers?: RegisteredPlayer[]
 	spectators?: RegisteredPlayer[]
+	/** Creator only: registered people whose access to the room is closed (not paid yet) */
+	accessBlockedUserIds?: string[]
 	likesCount: number
 	isLiked: boolean
 	createdAt: string
@@ -176,3 +178,11 @@ export interface SeatCounts {
 export function withSeatCounts(g: GameData, c: SeatCounts): GameData {
 	return { ...g, playersCount: c.playersCount, spectatorsCount: c.spectatorsCount, isRegistered: c.isRegistered, isSpectatorRegistered: c.isSpectatorRegistered }
 }
+
+/** The gamemaster closes or reopens a registered person's access to the room */
+export const setGameAccess = (token: string, gameId: string, userId: string, blocked: boolean): Promise<{ accessBlockedUserIds: string[] }> =>
+	fetch(`${API}/api/games/${gameId}/access`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+		body: JSON.stringify({ userId, blocked }),
+	}).then(handleResponse<{ accessBlockedUserIds: string[] }>)

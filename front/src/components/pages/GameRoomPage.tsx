@@ -1705,6 +1705,7 @@ function GameRoomInner() {
 function roomErrorText(error: string, t: (k: string, o?: Record<string, unknown>) => string, lang: string): string {
 	if (error === 'REMOVED') return t('room.kick.you_were_removed')
 	if (error === 'CLOSED') return t('room.window.closed')
+	if (error === 'PAYMENT_BLOCKED') return t('room.window.payment_blocked')
 	if (error === 'CODES_CHANGED') return t('room.window.codes_changed')
 	if (error.startsWith('NOT_YET:')) {
 		const opens = new Date(error.slice('NOT_YET:'.length))

@@ -17,7 +17,7 @@ jest.mock('../src/models/Game', () => ({
 	Game: { findOne: (...args: unknown[]) => findOne(...args) },
 }))
 
-import { resolveSeat, timeRefusal } from '../src/services/roomAccess'
+import { resolveSeat, timeRefusal, seatRefusal } from '../src/services/roomAccess'
 
 function returns(doc: unknown) {
 	findOne.mockReturnValue({ select: () => Promise.resolve(doc) })
@@ -121,5 +121,21 @@ describe('when players and spectators may come in', () => {
 
 		returns({ ...game, scheduledAt: new Date(Date.now() + 5 * 60 * 1000) })
 		expect(await resolveSeat('PLAY23', 'someone')).toMatchObject({ asSpectator: false })
+	})
+})
+
+describe('a registered person whose access the gamemaster closed (not paid)', () => {
+	it('gets no seat through either code, and is told why; others and the gamemaster still enter', async () => {
+		returns({ ...game, accessBlockedUserIds: ['registered-player'] })
+		expect(await resolveSeat('PLAY23', 'registered-player')).toBeNull()
+		expect(await resolveSeat('WATCH7', 'registered-player')).toBeNull()
+		expect(await resolveSeat('PLAY23', 'someone')).not.toBeNull()
+		expect(await resolveSeat('PLAY23', 'gm-user')).toMatchObject({ isCreator: true })
+		expect(await seatRefusal('PLAY23', 'registered-player')).toEqual({ reason: 'PAYMENT_BLOCKED' })
+	})
+
+	it('gets in again once access is reopened', async () => {
+		returns({ ...game, accessBlockedUserIds: [] })
+		expect(await resolveSeat('PLAY23', 'registered-player')).toMatchObject({ asSpectator: false })
 	})
 })

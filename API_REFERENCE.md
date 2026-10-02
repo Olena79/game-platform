@@ -232,3 +232,11 @@ once the game's time has come) or a day after `scheduledAt`. Outside that,
 `POST /api/livekit/token` answers 403 with the same message. `PUT /api/games/:id`
 with a new date or time renews `gameCode` and `spectatorCode` and clears
 `closedAt`.
+
+### Closing access until paid
+`POST /api/games/:id/access` (creator only) `{ userId, blocked }` →
+`{ accessBlockedUserIds }`. Closing needs the person to be registered (player or
+spectator); it is reversible. A closed person gets no seat
+(`gr:error PAYMENT_BLOCKED`, token 403 `PAYMENT_BLOCKED`), is taken out of a
+live room, and is told in Telegram both when closed and when reopened. The
+creator's game view carries `accessBlockedUserIds`.

@@ -7,14 +7,14 @@ import { GameLike } from '../models/GameLike'
 import { cleanNotes } from '../services/notesDelivery'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
-import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame } from '../services/telegramBot'
+import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame, escapeHtml, sendTelegramHtml } from '../services/telegramBot'
 import { notifyGmOfRegistration } from '../services/registrationNotify'
 import { notifyGameCancelled, notifyGameRescheduled } from '../services/gameChangeNotify'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
-import { applyGameSettings, closeDeletedGame } from '../socket/gameRoom'
+import { applyGameSettings, closeDeletedGame, removeForClosedAccess } from '../socket/gameRoom'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
-import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
+import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS, gameAccessSchema } from '../validation/schemas'
 const router = Router()
 
 // Strip full card number from any response that goes outside the owner context.
@@ -95,6 +95,7 @@ function publicGameView(game: GameDoc, viewerId?: string, creator?: CreatorLabel
 		out.scenario = obj.scenario
 		out.defaultTimerSeconds = obj.defaultTimerSeconds
 		out.gmNotes = obj.gmNotes
+		out.accessBlockedUserIds = obj.accessBlockedUserIds ?? []
 	} else {
 		// Registered participants get back the one code that is theirs, so the
 		// list can still offer them a way in.
@@ -531,6 +532,52 @@ router.delete('/:id/register-spectator', authMiddleware, async (req: AuthRequest
 		res.status(500).json({ message: 'Server error' })
 	}
 })
+
+// POST /api/games/:id/access — the gamemaster closes or reopens a registered
+// person's access to the room (a paid game not paid yet). Reversible; the
+// person is told in Telegram and, if in the room, leaves it at once.
+router.post('/:id/access', authMiddleware, validateParams(gameIdSchema), validateBody(gameAccessSchema), async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const game = await Game.findById(req.params.id)
+		if (!game) { res.status(404).json({ message: 'Game not found' }); return }
+		if (String(game.creatorId) !== String(req.userId)) { res.status(403).json({ message: 'FORBIDDEN' }); return }
+
+		const { userId, blocked } = req.body as { userId: string; blocked: boolean }
+		const registered = game.registeredPlayers.some(p => String(p.userId) === userId)
+			|| game.spectators.some(p => String(p.userId) === userId)
+		if (!registered && blocked) { res.status(400).json({ message: 'NOT_REGISTERED' }); return }
+
+		const was = (game.accessBlockedUserIds ?? []).includes(userId)
+		const updated = await Game.findByIdAndUpdate(game._id,
+			blocked ? { $addToSet: { accessBlockedUserIds: userId } } : { $pull: { accessBlockedUserIds: userId } },
+			{ new: true })
+		res.json({ accessBlockedUserIds: updated?.accessBlockedUserIds ?? [] })
+
+		if (was === blocked) return
+		if (blocked) void removeForClosedAccess(String(game._id), userId).catch(() => undefined)
+		void tellAccessChange(userId, game.title, blocked)
+	} catch (err: any) {
+		logger.error('[games/:id/access]', err)
+		res.status(500).json({ message: 'Server error' })
+	}
+})
+
+async function tellAccessChange(userId: string, title: string, blocked: boolean): Promise<void> {
+	try {
+		const user = await User.findById(userId).select('telegramChatId language').lean()
+		if (!user?.telegramChatId) return
+		const en = user.language === 'en'
+		const name = escapeHtml(title)
+		const text = blocked
+			? (en ? `🔒 <b>Access to the game is closed</b>\n«${name}»\n\nThe gamemaster has not confirmed your payment yet. If you have paid, write to the gamemaster.`
+				: `🔒 <b>Доступ до гри закрито</b>\n«${name}»\n\nІгромастер ще не підтвердив вашу оплату. Якщо ви вже оплатили — напишіть ведучому.`)
+			: (en ? `🔓 <b>Access to the game is open</b>\n«${name}»\n\nYou can enter the room at the game's time.`
+				: `🔓 <b>Доступ до гри відкрито</b>\n«${name}»\n\nВи можете увійти в кімнату в час гри.`)
+		await sendTelegramHtml(String(user.telegramChatId), text)
+	} catch (err) {
+		logger.warn('[games/:id/access] notice not sent', { error: err instanceof Error ? err.message : String(err) })
+	}
+}
 
 // POST /api/games/:id/like — поставити лайк
 router.post('/:id/like', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
