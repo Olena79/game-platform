@@ -29,6 +29,7 @@ import {
 	grMuteAllSchema,
 	grMutePlayerSchema,
 	grKickSchema,
+	grPresenceSchema,
 	grAnnounceSchema,
 	grBreakoutAssignSchema,
 	grImageShowSchema,
@@ -58,6 +59,9 @@ import {
 // All of this lives in one process's memory: the room state, who is connected,
 // the GM's notes draft. CLAUDE.md: exactly one backend instance.
 const rooms = new Map<string, GameRoomState>()          // gameCode → state
+// A phone whose room went to the background: hidden after this long
+export const AWAY_AFTER_MS = Number(process.env.ROOM_AWAY_MS) || 60_000
+const awayTimers = new Map<string, ReturnType<typeof setTimeout>>()   // gameCode:userId
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const loadingRooms = new Map<string, Promise<GameRoomState | null>>() // deduplicate concurrent loadRoom calls
 const breakoutTimers = new Map<string, ReturnType<typeof setTimeout>>() // `${gameCode}:${roomId}`
@@ -640,6 +644,7 @@ export function registerGameRoom(io: Server) {
 			if (existing) {
 				existing.socketId = socket.id
 				existing.connected = true
+				existing.away = false
 				existing.name = name
 				existing.initials = initials(name)
 				// They came back with a different code (spectator → player or the reverse)
@@ -923,6 +928,38 @@ export function registerGameRoom(io: Server) {
 			for (const sid of socketsOf(state.gameCode, d.targetUserId)) io.to(sid).emit('gr:mute-player', {})
 			const target = state.players.find(p => p.userId === d.targetUserId)
 			await muteMicrophones(roomNameFor(state.gameId, target?.breakoutRoomId ?? undefined), identity => identity === d.targetUserId)
+		}, socket))
+
+		// ── Presence (phones) ──────────────────────────────────────────────
+		// A phone with the room in the background keeps its connection but
+		// loses camera and microphone: its tile hung there, looking muted.
+		// After AWAY_AFTER_MS in the background it is hidden for everyone;
+		// it comes back the moment the page is in front again.
+		socket.on('gr:presence', validateSocketEvent(grPresenceSchema, async (d: any) => {
+			const state = here()
+			if (!state || !curUser) return
+			const userId = curUser
+			const p = state.players.find(pl => pl.userId === userId)
+			if (!p || p.isGamemaster) return
+			const key = `${state.gameCode}:${userId}`
+			const pending = awayTimers.get(key)
+			if (pending) { clearTimeout(pending); awayTimers.delete(key) }
+			if (d.away) {
+				const gameCode = state.gameCode
+				const timer = setTimeout(() => {
+					awayTimers.delete(key)
+					const s = rooms.get(gameCode)
+					const pl = s?.players.find(x => x.userId === userId)
+					if (!s || !pl || !pl.connected) return
+					pl.away = true
+					pushState(io, s)
+				}, AWAY_AFTER_MS)
+				timer.unref?.()
+				awayTimers.set(key, timer)
+			} else if (p.away) {
+				p.away = false
+				pushState(io, state)
+			}
 		}, socket))
 
 		// ── Removing someone for good ───────────────────────────────────────

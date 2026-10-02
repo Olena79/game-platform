@@ -354,8 +354,8 @@ export const GridView = ({
 	const handRaised = me?.handRaised ?? false
 	// Show players from the current room only — real AND mock filtered by room
 	const realMainPlayers = inBreakout
-		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected && !p.isSpectator)
-		: state.players.filter(p => !p.breakoutRoomId && p.connected && !p.isSpectator)
+		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected && !p.away && !p.isSpectator)
+		: state.players.filter(p => !p.breakoutRoomId && p.connected && !p.away && !p.isSpectator)
 	const filteredMocks = inBreakout
 		? mockPlayers.filter(p => p.breakoutRoomId === inBreakout)
 		: mockPlayers.filter(p => !p.breakoutRoomId)

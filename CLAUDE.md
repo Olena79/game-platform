@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 23 suites / 177 tests, frontend 8 files / 44 tests.
+Tests: backend 24 suites / 179 tests, frontend 8 files / 44 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -168,6 +168,16 @@ Tests: backend 23 suites / 177 tests, frontend 8 files / 44 tests.
   for someone joining after the time ran out (`TimerFloatOverlay`, tested).
   The timer never ends the game or moves anyone (a breakout's timer does
   send its people back to the main room).
+- **Who has a tile**: only people connected to the room. A closed tab
+  drops its tile at once; a laptop shut or a lost network within ~45 s
+  (Socket.IO ping 25 s + timeout 20 s). A **phone with the room in the
+  background** keeps its connection but loses camera and microphone, so its
+  tile hung there looking muted: phones (`pointer: coarse`) report
+  `gr:presence { away }` on visibility changes, and after `AWAY_AFTER_MS`
+  (60 s) the server marks them `away` and the tile is hidden for everyone,
+  back the moment the page is in front. Never the GM; not computers (a
+  background tab there still hears and still sends its camera).
+  `tests/presence.test.ts`.
 - **Raised hands have a queue**: the server notes when each hand went up
   (`handRaisedAt`) and numbers them per room — main room and each breakout
   apart — in `gr:state` (`handQueue`, `withHandQueue`). Everyone sees the

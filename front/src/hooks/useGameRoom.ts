@@ -143,10 +143,21 @@ export function useGameRoom(rawCode: string) {
 		})
 		socketRef.current = socket
 
+		// Phones: tell the room when this page goes to the background and
+		// comes back. In the background a phone keeps the connection but drops
+		// camera and microphone, and its tile hung there looking muted; the
+		// room hides it after a minute away. Computers are left out: there a
+		// background tab still hears the game and still sends its camera.
+		const isPhone = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+		const sendPresence = () => {
+			if (isPhone) socket.emit('gr:presence', { gameCode, away: document.visibilityState === 'hidden' })
+		}
+
 		socket.on('connect', async () => {
 			setConnected(true)
 			setConnStatus('connected')
 			socket.emit('gr:join', { gameCode })
+			sendPresence()
 			// Only fetch main token on first connect; LiveKit manages its own reconnection
 			if (!lkRef.current) {
 				const token = await fetchLKToken()
@@ -285,7 +296,12 @@ export function useGameRoom(rawCode: string) {
 		socket.on('gr:record-stop', () => setRecordStopSignal(n => n + 1))
 		socket.on('disconnect', () => { setConnected(false); setConnStatus('connecting') })
 
+		document.addEventListener('visibilitychange', sendPresence)
+		window.addEventListener('pagehide', sendPresence)
+
 		return () => {
+			document.removeEventListener('visibilitychange', sendPresence)
+			window.removeEventListener('pagehide', sendPresence)
 			socket.disconnect()
 			socketRef.current = null
 			setConnected(false)

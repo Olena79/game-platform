@@ -183,6 +183,11 @@ export const grMutePlayerSchema = z.object({
 	targetUserId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
 })
 
+export const grPresenceSchema = z.object({
+	gameCode: z.string().min(1),
+	away: z.boolean(),
+})
+
 export const grKickSchema = z.object({
 	gameCode: z.string().min(1),
 	targetUserId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),

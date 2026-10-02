@@ -13,6 +13,8 @@ export interface RoomPlayer {
 	isGamemaster: boolean
 	isSpectator: boolean
 	connected: boolean
+	/** A phone with the room in the background for over a minute: its tile is hidden until it comes back */
+	away?: boolean
 }
 
 export interface ChatMessage {

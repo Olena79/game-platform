@@ -258,8 +258,8 @@ export const SpeakerView = ({
 	const me = state.players.find(p => p.userId === myId)
 	const handRaised = me?.handRaised ?? false
 	const realMainPlayers = inBreakout
-		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected)
-		: state.players.filter(p => !p.breakoutRoomId && p.connected)
+		? state.players.filter(p => p.breakoutRoomId === inBreakout && p.connected && !p.away)
+		: state.players.filter(p => !p.breakoutRoomId && p.connected && !p.away)
 	const filteredMocks = inBreakout
 		? mockPlayers.filter(p => p.breakoutRoomId === inBreakout)
 		: mockPlayers.filter(p => !p.breakoutRoomId)
