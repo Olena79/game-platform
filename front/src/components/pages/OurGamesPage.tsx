@@ -771,8 +771,9 @@ export const OurGamesPage = () => {
 // ─── Players list ─────────────────────────────────────────────────────────────
 
 /**
- * Who registered. The gamemaster of a paid game can close a person's access
- * to the room here — someone who has not paid yet — and open it again: no
+ * Who registered. The gamemaster can close a person's access to the room
+ * here — someone who has not paid yet, or anyone they would rather not have
+ * — and open it again: no
  * code lets a closed person in (resolveSeat on the server), and they are
  * told in Telegram. Nobody else sees names (the lists reach the creator only).
  */
@@ -789,8 +790,9 @@ const PlayersListContent = ({ game, token, onAccessChanged }: {
 	const players = game.registeredPlayers ?? []
 	const spectators = game.spectators ?? []
 	const blocked = game.accessBlockedUserIds
-	// Only the creator receives the list of closed accesses; only paid games use it
-	const canControl = !!blocked && !!token && (game.participationCost ?? 0) > 0
+	// Only the creator receives the list of closed accesses — free games too:
+	// a gamemaster may want to filter who comes, not only who has paid
+	const canControl = !!blocked && !!token
 
 	const toggle = async (userId: string, close: boolean) => {
 		if (!token) return

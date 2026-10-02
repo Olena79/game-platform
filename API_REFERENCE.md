@@ -233,7 +233,7 @@ once the game's time has come) or a day after `scheduledAt`. Outside that,
 with a new date or time renews `gameCode` and `spectatorCode` and clears
 `closedAt`.
 
-### Closing access until paid
+### Closing access (any game)
 `POST /api/games/:id/access` (creator only) `{ userId, blocked }` →
 `{ accessBlockedUserIds }`. Closing needs the person to be registered (player or
 spectator); it is reversible. A closed person gets no seat

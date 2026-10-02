@@ -555,22 +555,25 @@ router.post('/:id/access', authMiddleware, validateParams(gameIdSchema), validat
 
 		if (was === blocked) return
 		if (blocked) void removeForClosedAccess(String(game._id), userId).catch(() => undefined)
-		void tellAccessChange(userId, game.title, blocked)
+		void tellAccessChange(userId, game.title, blocked, (game.participationCost ?? 0) > 0)
 	} catch (err: any) {
 		logger.error('[games/:id/access]', err)
 		res.status(500).json({ message: 'Server error' })
 	}
 })
 
-async function tellAccessChange(userId: string, title: string, blocked: boolean): Promise<void> {
+async function tellAccessChange(userId: string, title: string, blocked: boolean, paid: boolean): Promise<void> {
 	try {
 		const user = await User.findById(userId).select('telegramChatId language').lean()
 		if (!user?.telegramChatId) return
 		const en = user.language === 'en'
 		const name = escapeHtml(title)
 		const text = blocked
-			? (en ? `🔒 <b>Access to the game is closed</b>\n«${name}»\n\nThe gamemaster has not confirmed your payment yet. If you have paid, write to the gamemaster.`
-				: `🔒 <b>Доступ до гри закрито</b>\n«${name}»\n\nІгромастер ще не підтвердив вашу оплату. Якщо ви вже оплатили — напишіть ведучому.`)
+			? (paid
+				? (en ? `🔒 <b>Access to the game is closed</b>\n«${name}»\n\nThe gamemaster has not confirmed your payment yet. If you have paid, write to the gamemaster.`
+					: `🔒 <b>Доступ до гри закрито</b>\n«${name}»\n\nІгромастер ще не підтвердив вашу оплату. Якщо ви вже оплатили — напишіть ведучому.`)
+				: (en ? `🔒 <b>Access to the game is closed</b>\n«${name}»\n\nThe gamemaster has closed your access to this game. If you think this is a mistake, write to the gamemaster.`
+					: `🔒 <b>Доступ до гри закрито</b>\n«${name}»\n\nІгромастер закрив вам доступ до цієї гри. Якщо вважаєте, що це помилка, — напишіть ведучому.`))
 			: (en ? `🔓 <b>Access to the game is open</b>\n«${name}»\n\nYou can enter the room at the game's time.`
 				: `🔓 <b>Доступ до гри відкрито</b>\n«${name}»\n\nВи можете увійти в кімнату в час гри.`)
 		await sendTelegramHtml(String(user.telegramChatId), text)

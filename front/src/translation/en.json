@@ -212,7 +212,7 @@
     "description_more": "Read more →",
     "description_open": "Open the full game description",
     "description_close": "Close",
-    "access_hint": "Paid game: close access for those who have not paid yet. They cannot enter the room with any code until you open it again, and they are told in Telegram. Anyone already in the room leaves it.",
+    "access_hint": "You can close access for anyone who registered — for example, those who have not paid for a paid game yet. They cannot enter the room with any code until you open it again, and they are told in Telegram. Anyone already in the room leaves it.",
     "access_close": "Close access",
     "access_open": "Open access",
     "access_closed": "access closed",
@@ -621,7 +621,7 @@
       "not_yet": "The room opens for players and spectators at {{when}} — 10 minutes before the game. This page will open it by itself.",
       "closed": "The game has taken place and the room is closed. It opens again when the gamemaster sets a new time.",
       "codes_changed": "The gamemaster changed the game time, so the codes were renewed. Registered participants get the new codes in Telegram.",
-      "payment_blocked": "The gamemaster has closed your access to this game — probably your payment is not confirmed yet. If you have paid, write to the gamemaster."
+      "payment_blocked": "The gamemaster has closed your access to this game. If this is a mistake (for example, you have already paid for a paid game), write to the gamemaster."
     }
   },
   "legal": {

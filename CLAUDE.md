@@ -195,12 +195,14 @@ Tests: backend 24 suites / 186 tests, frontend 9 files / 49 tests.
   number by the hand on the tiles and on their own hand button; the GM's
   panel lists «Черга піднятих рук» in order. A hand that goes down (or
   speaks — it drops by itself) leaves the queue and the rest move up.
-- **Closing access until paid** (paid games, since 2026-10-02): in the
+- **Closing access** (any game, paid or free, since 2026-10-02; meant for
+  "not paid yet" but a GM may filter anyone): in the
   card's list of registered people the GM can «Закрити доступ» for a player
   or spectator and open it again (`POST /api/games/:id/access`,
   `Game.accessBlockedUserIds`). `resolveSeat` refuses them through both
   codes (`PAYMENT_BLOCKED`, explained on their screen); someone in the room
-  leaves it (`removeForClosedAccess`); they hear both changes in Telegram.
+  leaves it (`removeForClosedAccess`); they hear both changes in Telegram
+  (in a paid game the message speaks of payment, in a free one it does not).
   It is per account: a forwarded code still lets in a stranger who never
   registered (see "The game code is the pass").
 - **Removing someone from a game** (`gr:kick`, `KickModal`): the GM's
