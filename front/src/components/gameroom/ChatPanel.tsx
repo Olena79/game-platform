@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { scenarioHtml } from '../../utils/richText'
 import { useTranslation } from 'react-i18next'
 import { Send } from 'lucide-react'
 import type { GameRoomState, RoomPlayer, ChatMessage } from './types'
@@ -412,12 +413,14 @@ export const ChatPanel = ({
 				</>
 			)}
 
+			{/* The scenario, for the gamemaster: light grey and black text — long
+			    reading in light-on-dark tired the eyes — with the formatting it was
+			    pasted with (bold, italic, colours), cleaned in utils/richText */}
 			{tab === 'scenario' && (
-				<div className='flex-1 overflow-y-auto p-[12px]'>
+				<div className='flex-1 overflow-y-auto p-[12px]' style={scenario ? { background: '#dcdfe5' } : undefined}>
 					{scenario
-						? <p className='text-[13px] leading-[1.75]' style={{ color: '#9eaac8', whiteSpace: 'pre-wrap' }}>
-								{scenario}
-							</p>
+						? <div className='scenario-text text-[14px] leading-[1.7] break-words' style={{ color: '#111' }}
+								dangerouslySetInnerHTML={{ __html: scenarioHtml(scenario) }} />
 						: <p className='text-[13px] text-center pt-[20px]' style={{ color: 'rgba(140,170,255,0.52)' }}>
 								{t('room.chat.no_scenario')}
 							</p>

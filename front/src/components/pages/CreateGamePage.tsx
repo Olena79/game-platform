@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { RichTextEditor } from '../minicomponents/RichTextEditor'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Scroll, Users, CircleDollarSign, Zap, CalendarDays, X, ImagePlus, CreditCard, Banknote } from 'lucide-react'
@@ -564,26 +565,14 @@ export const CreateGamePage = () => {
 						{/* ── Сценарій ── */}
 						<section>
 							<SectionLabel>{t('create_game.section_scenario')}</SectionLabel>
-							<textarea
-								placeholder={t('create_game.scenario_placeholder')}
+							<RichTextEditor
 								value={scenario}
-								onChange={e => setScenario(e.target.value)}
-								rows={5}
-								className='w-full rounded-[12px] py-[12px] px-[14px] text-[14px] leading-[1.7] focus:outline-none transition-all resize-y min-h-[120px]'
-								style={{
-									background: isDark ? '#060e24' : 'var(--bg-input)',
-									border: `1px solid ${isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'}`,
-									color: isDark ? 'rgba(180,200,255,0.85)' : 'var(--text-primary)',
-								}}
-								onFocus={e => {
-									e.currentTarget.style.borderColor = isDark ? 'rgba(68,170,255,0.6)' : 'var(--accent)'
-									if (isDark) e.currentTarget.style.boxShadow = '0 0 14px rgba(68,170,255,0.1)'
-								}}
-								onBlur={e => {
-									e.currentTarget.style.borderColor = isDark ? 'rgba(68,170,255,0.2)' : 'var(--border-subtle)'
-									e.currentTarget.style.boxShadow = ''
-								}}
+								onChange={setScenario}
+								placeholder={t('create_game.scenario_placeholder')}
 							/>
+							<p className='text-[12px] mt-[6px] leading-[1.5]' style={{ color: isDark ? 'rgba(140,165,220,0.6)' : 'var(--text-muted)' }}>
+								{t('create_game.scenario_format_hint')}
+							</p>
 						</section>
 
 						<Divider />

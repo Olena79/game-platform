@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { scenarioHtml } from '../../utils/richText'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Printer } from 'lucide-react'
@@ -141,7 +142,7 @@ export const MyDataPage = () => {
 										{g.scenario && (
 											<div className='text-[13px]'>
 												<span className='font-[600]' style={muted}>{t('my_data.scenario')}:</span>
-												<p className='mt-[2px] leading-[1.5] whitespace-pre-wrap break-words'>{g.scenario}</p>
+												<div className='scenario-text mt-[2px] leading-[1.5] break-words' dangerouslySetInnerHTML={{ __html: scenarioHtml(g.scenario) }} />
 											</div>
 										)}
 									</Item>

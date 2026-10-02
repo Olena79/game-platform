@@ -119,7 +119,8 @@ io.use(async (socket, next) => {
 // frontend's headers are set by its host (see front/vercel.json).
 app.use(helmet())
 app.use(cors(corsOptions(isDev ? true : allowedOrigins)))
-app.use(express.json())
+// 1 MB: a formatted scenario can outgrow express's default 100 KB
+app.use(express.json({ limit: '1mb' }))
 app.use(requestLogger)
 
 app.get('/', (_req, res) => res.json({ status: 'ok', message: 'Games of Senses API' }))

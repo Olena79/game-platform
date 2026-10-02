@@ -260,6 +260,35 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	const { localParticipant, isScreenShareEnabled } = useLocalParticipant()
 	const [view, setView] = useState<'speaker' | 'grid'>('speaker')
 	const [panelOpen, setPanelOpen] = useState(true)
+	// The side panel's width when the gamemaster (or anyone) dragged it wider;
+	// null = the default. Remembered on this device.
+	const panelRef = useRef<HTMLDivElement>(null)
+	const [panelWidth, setPanelWidth] = useState<number | null>(() => {
+		try { const v = Number(localStorage.getItem('gos-room-panel-w')); return v >= 240 ? v : null } catch { return null }
+	})
+	const savePanelWidth = (w: number | null) => {
+		setPanelWidth(w)
+		try { if (w) localStorage.setItem('gos-room-panel-w', String(Math.round(w))); else localStorage.removeItem('gos-room-panel-w') } catch { /* private mode */ }
+	}
+	const startPanelResize = (e: React.PointerEvent<HTMLDivElement>) => {
+		const panel = panelRef.current
+		if (!panel) return
+		e.preventDefault()
+		const right = panel.getBoundingClientRect().right
+		const handle = e.currentTarget
+		handle.setPointerCapture(e.pointerId)
+		const max = () => Math.max(260, Math.min(window.innerWidth * 0.7, window.innerWidth - 420))
+		const move = (ev: PointerEvent) => setPanelWidth(Math.min(max(), Math.max(240, right - ev.clientX)))
+		const up = (ev: PointerEvent) => {
+			handle.removeEventListener('pointermove', move)
+			handle.removeEventListener('pointerup', up)
+			handle.removeEventListener('pointercancel', up)
+			savePanelWidth(Math.min(max(), Math.max(240, right - ev.clientX)))
+		}
+		handle.addEventListener('pointermove', move)
+		handle.addEventListener('pointerup', up)
+		handle.addEventListener('pointercancel', up)
+	}
 	const [localImageHidden, setLocalImageHidden] = useState(false)
 	const [micOn, setMicOn] = useState(initMic)
 	const [camOn, setCamOn] = useState(initCam)
@@ -913,7 +942,17 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 				{/* Right panel: Chat + Tools — desktop only */}
 				{panelOpen && !isMobile && (
-					<div className='flex-shrink-0 w-[239px] lg:w-[366px] flex flex-col overflow-hidden min-h-0'>
+					<div ref={panelRef} className={`relative flex-shrink-0 flex flex-col overflow-hidden min-h-0${panelWidth ? '' : ' w-[239px] lg:w-[366px]'}`}
+						style={panelWidth ? { width: `${panelWidth}px` } : undefined}>
+						{/* Drag the left edge to widen the panel (the scenario reads better
+						    wide); double-click puts it back. The width is remembered. */}
+						<div
+							role='separator' aria-orientation='vertical' aria-label={t('room.panel_resize')} title={t('room.panel_resize')}
+							onPointerDown={startPanelResize}
+							onDoubleClick={() => savePanelWidth(null)}
+							className='absolute left-0 top-0 bottom-0 w-[7px] z-[20] cursor-col-resize transition-colors hover:bg-[rgba(100,170,255,0.25)]'
+							style={{ touchAction: 'none' }}
+						/>
 						<ChatPanel
 							state={panelState}
 							myId={myId}

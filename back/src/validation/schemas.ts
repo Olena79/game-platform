@@ -38,7 +38,8 @@ const gameFields = {
 	description:         z.string().max(500).optional(),
 	minPlayers:          z.number().int().min(1).max(100).optional(),
 	maxPlayers:          z.number().int().min(1).max(100).optional(),
-	scenario:            z.string().max(20000).optional(),
+	// Formatted (HTML) since 2026-10-02: the markup takes room of its own
+	scenario:            z.string().max(200000).optional(),
 	useCoins:            z.boolean().optional(),
 	coinsPerPlayer:      z.number().int().min(0).max(1_000_000).optional(),
 	startingBank:        z.number().int().min(0).max(10_000_000).optional(),

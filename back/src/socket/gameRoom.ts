@@ -59,8 +59,8 @@ import {
 // All of this lives in one process's memory: the room state, who is connected,
 // the GM's notes draft. CLAUDE.md: exactly one backend instance.
 const rooms = new Map<string, GameRoomState>()          // gameCode → state
-// A phone whose room went to the background: hidden after this long
-export const AWAY_AFTER_MS = Number(process.env.ROOM_AWAY_MS) || 60_000
+// A phone whose room went to the background: hidden after this long (5 min)
+export const AWAY_AFTER_MS = Number(process.env.ROOM_AWAY_MS) || 5 * 60_000
 const awayTimers = new Map<string, ReturnType<typeof setTimeout>>()   // gameCode:userId
 const endTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const loadingRooms = new Map<string, Promise<GameRoomState | null>>() // deduplicate concurrent loadRoom calls

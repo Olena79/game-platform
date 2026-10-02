@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 179 tests, frontend 8 files / 44 tests.
+Tests: backend 24 suites / 179 tests, frontend 9 files / 49 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -160,6 +160,17 @@ Tests: backend 24 suites / 179 tests, frontend 8 files / 44 tests.
   Influence given by the GM (`gr:influence-changed`) flashes on the
   player's tile for everyone: a ring and ⚡ sparks with "+1 ⚡", or a quiet
   "−1 ⚡" when taken.
+- **The scenario keeps its formatting**: on the create-game page it is a
+  `RichTextEditor` (light grey, black text) — pasted bold, italic,
+  underline, colours, lists and headings stay; fonts, sizes, links, images
+  and scripts are cleaned out before they touch the page (`utils/richText.ts`,
+  DOMPurify with a style allow-list, tested). Stored as HTML (≤ 200 000
+  chars; the API takes JSON bodies up to 1 MB); old plain-text scenarios
+  show as before. The room's «Сценарій» tab (GM only) is light grey with
+  black text; every other tab is unchanged.
+- **The room's side panel can be widened** on a computer: drag its left
+  edge (up to 70 % of the window), double-click to reset; remembered per
+  device (`gos-room-panel-w`).
 - **Room sounds** (`utils/sounds.ts`, one shared AudioContext, woken by the
   first tap or key press — iPhone Safari keeps a context made outside a tap
   silent): raised hand, announcement, vote, chat, and the timer — start,
@@ -174,7 +185,7 @@ Tests: backend 24 suites / 179 tests, frontend 8 files / 44 tests.
   background** keeps its connection but loses camera and microphone, so its
   tile hung there looking muted: phones (`pointer: coarse`) report
   `gr:presence { away }` on visibility changes, and after `AWAY_AFTER_MS`
-  (60 s) the server marks them `away` and the tile is hidden for everyone,
+  (5 min, set 2026-10-02; it was 1 min) the server marks them `away` and the tile is hidden for everyone,
   back the moment the page is in front. Never the GM; not computers (a
   background tab there still hears and still sends its camera).
   `tests/presence.test.ts`.

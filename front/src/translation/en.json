@@ -142,7 +142,8 @@
     "cost_label": "Participation fee (UAH)",
     "cost_hint": "UAH · 0 = free",
     "card_label": "Gamemaster’s card (for cheers)",
-    "card_hint": "Players see the number only after pressing “Cheers”"
+    "card_hint": "Players see the number only after pressing “Cheers”",
+    "scenario_format_hint": "Pasted text keeps its bold, italic, underline and colours. Only you see it — in the room, on the \"Scenario\" tab."
   },
   "our_games": {
     "title": "Games",
@@ -606,7 +607,8 @@
       "busy": "The microphone is busy in another program or switched off. Close Zoom, Teams, Skype and other programs using it, then press \"Mic\" again.",
       "missing": "No microphone found. Check it is connected, then press \"Mic\" again.",
       "other": "The microphone will not start. Close other programs using it, reload the page and press \"Mic\" again."
-    }
+    },
+    "panel_resize": "Drag to widen the panel (double-click to reset)"
   },
   "legal": {
     "last_updated": "Last updated",

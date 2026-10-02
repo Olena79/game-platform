@@ -473,3 +473,20 @@
 	padding: 12px;
 	background: rgba(7, 8, 15, 0.75);
 }
+
+/* The scenario: its own formatting (lists, headings, paragraphs) survives
+   Tailwind's reset — the editor on the create-game page and the room tab */
+.rich-text-editor:empty::before {
+	content: attr(data-placeholder);
+	color: #6b7280;
+	pointer-events: none;
+}
+.rich-text-editor ul, .scenario-text ul { list-style: disc; padding-left: 1.4em; margin: 0.3em 0; }
+.rich-text-editor ol, .scenario-text ol { list-style: decimal; padding-left: 1.4em; margin: 0.3em 0; }
+.rich-text-editor p, .scenario-text p { margin: 0.35em 0; }
+.rich-text-editor h1, .scenario-text h1 { font-size: 1.3em; font-weight: 700; margin: 0.5em 0 0.3em; }
+.rich-text-editor h2, .scenario-text h2 { font-size: 1.18em; font-weight: 700; margin: 0.5em 0 0.3em; }
+.rich-text-editor h3, .scenario-text h3,
+.rich-text-editor h4, .scenario-text h4 { font-size: 1.06em; font-weight: 700; margin: 0.4em 0 0.25em; }
+.rich-text-editor blockquote, .scenario-text blockquote { border-left: 3px solid #9aa0ab; padding-left: 0.7em; margin: 0.4em 0; }
+.rich-text-editor b, .rich-text-editor strong, .scenario-text b, .scenario-text strong { font-weight: 700; }
