@@ -32,6 +32,8 @@ jest.mock('../src/models/Game', () => {
 			},
 			exists: (q: { bannedUserIds: string }) => Promise.resolve(mockDb.banned.includes(q.bannedUserIds) ? { _id: 'x' } : null),
 			updateOne: async (_filter: unknown, update: any) => {
+				// Only the ban is of interest here (the gamemaster's join also clears closedAt)
+				if (!update.$addToSet) return { acknowledged: true }
 				mockDb.saved.push(update)
 				mockDb.banned.push(update.$addToSet.bannedUserIds)
 				return { acknowledged: true }

@@ -44,7 +44,7 @@ import {
 } from '../validation/schemas'
 import logger from '../config/logger'
 import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
-import { resolveSeat, wasRemovedFrom } from '../services/roomAccess'
+import { resolveSeat, seatRefusal, refusalMessage, CLOSES_AFTER_SESSION_MS } from '../services/roomAccess'
 import { muteMicrophones, roomNameFor, roomService } from '../services/livekit'
 import {
 	activeRecording,
@@ -112,6 +112,16 @@ async function closeOutSession(
 			toGamemaster(state, 'gr:notes-delivered', {})
 		}
 	}
+
+	// The game's time has come and its session is over: players and
+	// spectators have half an hour more, then the room is closed to them
+	// until the gamemaster reschedules (resolveSeat). A rehearsal before the
+	// game's time closes nothing.
+	const now = new Date()
+	await Game.updateOne(
+		{ _id: state.gameId, scheduledAt: { $lte: now } },
+		{ $set: { closedAt: new Date(now.getTime() + CLOSES_AFTER_SESSION_MS) } },
+	).catch(err => logger.warn('[closeout] could not set closedAt', { gameCode, error: err instanceof Error ? err.message : String(err) }))
 
 	// A properly ended game goes soon; one the GM walked away from stays open
 	// for the others, but an empty room must not sit in memory forever.
@@ -193,10 +203,10 @@ function releaseRoom(gameCode: string): void {
  * The game was deleted: whoever is still inside is told the room is gone,
  * and the room is forgotten. Its recording, if any, is stopped.
  */
-export async function closeDeletedGame(gameCode: string, gameId: string): Promise<void> {
+export async function closeDeletedGame(gameCode: string, gameId: string, message = 'Room not found'): Promise<void> {
 	await stopRecording(gameId).catch(() => undefined)
 	if (ioRef && rooms.has(gameCode)) {
-		ioRef.to(`gr-${gameCode}`).emit('gr:error', 'Room not found')
+		ioRef.to(`gr-${gameCode}`).emit('gr:error', message)
 		ioRef.in(`gr-${gameCode}`).socketsLeave(`gr-${gameCode}`)
 	}
 	releaseRoom(gameCode)
@@ -587,7 +597,7 @@ export function registerGameRoom(io: Server) {
 			// The code presented decides the seat — see resolveSeat
 			const seat = await resolveSeat(d.gameCode, userId)
 			if (!seat) {
-				socket.emit('gr:error', (await wasRemovedFrom(d.gameCode, userId)) ? 'REMOVED' : 'Room not found')
+				socket.emit('gr:error', refusalMessage(await seatRefusal(d.gameCode, userId), 'Room not found'))
 				return
 			}
 			const gameCode = seat.gameCode
@@ -627,6 +637,9 @@ export function registerGameRoom(io: Server) {
 			const isGamemaster = seat.isCreator
 			if (isGamemaster) {
 				// They reconnected (reload, flaky network) — the session goes on
+				// Back while the room is still open to players (a dropped connection
+				// closed the session out): the game goes on, so does the room
+				await Game.updateOne({ _id: seat.gameId, closedAt: { $gt: new Date() } }, { $set: { closedAt: null } }).catch(() => undefined)
 				const away = gmAwayTimers.get(gameCode)
 				if (away) {
 					clearTimeout(away)

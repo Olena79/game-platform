@@ -1,6 +1,6 @@
 import logger from '../config/logger'
 import { User } from '../models/User'
-import { escapeHtml, formatGameDate, langOf, sendTelegramHtml } from './telegramBot'
+import { escapeHtml, formatGameDate, langOf, sendTelegramHtml, siteUrl } from './telegramBot'
 
 type Lang = 'uk' | 'en'
 
@@ -11,15 +11,29 @@ export interface GameForNotice {
 	creatorId: unknown
 	registeredPlayers: Array<{ userId: unknown }>
 	spectators: Array<{ userId: unknown }>
+	gameCode?: string
+	spectatorCode?: string
 }
+
+type Seat = 'player' | 'spectator' | 'gamemaster'
 
 /** A game that took place more than this long ago is history: no cancel notice */
 const PAST_GAME_MS = 6 * 60 * 60 * 1000
 
-export function rescheduledText(title: string, before: Date | null, after: Date | null, lang: Lang): string {
-	return lang === 'en'
-		? [`📅 <b>The game has been moved</b>`, `<b>${escapeHtml(title)}</b>`, '', `Was: ${escapeHtml(formatGameDate(before, lang))}`, `Now: <b>${escapeHtml(formatGameDate(after, lang))}</b>`].join('\n')
-		: [`📅 <b>Гру перенесено</b>`, `<b>${escapeHtml(title)}</b>`, '', `Було: ${escapeHtml(formatGameDate(before, lang))}`, `Тепер: <b>${escapeHtml(formatGameDate(after, lang))}</b>`].join('\n')
+export function rescheduledText(title: string, before: Date | null, after: Date | null, lang: Lang, code?: string, seat?: Seat): string {
+	// The time changed, so did the codes: each person gets their own new one
+	const link = code && siteUrl() ? `${siteUrl()}/room/${code}` : ''
+	const codeLine = !code || seat === 'gamemaster' ? ''
+		: lang === 'en'
+			? (seat === 'spectator' ? `👁 New spectator code: <code>${code}</code>` : `🎮 New game code: <code>${code}</code>`)
+			: (seat === 'spectator' ? `👁 Новий код глядача: <code>${code}</code>` : `🎮 Новий код гри: <code>${code}</code>`)
+	const opens = lang === 'en'
+		? 'The room opens 10 minutes before the start; the old codes no longer work.'
+		: 'Кімната відкриється за 10 хвилин до початку; старі коди більше не діють.'
+	return (lang === 'en'
+		? [`📅 <b>The game has been moved</b>`, `<b>${escapeHtml(title)}</b>`, '', `Was: ${escapeHtml(formatGameDate(before, lang))}`, `Now: <b>${escapeHtml(formatGameDate(after, lang))}</b>`]
+		: [`📅 <b>Гру перенесено</b>`, `<b>${escapeHtml(title)}</b>`, '', `Було: ${escapeHtml(formatGameDate(before, lang))}`, `Тепер: <b>${escapeHtml(formatGameDate(after, lang))}</b>`]
+	).concat(codeLine ? ['', codeLine, opens] : [], link && seat !== 'gamemaster' ? [lang === 'en' ? `Enter: ${link}` : `Увійти: ${link}`] : []).join('\n')
 }
 
 export function cancelledText(title: string, when: Date | null, lang: Lang): string {
@@ -33,7 +47,7 @@ export function cancelledText(title: string, when: Date | null, lang: Lang): str
  * and the gamemaster when someone else made the change), once per Telegram
  * chat. Never throws: it runs after the change is saved and answered.
  */
-async function tellParticipants(game: GameForNotice, text: (lang: Lang) => string, includeGm: boolean): Promise<number> {
+async function tellParticipants(game: GameForNotice, text: (lang: Lang, seat: Seat) => string, includeGm: boolean): Promise<number> {
 	try {
 		const ids = new Set<string>([
 			...game.registeredPlayers.map(p => String(p.userId)),
@@ -55,7 +69,10 @@ async function tellParticipants(game: GameForNotice, text: (lang: Lang) => strin
 			const chat = String(person.telegramChatId)
 			if (seen.has(chat)) continue
 			seen.add(chat)
-			const res = await sendTelegramHtml(chat, text(langOf(person.language)))
+			const id = String(person._id)
+			const seat: Seat = String(game.creatorId) === id ? 'gamemaster'
+				: game.registeredPlayers.some(p => String(p.userId) === id) ? 'player' : 'spectator'
+			const res = await sendTelegramHtml(chat, text(langOf(person.language), seat))
 			if (res.ok) sent++
 		}
 		logger.info('[telegram] game change told', { gameId: String(game._id), recipients: people.length, sent })
@@ -70,7 +87,8 @@ async function tellParticipants(game: GameForNotice, text: (lang: Lang) => strin
 export function notifyGameRescheduled(game: GameForNotice, before: Date | null): Promise<number> {
 	const after = game.scheduledAt ?? null
 	if ((before?.getTime() ?? null) === (after?.getTime() ?? null)) return Promise.resolve(0)
-	return tellParticipants(game, lang => rescheduledText(game.title, before, after, lang), false)
+	return tellParticipants(game, (lang, seat) => rescheduledText(game.title, before, after, lang,
+		seat === 'spectator' ? game.spectatorCode : game.gameCode, seat), false)
 }
 
 /**

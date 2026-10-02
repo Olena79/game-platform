@@ -683,6 +683,10 @@ export const CreateGamePage = () => {
 							{errors.gameTime && (
 								<p className='text-[12px] mt-[6px]' style={{ color: 'rgba(255,90,160,0.85)' }}>{errors.gameTime}</p>
 							)}
+							{/* Who may enter when, and what rescheduling does (services/roomAccess.ts) */}
+							<p className='text-[12px] mt-[8px] leading-[1.5]' style={{ color: isDark ? 'rgba(140,165,220,0.65)' : 'var(--text-muted)' }}>
+								{isEdit ? t('create_game.schedule_hint_edit') : t('create_game.schedule_hint')}
+							</p>
 						</section>
 
 						<Divider />

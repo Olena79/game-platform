@@ -17,7 +17,7 @@ jest.mock('../src/models/Game', () => ({
 	Game: { findOne: (...args: unknown[]) => findOne(...args) },
 }))
 
-import { resolveSeat } from '../src/services/roomAccess'
+import { resolveSeat, timeRefusal } from '../src/services/roomAccess'
 
 function returns(doc: unknown) {
 	findOne.mockReturnValue({ select: () => Promise.resolve(doc) })
@@ -82,5 +82,44 @@ describe('resolveSeat', () => {
 	])('refuses a malformed code %p without querying', async (code) => {
 		await expect(resolveSeat(code, 'someone')).resolves.toBeNull()
 		expect(findOne).not.toHaveBeenCalled()
+	})
+})
+
+describe('when players and spectators may come in', () => {
+	const game7pm = new Date('2026-10-10T16:00:00Z')   // 19:00 in Kyiv
+	const at = (iso: string) => new Date(iso).getTime()
+
+	it('opens ten minutes before the game, not earlier', () => {
+		expect(timeRefusal({ scheduledAt: game7pm }, at('2026-10-10T15:49:00Z'))).toMatchObject({ reason: 'NOT_YET' })
+		expect(timeRefusal({ scheduledAt: game7pm }, at('2026-10-10T15:50:00Z'))).toBeNull()
+		expect(timeRefusal({ scheduledAt: game7pm }, at('2026-10-10T18:30:00Z'))).toBeNull()
+	})
+
+	it('closes when the half hour after the session is over, until rescheduled', () => {
+		const closedAt = new Date('2026-10-10T19:00:00Z')
+		expect(timeRefusal({ scheduledAt: game7pm, closedAt }, at('2026-10-10T18:59:00Z'))).toBeNull()
+		expect(timeRefusal({ scheduledAt: game7pm, closedAt }, at('2026-10-10T19:00:00Z'))).toEqual({ reason: 'CLOSED' })
+	})
+
+	it('closes a day after a game nobody played', () => {
+		expect(timeRefusal({ scheduledAt: game7pm }, at('2026-10-11T16:01:00Z'))).toEqual({ reason: 'CLOSED' })
+	})
+
+	it('keeps a game with no date open to its code, as before', () => {
+		expect(timeRefusal({ scheduledAt: null }, at('2026-10-10T12:00:00Z'))).toBeNull()
+	})
+
+	it('lets the gamemaster in at any time; refuses a player out of time, through either code', async () => {
+		returns({ ...game, scheduledAt: new Date(Date.now() + 3 * 60 * 60 * 1000), closedAt: null })
+		expect(await resolveSeat('PLAY23', 'gm-user')).toMatchObject({ isCreator: true })
+		expect(await resolveSeat('PLAY23', 'someone')).toBeNull()
+		expect(await resolveSeat('WATCH7', 'someone')).toBeNull()
+
+		returns({ ...game, scheduledAt: new Date(Date.now() - 60 * 60 * 1000), closedAt: new Date(Date.now() - 1000) })
+		expect(await resolveSeat('PLAY23', 'gm-user')).toMatchObject({ isCreator: true })
+		expect(await resolveSeat('PLAY23', 'registered-player')).toBeNull()
+
+		returns({ ...game, scheduledAt: new Date(Date.now() + 5 * 60 * 1000) })
+		expect(await resolveSeat('PLAY23', 'someone')).toMatchObject({ asSpectator: false })
 	})
 })

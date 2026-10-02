@@ -143,7 +143,9 @@
     "cost_hint": "UAH · 0 = free",
     "card_label": "Gamemaster’s card (for cheers)",
     "card_hint": "Players see the number only after pressing “Cheers”",
-    "scenario_format_hint": "Pasted text keeps its bold, italic, underline and colours. Only you see it — in the room, on the \"Scenario\" tab."
+    "scenario_format_hint": "Pasted text keeps its bold, italic, underline and colours. Only you see it — in the room, on the \"Scenario\" tab.",
+    "schedule_hint": "Players and spectators can enter the room 10 minutes before the start; half an hour after the game it closes to them. You, the gamemaster, can enter at any time.",
+    "schedule_hint_edit": "Players and spectators enter 10 minutes before the start; half an hour after the game the room closes to them. Changing the date or time renews the player and spectator codes — the old ones stop working, and registered participants get the new codes in Telegram. You, the gamemaster, can enter at any time."
   },
   "our_games": {
     "title": "Games",
@@ -608,7 +610,12 @@
       "missing": "No microphone found. Check it is connected, then press \"Mic\" again.",
       "other": "The microphone will not start. Close other programs using it, reload the page and press \"Mic\" again."
     },
-    "panel_resize": "Drag to widen the panel (double-click to reset)"
+    "panel_resize": "Drag to widen the panel (double-click to reset)",
+    "window": {
+      "not_yet": "The room opens for players and spectators at {{when}} — 10 minutes before the game. This page will open it by itself.",
+      "closed": "The game has taken place and the room is closed. It opens again when the gamemaster sets a new time.",
+      "codes_changed": "The gamemaster changed the game time, so the codes were renewed. Registered participants get the new codes in Telegram."
+    }
   },
   "legal": {
     "last_updated": "Last updated",

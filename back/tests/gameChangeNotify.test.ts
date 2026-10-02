@@ -30,7 +30,7 @@ import { notifyGameCancelled, notifyGameRescheduled } from '../src/services/game
 
 const now = new Date('2026-10-01T12:00:00Z')
 const game = (scheduledAt: Date | null) => ({
-	_id: 'g1', title: 'Пташине море', scheduledAt, creatorId: 'gm',
+	_id: 'g1', title: 'Пташине море', scheduledAt, creatorId: 'gm', gameCode: 'NEWPL4', spectatorCode: 'NEWSP7',
 	registeredPlayers: [{ userId: 'p1' }, { userId: 'p2' }], spectators: [{ userId: 's1' }],
 })
 
@@ -48,6 +48,11 @@ describe('game change notices', () => {
 		expect(uk).toContain('Було:')
 		expect(uk).toContain('Тепер:')
 		expect(sent.find(s => s.chat === '3')!.text).toContain('has been moved')
+		// The codes changed with the time: each gets their own new one
+		expect(uk).toContain('<code>NEWPL4</code>')
+		expect(uk).not.toContain('NEWSP7')
+		expect(sent.find(s => s.chat === '3')!.text).toContain('<code>NEWSP7</code>')
+		expect(sent.find(s => s.chat === '3')!.text).not.toContain('NEWPL4')
 	})
 
 	it('says nothing when the time did not change', async () => {

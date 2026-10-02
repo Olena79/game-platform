@@ -1529,11 +1529,21 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 // ── Page wrapper with LiveKit provider ────────────────────────────────────────
 function GameRoomInner() {
-	const { t } = useTranslation()
+	const { t, i18n } = useTranslation()
 	const { code = '' } = useParams<{ code: string }>()
 	const { user, isLoading } = useAuth()
 	const room = useGameRoom(code)
 	const { lk, lkBreakout, inBreakout, error, connStatus } = room
+
+	// Too early: the page opens the room by itself when its time comes
+	// (if that is within two hours), instead of leaving people to refresh
+	useEffect(() => {
+		if (!error?.startsWith('NOT_YET:')) return
+		const wait = new Date(error.slice('NOT_YET:'.length)).getTime() - Date.now()
+		if (!(wait > 0 && wait < 2 * 60 * 60 * 1000)) return
+		const id = setTimeout(() => window.location.reload(), wait + 2000)
+		return () => clearTimeout(id)
+	}, [error])
 	const { forceRefresh } = useAuth()
 
 	// The recorder outlives LiveKitRoom remounts (breakout rooms), so it is
@@ -1592,9 +1602,9 @@ function GameRoomInner() {
 				className='w-screen h-screen flex items-center justify-center flex-col gap-[10px]'
 				style={{ background: '#07080f' }}
 			>
-				<span className='text-[15px] font-[600]' style={{ color: '#ff3850' }}>
-					{error === 'REMOVED' ? t('room.kick.you_were_removed')
-						: error === 'NOT_A_PARTICIPANT' ? t('room.not_participant') : t('room.not_found')}
+				<span className='text-[15px] font-[600] text-center max-w-[460px] px-[16px] leading-[1.5]'
+					style={{ color: error.startsWith('NOT_YET:') ? '#9fd8ff' : '#ff3850' }}>
+					{roomErrorText(error, t, i18n.language)}
 				</span>
 				{/* It was a dead end: no way back but the browser's own button */}
 				<a href='/games'
@@ -1684,6 +1694,29 @@ function GameRoomInner() {
 			</LiveKitRoom>
 		</div>
 	)
+}
+
+/**
+ * What the room's error screen says. Players and spectators may come in
+ * from ten minutes before the game until half an hour after the session
+ * (services/roomAccess.ts on the server); outside that window they are
+ * told when it opens, or that it is over — not "room not found".
+ */
+function roomErrorText(error: string, t: (k: string, o?: Record<string, unknown>) => string, lang: string): string {
+	if (error === 'REMOVED') return t('room.kick.you_were_removed')
+	if (error === 'CLOSED') return t('room.window.closed')
+	if (error === 'CODES_CHANGED') return t('room.window.codes_changed')
+	if (error.startsWith('NOT_YET:')) {
+		const opens = new Date(error.slice('NOT_YET:'.length))
+		const locale = lang === 'ua' ? 'uk-UA' : 'en-GB'
+		const sameDay = opens.toDateString() === new Date().toDateString()
+		const when = sameDay
+			? opens.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+			: opens.toLocaleString(locale, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+		return t('room.window.not_yet', { when })
+	}
+	if (error === 'NOT_A_PARTICIPANT') return t('room.not_participant')
+	return t('room.not_found')
 }
 
 export const GameRoomPage = () => (

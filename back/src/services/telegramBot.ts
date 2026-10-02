@@ -512,7 +512,7 @@ export function reminderText(opts: {
 	].filter(Boolean).join('\n')
 }
 
-export { langOf }
+export { langOf, siteUrl }
 
 /** Waits between attempts to reach Telegram at startup: 5 s, 15 s, 30 s, then every minute */
 const CONNECT_RETRY_MS = [5_000, 15_000, 30_000, 60_000]

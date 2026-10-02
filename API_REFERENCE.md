@@ -201,7 +201,7 @@ and ignores the field. At most 20 events per second per socket.
 | `gr:notes-delivered` | GM | the server sent the notes to Telegram |
 | `gr:end-anim`, `gr:rejoin` | room | |
 | `gr:kicked` | removed person | the gamemaster removed them; their sockets are closed right after |
-| `gr:error` | socket | the room cannot be used (`Room not found`, `Unauthorized`, `REMOVED` — removed from this game) |
+| `gr:error` | socket | the room cannot be used (`Room not found`, `Unauthorized`, `REMOVED` — removed from this game, `NOT_YET:<ISO time>` — players may enter from then, `CLOSED` — the game is over until rescheduled, `CODES_CHANGED` — the game was rescheduled and its codes renewed) |
 | `gr:action-error` | socket | a single command was refused |
 
 ### Recording
@@ -223,3 +223,12 @@ breakouts, and LiveKit drops them. From then on `resolveSeat` gives them no
 seat through either code (`gr:join` → `gr:error REMOVED`,
 `POST /api/livekit/token` → 403 `{ message: 'REMOVED' }`), and registering
 answers 403 `REMOVED_FROM_GAME`. There is no undo.
+
+### When players and spectators may enter
+The gamemaster: always. Players and spectators: from 10 minutes before
+`scheduledAt` until `closedAt` (30 minutes after the session closes out,
+once the game's time has come) or a day after `scheduledAt`. Outside that,
+`gr:join` answers `gr:error NOT_YET:<ISO>` / `CLOSED` and
+`POST /api/livekit/token` answers 403 with the same message. `PUT /api/games/:id`
+with a new date or time renews `gameCode` and `spectatorCode` and clears
+`closedAt`.

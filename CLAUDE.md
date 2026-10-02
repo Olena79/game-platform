@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 179 tests, frontend 9 files / 49 tests.
+Tests: backend 24 suites / 184 tests, frontend 9 files / 49 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -235,7 +235,17 @@ Tests: backend 24 suites / 179 tests, frontend 9 files / 49 tests.
 `resolveSeat(code, userId)` decides, on the server, from the **presented**
 code only: creator → GM; entry code → player; spectator code → spectator,
 unless the user is a registered player; someone the GM removed from the game
-(`bannedUserIds`) → no seat at all. Both `gr:join` and
+(`bannedUserIds`) → no seat at all. **When** (`timeRefusal`, since
+2026-10-02): the GM at any time; players and spectators from 10 min before
+`scheduledAt` until `closedAt` — set by `closeOutSession` to 30 min after a
+session that ends once the time has come (a rehearsal earlier closes
+nothing; the GM coming back within that half hour clears it) — or a day
+after the time if nobody played. A game with no date: the code alone, as
+before. Rescheduling (a new date or time) clears `closedAt`, **renews both
+codes** (old ones stop working; a room open under them closes with
+`CODES_CHANGED`) and tells registered people their new code in Telegram.
+Refused people see why (`seatRefusal` → `NOT_YET:<iso>` / `CLOSED` /
+`REMOVED`), and a too-early page opens the room by itself when it is time. Both `gr:join` and
 `POST /api/livekit/token` use it. Therefore:
 - `GET /api/games/resolve/:code` returns only `{ isSpectator, title }`.
 - `gr:state` never carries the entry code, the scenario or the GM's image

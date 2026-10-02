@@ -102,7 +102,9 @@ export function useGameRoom(rawCode: string) {
 				status = res.status
 				const error = await res.json().catch(() => ({}))
 				console.error('[LiveKit] Token request failed:', res.status, error)
-				if (res.status === 403 && error?.message === 'REMOVED') { setError('REMOVED'); return null }
+				// Removed, too early or already closed: the screen says which
+				const why = String(error?.message ?? '')
+				if (res.status === 403 && (why === 'REMOVED' || why === 'CLOSED' || why.startsWith('NOT_YET:'))) { setError(why); return null }
 			} catch (err) {
 				console.error('[LiveKit] Token fetch error:', err)
 			}

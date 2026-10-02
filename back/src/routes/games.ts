@@ -12,7 +12,7 @@ import { notifyGmOfRegistration } from '../services/registrationNotify'
 import { notifyGameCancelled, notifyGameRescheduled } from '../services/gameChangeNotify'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
-import { applyGameSettings } from '../socket/gameRoom'
+import { applyGameSettings, closeDeletedGame } from '../socket/gameRoom'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS } from '../validation/schemas'
 const router = Router()
@@ -308,17 +308,28 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 			return
 		}
 
-		// A new time deserves a new reminder
-		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) game.reminderSentAt = null
+		// A new time is a new game night: a new reminder, the room open to
+		// players again, and new codes — the old ones, forwarded or not, stop
+		// working (registered people get the new ones in Telegram)
+		const rescheduled = (game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore
+		const oldCode = game.gameCode
+		if (rescheduled) {
+			game.reminderSentAt = null
+			game.closedAt = null
+			game.gameCode = await generateUniqueCode()
+			game.spectatorCode = await generateUniqueCode()
+		}
 
 		await game.save()
+		// A room still open under the old codes closes; everyone in it is told why
+		if (rescheduled) await closeDeletedGame(oldCode, String(game._id), 'CODES_CHANGED')
 		// An open room takes the new settings now, not when next loaded
 		applyGameSettings(game)
 		const labels = await creatorLabels([game.creatorId])
 		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
 
 		// A new date or time: everyone registered hears it (after the answer)
-		if ((game.scheduledAt ? game.scheduledAt.getTime() : null) !== scheduledBefore) {
+		if (rescheduled) {
 			void notifyGameRescheduled(game, scheduledBefore === null ? null : new Date(scheduledBefore))
 		}
 	} catch (err: any) {
