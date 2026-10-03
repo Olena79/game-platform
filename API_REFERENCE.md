@@ -62,7 +62,7 @@ its GM get a reminder with their code and the room link.
 
 | Method | Path | Auth | Returns |
 |---|---|---|---|
-| GET | `/` | optional | `[Game]` (public view; codes only for those entitled, see below) |
+| GET | `/` | optional | `[Game]` (public view; codes only for those entitled, see below; `registeredPlayers` / `spectators` as `{ name, surname }` for a signed-in caller, `[]` for a guest, full for the creator) |
 | GET | `/resolve/:code` | — | `{ isSpectator, title }` · `404` — never reveals the entry code |
 | GET | `/:id` | optional | `Game` |
 | GET | `/:id/edit` | JWT (creator) | full game document |

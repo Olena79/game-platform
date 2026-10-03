@@ -330,6 +330,10 @@ export const OurGamesPage = () => {
 			.finally(() => setPageLoading(false))
 	}, [token])
 
+	// After someone signs up or cancels, the lists of names follow quietly
+	// (the answer to the registration carries counts only)
+	const refreshGames = () => { getGames(token).then(setGames).catch(() => { /* the counts are already right */ }) }
+
 	// ── Handlers (unchanged) ────────────────────────────────────────────────────
 	const handleEdit = async (gameId: string) => {
 		if (!token) { navigate('/auth'); return }
@@ -379,6 +383,7 @@ export const OurGamesPage = () => {
 			setGames(prev => prev.map(g =>
 				g._id === gameId ? { ...withSeatCounts(g, res), gameCode: res.gameCode } : g
 			))
+			refreshGames()
 			setModal({
 				open: true,
 				title: t('our_games.success_register_title'),
@@ -409,6 +414,7 @@ export const OurGamesPage = () => {
 			setGames(prev => prev.map(g =>
 				g._id === gameId ? withSeatCounts(g, res) : g
 			))
+			refreshGames()
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
 			setModal({ open: true, title: t('our_games.err_register_title'), message: msg, variant: 'error' })
@@ -425,6 +431,7 @@ export const OurGamesPage = () => {
 			setGames(prev => prev.map(g =>
 				g._id === gameId ? { ...withSeatCounts(g, res), spectatorCode: res.spectatorCode } : g
 			))
+			refreshGames()
 			setModal({
 				open: true,
 				title: t('our_games.success_spectator_title'),
@@ -454,6 +461,7 @@ export const OurGamesPage = () => {
 			setGames(prev => prev.map(g =>
 				g._id === gameId ? withSeatCounts(g, res) : g
 			))
+			refreshGames()
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Error'
 			setModal({ open: true, title: t('our_games.err_register_title'), message: msg, variant: 'error' })
@@ -749,6 +757,7 @@ export const OurGamesPage = () => {
 				variant='default'
 			>
 				<PlayersListContent game={playersModal.game} token={token}
+					onSignIn={() => { setPlayersModal({ open: false, game: null }); navigate('/auth') }}
 					onAccessChanged={(gameId, blocked) => {
 						setGames(prev => prev.map(g => g._id === gameId ? { ...g, accessBlockedUserIds: blocked } : g))
 						setPlayersModal(m => m.game && m.game._id === gameId ? { ...m, game: { ...m.game, accessBlockedUserIds: blocked } } : m)
@@ -775,11 +784,14 @@ export const OurGamesPage = () => {
  * here — someone who has not paid yet, or anyone they would rather not have
  * — and open it again: no
  * code lets a closed person in (resolveSeat on the server), and they are
- * told in Telegram. Nobody else sees names (the lists reach the creator only).
+ * told in Telegram. Other signed-in members see the names without those
+ * buttons; a visitor who is not signed in is asked to sign in (the server
+ * gives them counts only).
  */
-const PlayersListContent = ({ game, token, onAccessChanged }: {
+const PlayersListContent = ({ game, token, onSignIn, onAccessChanged }: {
 	game: GameData | null
 	token: string | null
+	onSignIn: () => void
 	onAccessChanged: (gameId: string, blocked: string[]) => void
 }) => {
 	const { t } = useTranslation()
@@ -803,6 +815,20 @@ const PlayersListContent = ({ game, token, onAccessChanged }: {
 		} catch { setFailed(true) } finally { setBusy(null) }
 	}
 
+	if (!token) {
+		return (
+			<div className='flex flex-col gap-[14px]'>
+				<p className='text-[14px] leading-[1.55]' style={{ color: isDark ? 'rgba(200,215,255,0.85)' : 'var(--text-secondary)' }}>
+					{t('our_games.players_login_needed')}
+				</p>
+				<button onClick={onSignIn}
+					className='self-start rounded-[10px] px-[16px] py-[9px] text-[13px] font-[600] cursor-pointer'
+					style={{ background: 'var(--accent-subtle)', border: '1px solid var(--accent)', color: 'var(--accent)' }}>
+					{t('our_games.players_login_button')}
+				</button>
+			</div>
+		)
+	}
 	if (players.length === 0 && spectators.length === 0) {
 		return <p className='text-[14px]' style={{ color: isDark ? 'rgba(200,215,255,0.75)' : 'var(--text-muted)' }}>{t('our_games.players_empty')}</p>
 	}
@@ -844,7 +870,7 @@ const PlayersListContent = ({ game, token, onAccessChanged }: {
 				</p>
 			)}
 			{players.map((p, i) => row(p, i, false))}
-			{spectators.length > 0 && blocked && (
+			{spectators.length > 0 && (
 				<>
 					<p className='text-[12px] mt-[6px]' style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}>{t('our_games.spectators_list')}</p>
 					{spectators.map((p, i) => row(p, i, true))}
@@ -1217,7 +1243,7 @@ const GameCard = ({
 				)}
 				<div className='flex flex-wrap items-center justify-between gap-x-[10px] gap-y-[10px] pt-[2px]'>
 					{/* Left: registered players, and under them registered spectators
-					    (👀, from 0 — the count is public, the names are not) */}
+					    (👀, from 0 — the counts are public; names go to signed-in members) */}
 					<div className='flex flex-col items-start gap-[4px]'>
 						<button
 							onClick={onShowPlayers}

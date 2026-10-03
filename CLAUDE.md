@@ -1,6 +1,6 @@
 # Games of Senses — Project Context for Claude
 
-**Last Updated**: 2026-09-26
+**Last Updated**: 2026-10-03
 
 This file describes the code as it is. It once described features that were
 never built, which is part of how real bugs survived to release — keep it
@@ -139,7 +139,12 @@ Tests: backend 24 suites / 186 tests, frontend 10 files / 51 tests.
   player or spectator enters with "Увійти в гру" on the card; their own
   code is shown once, in the "registered" window (and sent over Telegram).
   (Un)registering answers with counts and the caller's own place
-  (`seatCounts`), never the lists of names. The description is cut to three
+  (`seatCounts`), never the lists of names. **Who is coming**: a tap on the
+  players line opens the list — first and last names (no ids) of players
+  and spectators for any signed-in member (since 2026-10-03; before, only
+  the GM saw names), with the access buttons for the GM only; a visitor who
+  is not signed in gets counts only, and the window asks them to sign in
+  (`publicGameView`, `PlayersListContent`). The privacy page says so. The description is cut to three
   lines on the card; a tap on it opens the whole text in a window
   (`DescriptionModal`, above the header and the phone menu), with «Читати
   повністю →» under a description that is actually cut.

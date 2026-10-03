@@ -74,12 +74,16 @@ function publicGameView(game: GameDoc, viewerId?: string, creator?: CreatorLabel
 		out.creatorAlias = ''
 	}
 
-	// Counts are public; who exactly is playing is not. The arrays stay
-	// present but empty for everyone else, so callers can keep reading them.
+	// Counts are public. Who is coming — first and last name only, no ids —
+	// is shown to signed-in members (decided 2026-10-03: players like to see
+	// who they play with); a visitor who is not signed in sees the counts.
+	// The creator gets the full lists below.
 	out.playersCount = players.length
 	out.spectatorsCount = spectators.length
-	out.registeredPlayers = []
-	out.spectators = []
+	const namesOnly = (list: Array<{ name?: unknown; surname?: unknown }>) =>
+		list.map(p => ({ name: String(p.name ?? ''), surname: String(p.surname ?? '') }))
+	out.registeredPlayers = uid ? namesOnly(players as Array<{ name?: unknown; surname?: unknown }>) : []
+	out.spectators = uid ? namesOnly(spectators as Array<{ name?: unknown; surname?: unknown }>) : []
 	out.isRegistered = isPlayer
 	out.isSpectatorRegistered = isSpectator
 	// The last four digits are enough to recognise the card; the full number
