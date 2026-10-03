@@ -68,7 +68,7 @@ its GM get a reminder with their code and the room link.
 | GET | `/:id/edit` | JWT (creator) | full game document |
 | GET | `/:id/payment-details` | JWT (creator / registered) | `{ gmCardNumber, gmCardFormatted, hasGmCard, participationCost }` |
 | POST | `/` | JWT | `201 Game` (creator view, with both codes) |
-| PUT | `/:id` | JWT (creator) | `Game` · `400 MAX_BELOW_REGISTERED` |
+| PUT | `/:id` | JWT (creator) | `Game` · `400 MAX_BELOW_REGISTERED` — a new time renews both codes; a played game given a date ahead empties the registrations, untold (`isReplay`) |
 | DELETE | `/:id` | JWT (creator) | `{ ok }` — also closes an open room, stops its recording |
 | POST | `/:id/register` | JWT | `{ gameCode, playersCount, spectatorsCount, isRegistered, isSpectatorRegistered }` · `400 MAX_PLAYERS_REACHED / ALREADY_REGISTERED / CREATOR_CANNOT_REGISTER` |
 | DELETE | `/:id/register` | JWT | counts + own place (as above, no code) |

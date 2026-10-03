@@ -145,7 +145,7 @@
     "card_hint": "Players see the number only after pressing “Cheers”",
     "scenario_format_hint": "Pasted text keeps its bold, italic, underline and colours. Only you see it — in the room, on the \"Scenario\" tab.",
     "schedule_hint": "Players and spectators can enter the room 10 minutes before the start; half an hour after the game it closes to them. You, the gamemaster, can enter at any time.",
-    "schedule_hint_edit": "Players and spectators enter 10 minutes before the start; half an hour after the game the room closes to them. Changing the date or time renews the player and spectator codes — the old ones stop working, and registered participants get the new codes in Telegram. You, the gamemaster, can enter at any time."
+    "schedule_hint_edit": "Players and spectators enter 10 minutes before the start; half an hour after the game the room closes to them. Changing the date or time renews the player and spectator codes — the old ones stop working, and registered participants get the new codes in Telegram. If the game has already taken place and you set a new date ahead, the lists of players and spectators are emptied (nobody is notified) — people register again for the new game. You, the gamemaster, can enter at any time."
   },
   "our_games": {
     "title": "Games",

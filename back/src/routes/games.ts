@@ -285,6 +285,14 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 	}
 })
 
+/**
+ * Edited from a time already past to a time still ahead: the game is being
+ * played again, not moved (decided 2026-10-03).
+ */
+export function isReplay(before: number | null, after: number | null, now = Date.now()): boolean {
+	return before !== null && after !== null && before < now && after > now
+}
+
 // PUT /api/games/:id — оновити гру (тільки автор)
 router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(updateGameSchema), async (req: AuthRequest, res: Response): Promise<void> => {
 	try {
@@ -307,6 +315,17 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		if (game.maxPlayers < game.minPlayers) {
 			res.status(400).json({ message: 'maxPlayers must be greater than or equal to minPlayers' })
 			return
+		}
+		// A game already played, given a date ahead, is being played again: a
+		// new session with nobody signed up yet. The lists (and the closed
+		// accesses, which show only in the list of the registered) are emptied
+		// and nobody is told — they were for the night that took place.
+		// A game not yet played keeps its people, who hear the new time below.
+		const replay = isReplay(scheduledBefore, game.scheduledAt ? game.scheduledAt.getTime() : null)
+		if (replay) {
+			game.registeredPlayers = [] as unknown as typeof game.registeredPlayers
+			game.spectators = [] as unknown as typeof game.spectators
+			game.accessBlockedUserIds = []
 		}
 		if (game.maxPlayers < game.registeredPlayers.length) {
 			res.status(400).json({ message: 'MAX_BELOW_REGISTERED' })
@@ -333,8 +352,9 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		const labels = await creatorLabels([game.creatorId])
 		res.json(publicGameView(game, req.userId, labels.get(String(game.creatorId))))
 
-		// A new date or time: everyone registered hears it (after the answer)
-		if (rescheduled) {
+		// A new date or time: everyone registered hears it (after the answer);
+		// after a replay nobody is registered any more, so nobody is told
+		if (rescheduled && !replay) {
 			void notifyGameRescheduled(game, scheduledBefore === null ? null : new Date(scheduledBefore))
 		}
 	} catch (err: any) {

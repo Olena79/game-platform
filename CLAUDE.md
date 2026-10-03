@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 186 tests, frontend 10 files / 51 tests.
+Tests: backend 24 suites / 189 tests, frontend 10 files / 51 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -52,7 +52,8 @@ Tests: backend 24 suites / 186 tests, frontend 10 files / 51 tests.
   перенесено», was/now) and a deletion («Гру скасовано» — by the GM, the
   administrator, or the GM deleting their account; the GM is told too when
   it was the administrator; a game over 6 h in the past is not "cancelled").
-  Once per Telegram chat, after the change is saved and answered.
+  Once per Telegram chat, after the change is saved and answered. Not for a
+  replay (a played game given a date ahead — the lists are emptied, see "Access").
   `/stop` turns
   announcements off (`User.newsOptOut`), `/news` back on; personal messages
   always come. A chat that blocked the bot is unlinked. When an account is linked to a
@@ -262,6 +263,9 @@ after the time if nobody played. A game with no date: the code alone, as
 before. Rescheduling (a new date or time) clears `closedAt`, **renews both
 codes** (old ones stop working; a room open under them closes with
 `CODES_CHANGED`) and tells registered people their new code in Telegram.
+A game **already played** (old time past) given a date **ahead** is a
+replay, not a move (`isReplay`, since 2026-10-03): the lists of players and
+spectators and the closed accesses are emptied and nobody is told.
 Refused people see why (`seatRefusal` → `NOT_YET:<iso>` / `CLOSED` /
 `REMOVED`), and a too-early page opens the room by itself when it is time. Both `gr:join` and
 `POST /api/livekit/token` use it. Therefore:

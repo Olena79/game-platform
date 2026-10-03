@@ -28,3 +28,27 @@ describe('seatCounts', () => {
 		expect(JSON.stringify(out)).not.toMatch(/Ann|Bob/)
 	})
 })
+
+import { isReplay } from '../src/routes/games'
+
+/**
+ * A game already played, given a date ahead, starts with empty lists and
+ * nobody is told; any other new date is a move, and the people stay.
+ */
+describe('isReplay', () => {
+	const now = Date.parse('2026-10-03T12:00:00Z')
+	const twoDaysAgo = now - 2 * 86400_000
+	const inAWeek = now + 7 * 86400_000
+	it('played, then given a date ahead: a replay', () => {
+		expect(isReplay(twoDaysAgo, inAWeek, now)).toBe(true)
+	})
+	it('not played yet and moved: not a replay', () => {
+		expect(isReplay(now + 86400_000, inAWeek, now)).toBe(false)
+		expect(isReplay(inAWeek, now + 86400_000, now)).toBe(false)
+	})
+	it('moved to another past date, or with no date on either side: not a replay', () => {
+		expect(isReplay(twoDaysAgo, now - 86400_000, now)).toBe(false)
+		expect(isReplay(null, inAWeek, now)).toBe(false)
+		expect(isReplay(twoDaysAgo, null, now)).toBe(false)
+	})
+})
