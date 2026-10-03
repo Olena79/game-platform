@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 25 suites / 191 tests, frontend 10 files / 51 tests.
+Tests: backend 24 suites / 189 tests, frontend 10 files / 51 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -265,11 +265,7 @@ codes** (old ones stop working; a room open under them closes with
 `CODES_CHANGED`) and tells registered people their new code in Telegram.
 A game **already played** (old time past) given a date **ahead** is a
 replay, not a move (`isReplay`, since 2026-10-03): the lists of players and
-spectators and the closed accesses are emptied and nobody is told. The same
-lists empty by themselves a day after a game's time
-(`services/registrationReset.ts`, cron every 15 min, `RESET_AFTER_MS`), so
-every played game is ready to be given a new date; the replay rule covers an
-edit within that day.
+spectators and the closed accesses are emptied and nobody is told.
 Refused people see why (`seatRefusal` → `NOT_YET:<iso>` / `CLOSED` /
 `REMOVED`), and a too-early page opens the room by itself when it is time. Both `gr:join` and
 `POST /api/livekit/token` use it. Therefore:
@@ -370,7 +366,6 @@ back/src/
     adminAuth.ts          admin passphrase / Telegram code / sessions / lockout
     adminNotify.ts        notices to the administrator's Telegram
     gameReminders.ts      "starts in 10 minutes"
-    registrationReset.ts  empties the lists of a game a day after its time
     gameDeletion.ts       deleting a game (GM or administrator)
   socket/
     gameRoom.ts           the room (gr:*), in-memory state, close-out when the GM ends or leaves
