@@ -45,6 +45,7 @@ import telegramRoutes from './routes/telegram'
 import recordingRoutes from './routes/recordings'
 import makeAdminRouter from './routes/admin'
 import { sendDueReminders } from './services/gameReminders'
+import { clearPlayedRegistrations } from './services/registrationReset'
 import { registerGameRoom } from './socket/gameRoom'
 import { registerCommunity } from './socket/community'
 import makeCommunityRouter from './routes/community'
@@ -150,6 +151,8 @@ app.use(getSentryMiddleware()[1])
 cron.schedule('* * * * *', () => { void syncRecordings() })
 // "Your game starts in 10 minutes" to everyone registered who linked Telegram
 cron.schedule('* * * * *', () => { void sendDueReminders() })
+// A day after a game's time its registrations are emptied (no messages)
+cron.schedule('*/15 * * * *', () => { void clearPlayedRegistrations() })
 cron.schedule('0 */6 * * *', () => {
 	cleanupExpiredRecordings().catch(err => logger.error('Recording cleanup error', { task: 'cron:cleanup', error: err }))
 })
