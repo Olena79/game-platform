@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { splitSeconds } from '../../utils/clock'
 import { RichTextEditor } from '../minicomponents/RichTextEditor'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -181,6 +182,7 @@ export const CreateGamePage = () => {
 	const [gameDate, setGameDate]                 = useState('')   // YYYY-MM-DD
 	const [gameTime, setGameTime]                 = useState('')   // HH:mm
 	const [useDefaultTimer, setUseDefaultTimer]   = useState(false)
+	const [defaultTimerHours, setDefaultTimerHours] = useState(0)
 	const [defaultTimerMins, setDefaultTimerMins] = useState(5)
 	const [defaultTimerSecs, setDefaultTimerSecs] = useState(0)
 	const [participationCost, setParticipationCost] = useState(0)
@@ -225,8 +227,10 @@ export const CreateGamePage = () => {
 				}
 				if (g.defaultTimerSeconds) {
 					setUseDefaultTimer(true)
-					setDefaultTimerMins(Math.floor(g.defaultTimerSeconds / 60))
-					setDefaultTimerSecs(g.defaultTimerSeconds % 60)
+					const parts = splitSeconds(g.defaultTimerSeconds)
+					setDefaultTimerHours(parts.hours)
+					setDefaultTimerMins(parts.minutes)
+					setDefaultTimerSecs(parts.seconds)
 				}
 				if (g.coverImage) setCoverImage(g.coverImage)
 				setImages(g.images || [])
@@ -288,7 +292,7 @@ export const CreateGamePage = () => {
 				scheduledAt: gameDate ? new Date(`${gameDate}T${gameTime || '00:00'}`).toISOString() : undefined,
 				coverImage,
 				images,
-				defaultTimerSeconds: useDefaultTimer ? (defaultTimerMins * 60 + defaultTimerSecs) : null,
+				defaultTimerSeconds: useDefaultTimer ? (defaultTimerHours * 3600 + defaultTimerMins * 60 + defaultTimerSecs) || null : null,
 			}
 			isEdit ? await updateGame(token, id!, body) : await createGame(token, body)
 			setModal({
@@ -700,15 +704,27 @@ export const CreateGamePage = () => {
 								label={t('create_game.timer_toggle')}
 							/>
 							{useDefaultTimer && (
-								<div className='flex items-center gap-[10px] pl-[54px]'>
+								<div className='flex flex-wrap items-center gap-[8px] sm:pl-[54px]'>
+									{/* Hours too: minutes stopped at 99, so a two-hour game could not have its timer */}
+									<div className='flex flex-col items-center gap-[4px]'>
+										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>{t('room.timer.hours')}</span>
+										<NumInput
+											value={defaultTimerHours}
+											onChange={v => setDefaultTimerHours(Math.max(0, Math.min(23, v)))}
+											min={0}
+											max={23}
+											className='w-[64px]'
+										/>
+									</div>
+									<span className='text-[22px] font-[300] pt-[14px]' style={{ color: isDark ? 'rgba(100,140,220,0.4)' : 'var(--text-muted)' }}>:</span>
 									<div className='flex flex-col items-center gap-[4px]'>
 										<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: isDark ? 'rgba(100,140,220,0.45)' : 'var(--text-muted)' }}>{t('room.timer.minutes')}</span>
 										<NumInput
 											value={defaultTimerMins}
-											onChange={v => setDefaultTimerMins(Math.max(0, Math.min(99, v)))}
+											onChange={v => setDefaultTimerMins(Math.max(0, Math.min(59, v)))}
 											min={0}
-											max={99}
-											className='w-[72px]'
+											max={59}
+											className='w-[64px]'
 										/>
 									</div>
 									<span className='text-[22px] font-[300] pt-[14px]' style={{ color: isDark ? 'rgba(100,140,220,0.4)' : 'var(--text-muted)' }}>:</span>
@@ -719,10 +735,10 @@ export const CreateGamePage = () => {
 											onChange={v => setDefaultTimerSecs(Math.max(0, Math.min(59, v)))}
 											min={0}
 											max={59}
-											className='w-[72px]'
+											className='w-[64px]'
 										/>
 									</div>
-									<span className='text-[12px] pt-[14px]' style={{ color: isDark ? 'rgba(140,170,255,0.6)' : 'var(--text-secondary)' }}>
+									<span className='basis-full text-[12px] pt-[4px]' style={{ color: isDark ? 'rgba(140,170,255,0.6)' : 'var(--text-secondary)' }}>
 										{t('create_game.timer_hint')}
 									</span>
 								</div>

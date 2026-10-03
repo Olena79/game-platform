@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { formatClock } from '../../utils/clock'
 import { useTranslation } from 'react-i18next'
 import type { RoomTimer } from './types'
 import { sfx } from '../../utils/sounds'
@@ -7,10 +8,7 @@ interface Props { timer: RoomTimer 	/** Difference between this device's clock a
 	clockOffset?: number
 }
 
-function fmt(s: number) {
-	const m = Math.floor(s / 60), sec = s % 60
-	return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-}
+const fmt = formatClock
 
 export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 	const { t } = useTranslation()

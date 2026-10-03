@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { formatClock } from '../../utils/clock'
 import { useTranslation } from 'react-i18next'
 import { Megaphone, Vote, VolumeX, Timer, DoorOpen, Users, Square, UserX } from 'lucide-react'
 import type { GameRoomState, RoomTimer } from './types'
@@ -21,10 +22,7 @@ function useTimer(timer: RoomTimer | null, clockOffset = 0) {
 	return remaining
 }
 
-function fmt(s: number) {
-	const m = Math.floor(s / 60), sec = s % 60
-	return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-}
+const fmt = formatClock
 
 interface Props {
 	state: GameRoomState

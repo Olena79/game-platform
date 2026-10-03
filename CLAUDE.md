@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 186 tests, frontend 9 files / 49 tests.
+Tests: backend 24 suites / 186 tests, frontend 10 files / 51 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -177,6 +177,9 @@ Tests: backend 24 suites / 186 tests, frontend 9 files / 49 tests.
   30 s left, and at zero a bell-like call played twice. The timer used to
   make its own context per beep and stayed silent on iPhone; it also rang
   for someone joining after the time ran out (`TimerFloatOverlay`, tested).
+  Timers take hours, minutes and seconds (the create-game default and the
+  room's timer window; minutes used to stop at 99, so a 2-hour game had no
+  timer) and read 1:59:30 above an hour (`utils/clock.ts`).
   The timer never ends the game or moves anyone (a breakout's timer does
   send its people back to the main room).
 - **Who has a tile**: only people connected to the room. A closed tab

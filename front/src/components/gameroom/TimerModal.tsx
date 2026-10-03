@@ -20,10 +20,12 @@ const numberStyle = { background: '#060e24', border: '1px solid rgba(68,170,255,
 export const TimerModal = ({ onSet, onClose }: Props) => {
 	const { t } = useTranslation()
 	const [label, setLabel] = useState('')
+	const [hours, setHours] = useState<number | null>(0)
 	const [mins, setMins]   = useState<number | null>(5)
 	const [secs, setSecs]   = useState<number | null>(0)
 
-	const totalSecs = (mins ?? 0) * 60 + (secs ?? 0)
+	// Hours too: a game timer of two hours used to be impossible (minutes stopped at 99)
+	const totalSecs = (hours ?? 0) * 3600 + (mins ?? 0) * 60 + (secs ?? 0)
 	const ready = totalSecs > 0
 
 	const submit = (start: boolean) => {
@@ -57,8 +59,14 @@ export const TimerModal = ({ onSet, onClose }: Props) => {
 
 				<div className='flex items-center gap-[10px]'>
 					<div className='flex flex-col items-center gap-[4px] flex-1'>
+						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>{t('room.timer.hours')}</span>
+						<NumberField value={hours} onChange={setHours} max={23} placeholder='0'
+							className={numberClass} style={numberStyle} aria-label={t('room.timer.hours')} />
+					</div>
+					<span className='text-[22px] font-[300] pt-[16px]' style={{ color: 'rgba(100,140,220,0.4)' }}>:</span>
+					<div className='flex flex-col items-center gap-[4px] flex-1'>
 						<span className='text-[10px] uppercase tracking-[0.5px]' style={{ color: 'rgba(100,140,220,0.45)' }}>{t('room.timer.minutes')}</span>
-						<NumberField value={mins} onChange={setMins} max={99} placeholder='0'
+						<NumberField value={mins} onChange={setMins} max={59} placeholder='0'
 							className={numberClass} style={numberStyle} aria-label={t('room.timer.minutes')} />
 					</div>
 					<span className='text-[22px] font-[300] pt-[16px]' style={{ color: 'rgba(100,140,220,0.4)' }}>:</span>
