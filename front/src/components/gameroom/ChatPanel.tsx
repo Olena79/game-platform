@@ -174,6 +174,10 @@ export const ChatPanel = ({
 					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap flex items-center gap-[5px]'
 					style={tabBtnStyle(tab === 'spectatorChat')}>
 					{t('room.chat.spectators_tab')}
+					{/* An open spectators' vote lives in this tab: a dot says so */}
+					{state.spectatorVote && !state.spectatorVote.closed && tab !== 'spectatorChat' && (
+						<span aria-hidden='true' className='w-[6px] h-[6px] rounded-full' style={{ background: '#0fffc8' }} />
+					)}
 					{spectatorChatMsgs.length > 0 && tab !== 'spectatorChat' && (
 						<span className='text-[9px] font-[800] px-[5px] py-[1px] rounded-full'
 							style={{ background: 'rgba(74,80,112,0.4)', color: '#7a80a0', minWidth: '16px', textAlign: 'center' }}>
@@ -278,14 +282,16 @@ export const ChatPanel = ({
 								onClear={onClearVote}
 							/>
 						)}
-						{/* Spectator vote — in Глядачі tab (and for GM anywhere) */}
-						{(tab === 'spectatorChat' || isGM) && state.spectatorVote && (
+						{/* Spectator vote — only in the Глядачі tab, and only spectators
+						    vote in it; the gamemaster watches and closes it there */}
+						{tab === 'spectatorChat' && state.spectatorVote && (
 							<VotingPanel
 								vote={state.spectatorVote}
 								myVote={myVote}
 								players={state.players}
 								myId={myId}
 								isGM={isGM}
+								canVote={isSpectator}
 								onCast={onCastSpectatorVote}
 								onClose={onCloseSpectatorVote}
 								onClear={onClearSpectatorVote}

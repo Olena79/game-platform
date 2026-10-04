@@ -11,12 +11,14 @@ interface Props {
 	/** This viewer's own choice, sent privately for anonymous votes */
 	myVote?: { voteId: string; optionIds: string[] } | null
 	isGM: boolean
+	/** False for someone who may watch this vote but not take part (a spectators' vote seen by the gamemaster or a player) */
+	canVote?: boolean
 	onCast: (optionIds: string[]) => void
 	onClose: () => void
 	onClear: () => void
 }
 
-export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, onClose, onClear }: Props) => {
+export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, canVote = true, onCast, onClose, onClear }: Props) => {
 	const { t } = useTranslation()
 	const [selected, setSelected] = useState<string[]>([])
 
@@ -29,7 +31,7 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 	const hasVoted   = myVotes.length > 0
 
 	const toggle = (id: string) => {
-		if (vote.closed || hasVoted) return
+		if (vote.closed || hasVoted || !canVote) return
 		if (vote.multipleChoice) {
 			setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 		} else {
@@ -91,17 +93,17 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 					const mine = activeVoteIds.includes(opt.id)
 					// The gamemaster runs the vote and rarely takes part in it, so
 					// waiting for them to cast one left them staring at a blank tally.
-					const showResults = hasVoted || vote.closed || isGM
+					const showResults = hasVoted || vote.closed || isGM || !canVote
 					return (
 						<button
 							key={opt.id}
 							onClick={() => toggle(opt.id)}
-							disabled={vote.closed || hasVoted}
+							disabled={vote.closed || hasVoted || !canVote}
 							className='relative w-full text-left rounded-[8px] px-[10px] py-[7px] transition-all overflow-hidden'
 							style={{
 								border: mine ? '1px solid rgba(15,255,200,0.45)' : '1px solid rgba(68,170,255,0.15)',
 								background: mine ? 'rgba(15,255,200,0.06)' : 'rgba(15,17,32,0.5)',
-								cursor: vote.closed || hasVoted ? 'default' : 'pointer',
+								cursor: vote.closed || hasVoted || !canVote ? 'default' : 'pointer',
 							}}
 						>
 							{showResults && (
@@ -144,7 +146,7 @@ export const VotingPanel = ({ vote, myId, myVote, players = [], isGM, onCast, on
 					<Users size={11} />
 					<span>{t('room.vote.total', { count: totalVotes })}</span>
 				</div>
-				{!hasVoted && !vote.closed && selected.length > 0 && (
+				{canVote && !hasVoted && !vote.closed && selected.length > 0 && (
 					<button onClick={handleVote}
 						className='text-[12px] px-[12px] py-[6px] rounded-[7px] font-[600] cursor-pointer transition-all'
 						style={{ background: 'rgba(15,255,200,0.12)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }}>

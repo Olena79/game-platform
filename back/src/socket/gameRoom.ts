@@ -1088,7 +1088,8 @@ export function registerGameRoom(io: Server) {
 			const state = here()
 			if (!state || !curUser || !state.spectatorVote || state.spectatorVote.closed) return
 			const player = state.players.find(p => p.userId === curUser)
-			if (!player || (!player.isSpectator && !player.isGamemaster)) return
+			// Spectators only — not the gamemaster who runs it, not players
+			if (!player || !player.isSpectator) return
 			castVote(state.spectatorVote, curUser, d.optionIds)
 			pushState(io, state)
 		}, socket))

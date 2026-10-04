@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 189 tests, frontend 10 files / 51 tests.
+Tests: backend 24 suites / 189 tests, frontend 11 files / 53 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -204,6 +204,12 @@ Tests: backend 24 suites / 189 tests, frontend 10 files / 51 tests.
   number by the hand on the tiles and on their own hand button; the GM's
   panel lists «Черга піднятих рук» in order. A hand that goes down (or
   speaks — it drops by itself) leaves the queue and the rest move up.
+- **The spectators' vote** is shown only in the «Глядачі» chat tab (a dot
+  on the tab while it is open) and only spectators can cast in it — the
+  server refuses anyone else (`gr:spectator-vote-cast`), and the GM, who runs
+  and closes it there, sees results without vote buttons (`canVote` in
+  `VotingPanel`). Until 2026-10-04 it also showed in the GM's players' tab
+  and the GM could vote in it.
 - **Closing access** (any game, paid or free, since 2026-10-02; meant for
   "not paid yet" but a GM may filter anyone): in the
   card's list of registered people the GM can «Закрити доступ» for a player
