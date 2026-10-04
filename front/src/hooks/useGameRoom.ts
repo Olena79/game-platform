@@ -234,8 +234,7 @@ export function useGameRoom(rawCode: string) {
 					? { ...prev, messages: [...prev.messages.slice(-99), msg] }
 					: prev)
 				setNewPublicMsgSignal(n => n + 1)
-				// Sound: public message — everyone in room except sender and spectators
-				if (!isSpectatorJoin && !isMyMsg) sfx.chatMsg()
+				// Its sound and unread count: useChatUnread
 			}
 		})
 

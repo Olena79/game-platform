@@ -44,6 +44,11 @@ interface Props {
 	showMod?: boolean
 	privateChats?: Record<string, ChatMessage[]>
 	unreadDMs?: Record<string, number>
+	/** The open tab, kept by the room page (the panel unmounts when closed) */
+	tab?: string
+	onTabChange?: (tab: string) => void
+	/** New messages and votes not seen yet, per chat tab (useChatUnread) */
+	chatUnread?: { chat: number; spectatorChat: number }
 	onMarkDMRead?: (convKey: string) => void
 }
 
@@ -57,9 +62,12 @@ export const ChatPanel = ({
 	recording, clockOffset = 0,
 	showMod = true,
 	privateChats, unreadDMs, onMarkDMRead,
+	tab: tabProp, onTabChange, chatUnread,
 }: Props) => {
 	const { t } = useTranslation()
-	const [tab, setTab]   = useState<string>('chat')
+	const [ownTab, setOwnTab] = useState<string>('chat')
+	const tab = tabProp ?? ownTab
+	const setTab = (next: string) => { setOwnTab(next); onTabChange?.(next) }
 	const [text, setText] = useState('')
 	const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
 	const [recipientMenuOpen, setRecipientMenuOpen]   = useState(false)
@@ -166,24 +174,16 @@ export const ChatPanel = ({
 			{/* Tab headers */}
 			<div className='flex-shrink-0 flex overflow-x-auto' style={{ borderBottom: '1px solid #151824' }}>
 				<button onClick={() => setTab('chat')}
-					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap'
+					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap flex items-center gap-[5px]'
 					style={tabBtnStyle(tab === 'chat')}>
 					{t('room.chat.players_tab')}
+					<UnreadBadge count={tab === 'chat' ? 0 : chatUnread?.chat ?? 0} />
 				</button>
 				<button onClick={() => setTab('spectatorChat')}
 					className='flex-shrink-0 px-[12px] py-[9px] text-[11px] uppercase tracking-[0.08em] font-[600] cursor-pointer transition-all whitespace-nowrap flex items-center gap-[5px]'
 					style={tabBtnStyle(tab === 'spectatorChat')}>
 					{t('room.chat.spectators_tab')}
-					{/* An open spectators' vote lives in this tab: a dot says so */}
-					{state.spectatorVote && !state.spectatorVote.closed && tab !== 'spectatorChat' && (
-						<span aria-hidden='true' className='w-[6px] h-[6px] rounded-full' style={{ background: '#0fffc8' }} />
-					)}
-					{spectatorChatMsgs.length > 0 && tab !== 'spectatorChat' && (
-						<span className='text-[9px] font-[800] px-[5px] py-[1px] rounded-full'
-							style={{ background: 'rgba(74,80,112,0.4)', color: '#7a80a0', minWidth: '16px', textAlign: 'center' }}>
-							{spectatorChatMsgs.length}
-						</span>
-					)}
+					<UnreadBadge count={tab === 'spectatorChat' ? 0 : chatUnread?.spectatorChat ?? 0} />
 				</button>
 				{allDMKeys.map(convKey => {
 					const unread = (unreadDMs ?? {})[convKey] ?? 0
@@ -517,3 +517,12 @@ export const ChatPanel = ({
 		</div>
 	)
 }
+
+/** Green count of messages and votes that arrived while the tab was not open */
+const UnreadBadge = ({ count }: { count: number }) => count > 0 ? (
+	<span className='text-[9px] font-[800] px-[5px] py-[1px] rounded-full'
+		data-testid='chat-unread'
+		style={{ background: '#0fffc8', color: '#04130f', minWidth: '16px', textAlign: 'center' }}>
+		{count > 99 ? '99+' : count}
+	</span>
+) : null

@@ -22,6 +22,7 @@ import { ConnectionState, Track } from 'livekit-client'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
 const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
+import { useChatUnread } from '../../hooks/useChatUnread'
 import { useAuth } from '../../context/AuthContext'
 import { sfx } from '../../utils/sounds'
 import { useMockParticipants } from '../../hooks/useMockParticipants'
@@ -179,7 +180,6 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		markDMRead,
 		shouldMute,
 		clearMuteSignal,
-		newPublicMsgSignal,
 		inBreakout,
 		breakoutInvite,
 		setBreakoutInvite,
@@ -379,19 +379,19 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		}
 	}, [lkRoom])
 
-	// ── Unread chat counter ───────────────────────────────────────────────────────
-	const [unreadChat, setUnreadChat] = useState(0)
+	// ── Unread in the players' and spectators' chats ─────────────────────────────
+	// The open tab lives here, not in the chat panel: the panel is unmounted
+	// when closed, and the counts need to know what is in front of the person.
+	const [chatTab, setChatTab] = useState<string>('chat')
 	const chatVisible = (!isMobile && panelOpen) || (isMobile && mobilePanelOpen === 'chat')
-
-	useEffect(() => {
-		// Skip initial mount (signal === 0 means no message yet)
-		if (newPublicMsgSignal === 0) return
-		if (!chatVisible) setUnreadChat(prev => prev + 1)
-	}, [newPublicMsgSignal]) // eslint-disable-line react-hooks/exhaustive-deps
-
-	useEffect(() => {
-		if (chatVisible) setUnreadChat(0)
-	}, [chatVisible])
+	const chatUnread = useChatUnread({
+		messages: state?.messages ?? null,
+		activeVoteId: state?.activeVote?.id ?? null,
+		spectatorVoteId: state?.spectatorVote?.id ?? null,
+		myId, isGM, isSpectator,
+		viewing: chatVisible ? chatTab : null,
+	})
+	const unreadChat = chatUnread.chat + chatUnread.spectatorChat
 
 	// ── Wake Lock — prevent screen sleep ────────────────────────────────────────
 	useEffect(() => {
@@ -420,7 +420,6 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 	const sfxInitRef = useRef(false)
 	const raisedHandsRef = useRef<Set<string>>(new Set())
 	const prevAnnouncRef = useRef<string | null>(null)
-	const prevVoteIdRef = useRef<string | null>(null)
 
 	useEffect(() => {
 		if (!state) return
@@ -431,7 +430,6 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 				state.players.filter(p => p.handRaised).map(p => p.userId),
 			)
 			prevAnnouncRef.current = state.announcement ?? null
-			prevVoteIdRef.current = state.activeVote?.id ?? null
 			return
 		}
 
@@ -447,10 +445,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		if (state.announcement && !prevAnnouncRef.current) sfx.announcement()
 		prevAnnouncRef.current = state.announcement ?? null
 
-		// Vote appears
-		const voteId = state.activeVote?.id ?? null
-		if (voteId && voteId !== prevVoteIdRef.current) sfx.vote()
-		prevVoteIdRef.current = voteId
+		// New votes ring in useChatUnread
 	}, [state])
 
 	// Mute All: GM can force-disable all participants' mics
@@ -982,6 +977,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							onBreakout={() => setShowBreakout(true)} onKick={() => setKickDialog({ target: null })}
 							recording={recordingProps} clockOffset={clockOffset}
 							privateChats={privateChats}
+							tab={chatTab} onTabChange={setChatTab} chatUnread={chatUnread}
 							unreadDMs={unreadDMs}
 							onMarkDMRead={markDMRead}
 						/>
@@ -1114,6 +1110,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 								onTimerStart={startTimer} onTimerStop={stopTimer} onTimerClear={clearTimer} onBreakout={() => setShowBreakout(true)} onKick={() => setKickDialog({ target: null })}
 								showMod={false}
 								privateChats={privateChats}
+								tab={chatTab} onTabChange={setChatTab} chatUnread={chatUnread}
 								unreadDMs={unreadDMs}
 								onMarkDMRead={markDMRead}
 							/>

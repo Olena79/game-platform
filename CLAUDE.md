@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 189 tests, frontend 11 files / 53 tests.
+Tests: backend 24 suites / 189 tests, frontend 12 files / 58 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -204,12 +204,22 @@ Tests: backend 24 suites / 189 tests, frontend 11 files / 53 tests.
   number by the hand on the tiles and on their own hand button; the GM's
   panel lists «Черга піднятих рук» in order. A hand that goes down (or
   speaks — it drops by itself) leaves the queue and the rest move up.
-- **The spectators' vote** is shown only in the «Глядачі» chat tab (a dot
-  on the tab while it is open) and only spectators can cast in it — the
+- **The spectators' vote** is shown only in the «Глядачі» chat tab and only spectators can cast in it — the
   server refuses anyone else (`gr:spectator-vote-cast`), and the GM, who runs
   and closes it there, sees results without vote buttons (`canVote` in
   `VotingPanel`). Until 2026-10-04 it also showed in the GM's players' tab
   and the GM could vote in it.
+- **Unread in the room chats** (`hooks/useChatUnread.ts`, tested, since
+  2026-10-04): a message from someone else or a new vote that lands in the
+  players' or spectators' tab while that tab is not in front of the person
+  (another tab open, or the chat closed) is counted in a green badge on the
+  tab, cleared when it is opened; the chat button sums both. A message out
+  of sight rings softly for everyone, spectators included (in sight: only
+  players in the players' chat, as before). A new vote counts for those who
+  see it (the players' vote is hidden from spectators) and rings for those
+  who can vote; never for the GM who started it. The open tab is kept by
+  `GameRoomPage` (the panel unmounts when closed). Private chats keep their
+  own red counts.
 - **Closing access** (any game, paid or free, since 2026-10-02; meant for
   "not paid yet" but a GM may filter anyone): in the
   card's list of registered people the GM can «Закрити доступ» for a player
