@@ -281,7 +281,12 @@ codes** (old ones stop working; a room open under them closes with
 `CODES_CHANGED`) and tells registered people their new code in Telegram.
 A game **already played** (old time past) given a date **ahead** is a
 replay, not a move (`isReplay`, since 2026-10-03): the lists of players and
-spectators and the closed accesses are emptied and nobody is told.
+spectators and the closed accesses are emptied and nobody is told; the
+room of that night goes too (since 2026-10-04): its chat (`GameMessage`,
+private messages included) is deleted, and the GM's notes draft is sent to
+their Telegram (as an ended game would) and cleared. Votes, timers, coins,
+breakouts live only in the room's memory, released on any new time.
+Until then a game whose GM never pressed "end" kept all of it.
 Refused people see why (`seatRefusal` → `NOT_YET:<iso>` / `CLOSED` /
 `REMOVED`), and a too-early page opens the room by itself when it is time. Both `gr:join` and
 `POST /api/livekit/token` use it. Therefore:

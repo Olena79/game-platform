@@ -4,7 +4,8 @@ import { randomInt } from 'crypto'
 import { Types } from 'mongoose'
 import { Game } from '../models/Game'
 import { GameLike } from '../models/GameLike'
-import { cleanNotes } from '../services/notesDelivery'
+import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
+import { GameMessage } from '../models/GameMessage'
 import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame, escapeHtml, sendTelegramHtml } from '../services/telegramBot'
@@ -321,11 +322,17 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		// accesses, which show only in the list of the registered) are emptied
 		// and nobody is told — they were for the night that took place.
 		// A game not yet played keeps its people, who hear the new time below.
+		// The room of that night goes too (below): its chat, and the
+		// gamemaster's notes draft — sent to their Telegram first, as an
+		// ended game would have. Votes, timers, coins and the rest live only
+		// in the room's memory, which every new time already clears.
 		const replay = isReplay(scheduledBefore, game.scheduledAt ? game.scheduledAt.getTime() : null)
+		const notesBefore = replay ? String(game.gmNotes ?? '') : ''
 		if (replay) {
 			game.registeredPlayers = [] as unknown as typeof game.registeredPlayers
 			game.spectators = [] as unknown as typeof game.spectators
 			game.accessBlockedUserIds = []
+			game.gmNotes = ''
 		}
 		if (game.maxPlayers < game.registeredPlayers.length) {
 			res.status(400).json({ message: 'MAX_BELOW_REGISTERED' })
@@ -347,6 +354,7 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		await game.save()
 		// A room still open under the old codes closes; everyone in it is told why
 		if (rescheduled) await closeDeletedGame(oldCode, String(game._id), 'CODES_CHANGED')
+		if (replay) await GameMessage.deleteMany({ gameId: String(game._id) })
 		// An open room takes the new settings now, not when next loaded
 		applyGameSettings(game)
 		const labels = await creatorLabels([game.creatorId])
@@ -354,6 +362,9 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 
 		// A new date or time: everyone registered hears it (after the answer);
 		// after a replay nobody is registered any more, so nobody is told
+		if (replay && cleanNotes(notesBefore)) {
+			void deliverGameNotes(game.gameCode, notesBefore, String(game.creatorId), game.title, 'ended')
+		}
 		if (rescheduled && !replay) {
 			void notifyGameRescheduled(game, scheduledBefore === null ? null : new Date(scheduledBefore))
 		}
