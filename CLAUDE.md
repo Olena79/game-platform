@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 189 tests, frontend 12 files / 58 tests.
+Tests: backend 24 suites / 189 tests, frontend 13 files / 62 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -149,6 +149,13 @@ Tests: backend 24 suites / 189 tests, frontend 12 files / 58 tests.
   lines on the card; a tap on it opens the whole text in a window
   (`DescriptionModal`, above the header and the phone menu), with «Читати
   повністю →» under a description that is actually cut.
+- **Games list order** (`utils/gameOrder.ts`, tested, since 2026-10-06):
+  «Найближча дата» puts games to come first, nearest first (one that
+  started less than 3 h ago counts as on now), then games with no date,
+  then played ones, latest first — it used to sort past games first, so a
+  new game went to the end. The other sorts keep that order among equals.
+  «7 / 30 днів» keep a game on now; the pairs 7/30 days and ≤10/>10 players
+  are exclusive (choosing one turns the other off — both on showed nothing).
 - **Game date and time**: two native fields (`date`, `time`) — one
   `datetime-local` did not open on some phones. The time is sent with its
   zone (`toISOString()` of the local time). Until 2026-09-27 it was sent

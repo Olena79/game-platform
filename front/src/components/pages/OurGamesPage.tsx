@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote, BookOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { compareGames, withinDays } from '../../utils/gameOrder'
 import { Modal } from '../minicomponents/Modal'
 import { getGames, getGameForEdit, registerForGame, unregisterFromGame, registerAsSpectator, unregisterAsSpectator, deleteGame, likeGame, unlikeGame, fetchGameCard, setGameAccess, GameData, gamemasterLabel, withSeatCounts } from '../../actions/games'
 
@@ -248,7 +249,12 @@ export const OurGamesPage = () => {
 	const toggleFilter = useCallback((f: FilterKey) => {
 		setActiveFilters(prev => {
 			const next = new Set(prev)
-			next.has(f) ? next.delete(f) : next.add(f)
+			if (next.has(f)) { next.delete(f); return next }
+			next.add(f)
+			// Pairs that cannot both hold: "7 days"/"30 days" and "≤ 10"/"> 10"
+			// (both on used to show nothing, or just the narrower one)
+			const other = ({ next7days: 'next30days', next30days: 'next7days', upTo10: 'moreThan10', moreThan10: 'upTo10' } as Record<string, FilterKey>)[f]
+			if (other) next.delete(other)
 			return next
 		})
 	}, [])
@@ -284,8 +290,6 @@ export const OurGamesPage = () => {
 	// ── Computed visible list (single pass: search → filter → sort) ────────────
 	const visibleGames = useMemo(() => {
 		const now = Date.now()
-		const in7  = now + 7  * 86_400_000
-		const in30 = now + 30 * 86_400_000
 
 		const filtered = games.filter(g => {
 			// Search by title or gamemaster name
@@ -294,31 +298,16 @@ export const OurGamesPage = () => {
 				if (!g.title.toLowerCase().includes(q) && !gamemasterLabel(g, t('our_games.no_name')).toLowerCase().includes(q)) return false
 			}
 			// Date filters (both can be active, AND logic)
-			if (activeFilters.has('next7days')) {
-				const ts = g.scheduledAt ? new Date(g.scheduledAt).getTime() : null
-				if (!ts || ts < now || ts > in7) return false
-			}
-			if (activeFilters.has('next30days')) {
-				const ts = g.scheduledAt ? new Date(g.scheduledAt).getTime() : null
-				if (!ts || ts < now || ts > in30) return false
-			}
+			if (activeFilters.has('next7days') && !withinDays(g, 7, now)) return false
+			if (activeFilters.has('next30days') && !withinDays(g, 30, now)) return false
 			// Player-count filters by maxPlayers capacity
 			if (activeFilters.has('upTo10')    && g.maxPlayers > 10) return false
 			if (activeFilters.has('moreThan10') && g.maxPlayers <= 10) return false
 			return true
 		})
 
-		return [...filtered].sort((a, b) => {
-			if (sortKey === 'date') {
-				const at = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity
-				const bt = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity
-				return at - bt
-			}
-			if (sortKey === 'players_asc')  return (a.playersCount ?? 0) - (b.playersCount ?? 0)
-			if (sortKey === 'players_desc') return (b.playersCount ?? 0) - (a.playersCount ?? 0)
-			if (sortKey === 'likes')        return b.likesCount - a.likesCount
-			return 0
-		})
+		// Games to come first, nearest first; played ones at the end (utils/gameOrder)
+		return [...filtered].sort((a, b) => compareGames(a, b, sortKey, now))
 	}, [games, debouncedSearch, activeFilters, sortKey, t])
 
 	// ── Data fetch ──────────────────────────────────────────────────────────────
