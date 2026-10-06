@@ -379,6 +379,20 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		}
 	}, [lkRoom])
 
+	// The bar with the view switch, image and bank buttons: the floating
+	// timer sits just below it, never over those buttons
+	const [viewBarEl, viewBarRef] = useState<HTMLDivElement | null>(null)
+	const [viewBarHeight, setViewBarHeight] = useState(0)
+	useEffect(() => {
+		if (!viewBarEl) return
+		const measure = () => setViewBarHeight(viewBarEl.offsetHeight)
+		measure()
+		if (typeof ResizeObserver === 'undefined') return
+		const ro = new ResizeObserver(measure)
+		ro.observe(viewBarEl)
+		return () => ro.disconnect()
+	}, [viewBarEl])
+
 	// ── Unread in the players' and spectators' chats ─────────────────────────────
 	// The open tab lives here, not in the chat panel: the panel is unmounted
 	// when closed, and the counts need to know what is in front of the person.
@@ -745,10 +759,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 				{/* Left / Main area */}
 				<div className='flex-1 flex flex-col overflow-hidden min-w-0 relative'>
 					{/* Floating timer overlay — uses current room's timer */}
-					{activeTimer && <TimerFloatOverlay timer={activeTimer} clockOffset={clockOffset} />}
+					{activeTimer && <TimerFloatOverlay timer={activeTimer} clockOffset={clockOffset} top={viewBarHeight + 8} />}
 
 					{/* View switcher */}
 					<div
+						ref={viewBarRef}
 						className='flex-shrink-0 flex items-center gap-[8px] px-[12px] py-[8px]'
 						style={{ background: '#0b0d1a', borderBottom: '1px solid #151824' }}
 					>

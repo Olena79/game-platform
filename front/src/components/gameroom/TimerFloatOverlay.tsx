@@ -6,11 +6,14 @@ import { sfx } from '../../utils/sounds'
 
 interface Props { timer: RoomTimer 	/** Difference between this device's clock and the room's */
 	clockOffset?: number
+	/** Distance from the top of the room's main area: below the bar with the
+	    image and bank buttons, which it used to cover */
+	top?: number
 }
 
 const fmt = formatClock
 
-export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
+export const TimerFloatOverlay = ({ timer, clockOffset = 0, top = 8 }: Props) => {
 	const { t } = useTranslation()
 	const [remaining, setRemaining] = useState(0)
 	const warned30Ref  = useRef(false)
@@ -78,8 +81,9 @@ export const TimerFloatOverlay = ({ timer, clockOffset = 0 }: Props) => {
 
 	return (
 		<div
-			className='absolute top-[8px] right-[8px] z-[40] rounded-[10px] px-[14px] py-[8px] flex flex-col items-end'
+			className='absolute right-[8px] z-[40] rounded-[10px] px-[14px] py-[8px] flex flex-col items-end'
 			style={{
+				top,
 				background: bg,
 				border: `1px solid ${border}`,
 				backdropFilter: 'blur(6px)',
