@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 189 tests, frontend 13 files / 62 tests.
+Tests: backend 24 suites / 189 tests, frontend 14 files / 65 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -121,6 +121,20 @@ Tests: backend 24 suites / 189 tests, frontend 13 files / 62 tests.
   microphone is named at once, and a camera allowed again starts by itself,
   no reload. The microphone failing in the room says why too
   (`micProblemKey`).
+- **Background blur** (since 2026-10-08, `utils/backgroundBlur.ts`, tested;
+  `@livekit/track-processors`, MediaPipe): opt-in per device (`gos-bg-blur`,
+  off by default), on the pre-join screen (the preview shows it) and in the
+  room («Фон» beside the camera; on phones in «Медіа»). Phones may use it,
+  with a warning that a weak phone may stutter. The blur is a processor on
+  the local camera track, laid on each time the camera is published
+  (`LocalTrackPublished` — joining, breakouts); LiveKit keeps it across
+  camera off/on. The room receives the blurred picture, so the recording
+  shows it too; nothing on the server. Anything failing (old browser, no
+  WebGL, model not loaded) leaves the plain camera and says so once. The
+  library is a lazy chunk; its wasm and model come from jsdelivr and
+  storage.googleapis.com (a future CSP must allow them). Not checked on
+  real devices or against a real LiveKit room when written (the pre-join
+  preview was, in headless Chromium with a fake camera).
 - **Screen sharing**: players and the GM (never spectators — their token
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the

@@ -491,6 +491,14 @@
       "rec_err_nothing": "The recording could not be saved: nothing reached the server. Check the connection and start recording again.",
       "hand_queue": "Raised hands, in order"
     },
+    "blur": {
+      "on": "Background blurred",
+      "off": "Blur background",
+      "phone_warning": "On a weak phone background blur may make the video stutter. If it does, switch it off in the room (the «Background» button in the «Media» menu).",
+      "failed": "This browser could not blur the background — the camera works without blur.",
+      "label": "Background",
+      "phone_hint": "Background blur on a phone may make the video stutter — if it does, switch it off."
+    },
     "prejoin": {
       "title": "Joining room",
       "cam_unavailable": "Camera unavailable",

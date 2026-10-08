@@ -4,7 +4,7 @@ import { useParticipants, useLocalParticipant, VideoTrack as LKVideoTrack } from
 const VideoTrack = LKVideoTrack as React.ComponentType<any>
 import { useIsSpeakingSafe as useIsSpeaking } from '../../hooks/useIsSpeakingSafe'
 import { Track } from 'livekit-client'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, VolumeX, CircleDollarSign, Zap, ScreenShare, ScreenShareOff, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import type { RoomPlayer, GameRoomState } from './types'
 import { ImagePanel } from './ImagePanel'
 import { NEON_ICONS, NeonRaiseHand, RaisedHand } from './NeonReactionIcon'
@@ -45,6 +45,9 @@ interface Props {
 	screenOn?: boolean
 	onToggleMic: () => void
 	onToggleCam: () => void
+	/** Background blur on this person's camera (not offered to spectators) */
+	blurOn?: boolean
+	onToggleBlur?: () => void
 	onToggleScreen?: () => void
 	onReact: (emoji: string) => void
 	onRaiseHand: (v: boolean) => void
@@ -245,7 +248,7 @@ export const SpeakerView = ({
 	state, myId, isGM, isSpectator,
 	isMobile = false,
 	micOn, camOn, screenOn = false,
-	onToggleMic, onToggleCam, onToggleScreen,
+	onToggleMic, onToggleCam, onToggleScreen, blurOn = false, onToggleBlur,
 	onReact, onRaiseHand, onLeave,
 	imageUrl, images = [], onImageClose, onChangeImage,
 	playerReactions = {},
@@ -415,6 +418,7 @@ export const SpeakerView = ({
 					style={{ background: '#0b0d1a', borderTop: '1px solid #151824' }}>
 					{!isSpectator && <CtrlBtn active={micOn} onClick={onToggleMic} icon={micOn ? <Mic size={13}/> : <MicOff size={13}/>} label={t('room.speaker.mic_label')} />}
 					{!isSpectator && <CtrlBtn active={camOn} onClick={onToggleCam} icon={camOn ? <Video size={13}/> : <VideoOff size={13}/>} label={t('room.speaker.cam_label')} />}
+					{!isSpectator && onToggleBlur && <CtrlBtn active={blurOn} onClick={onToggleBlur} icon={<Sparkles size={13}/>} label={t('room.blur.label')} />}
 					{!isSpectator && onToggleScreen && (
 						<CtrlBtn active={screenOn} onClick={onToggleScreen} icon={screenOn ? <ScreenShareOff size={13}/> : <ScreenShare size={13}/>} label={t('room.speaker.screen_label')} />
 					)}

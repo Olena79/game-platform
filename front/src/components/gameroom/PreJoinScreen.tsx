@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mic, MicOff, Video, VideoOff, ArrowRight } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, ArrowRight, Sparkles } from 'lucide-react'
+import { LocalVideoTrack } from 'livekit-client'
 import { cameraProblemKey, watchPermission } from '../../utils/cameraProblem'
+import { applyBlur, blurPreferred, blurSupported, isTouchDevice, setBlurPreferred } from '../../utils/backgroundBlur'
 
 interface Props {
 	roomTitle: string
@@ -25,8 +27,23 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	const [micBlocked, setMicBlocked] = useState(false)
 	const videoRef = useRef<HTMLVideoElement>(null)
 	const streamRef = useRef<MediaStream | null>(null)
+	// Background blur: offered where the browser can do it, remembered per
+	// device and applied in the room (utils/backgroundBlur)
+	const [blurAvailable, setBlurAvailable] = useState(false)
+	const [blurOn, setBlurOn] = useState(blurPreferred)
+	const [blurFailed, setBlurFailed] = useState(false)
+	const [streamTick, setStreamTick] = useState(0)
+	const previewTrackRef = useRef<LocalVideoTrack | null>(null)
+	const onPhone = isTouchDevice()
 
+	// The blurred preview runs on its own copy of the track: dropped first
+	const dropPreviewTrack = () => {
+		const pt = previewTrackRef.current
+		previewTrackRef.current = null
+		if (pt) void pt.stopProcessor().catch(() => undefined)
+	}
 	const stopStream = () => {
+		dropPreviewTrack()
 		streamRef.current?.getTracks().forEach(t => t.stop())
 		streamRef.current = null
 	}
@@ -73,6 +90,7 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 			stopStream()
 			streamRef.current = s
 			if (videoRef.current) videoRef.current.srcObject = s
+			setStreamTick(n => n + 1)
 			setCamOn(true)
 			setCamAvailable(true)
 			setCamProblem('')
@@ -111,6 +129,49 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 	}, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleCam = () => { if (camOn) stopCam(); else startCam() }
+
+	useEffect(() => {
+		if (spectator) return
+		let alive = true
+		blurSupported().then(ok => { if (alive) setBlurAvailable(ok) })
+		return () => { alive = false }
+	}, [spectator])
+
+	// Show the preview as the room will see it: blurred, or plain
+	useEffect(() => {
+		const video = videoRef.current
+		const stream = streamRef.current
+		const camTrack = stream?.getVideoTracks()[0]
+		if (!video || !stream || !camTrack || !camOn) return
+		let cancelled = false
+		if (!blurOn || !blurAvailable) {
+			dropPreviewTrack()
+			video.srcObject = stream
+			return
+		}
+		const pt = new LocalVideoTrack(camTrack, undefined, true)
+		previewTrackRef.current = pt
+		applyBlur(pt).then(ok => {
+			if (cancelled || previewTrackRef.current !== pt) return
+			const processed = pt.getProcessor()?.processedTrack
+			if (ok && processed) {
+				video.srcObject = new MediaStream([processed])
+				setBlurFailed(false)
+			} else {
+				setBlurFailed(true)
+				setBlurOn(false)
+				setBlurPreferred(false)
+			}
+		})
+		return () => { cancelled = true }
+	}, [blurOn, blurAvailable, camOn, streamTick]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const toggleBlur = () => {
+		const next = !blurOn
+		setBlurPreferred(next)
+		setBlurFailed(false)
+		setBlurOn(next)
+	}
 
 	const handleJoin = () => {
 		// Release camera tracks before LiveKit takes over
@@ -216,6 +277,30 @@ export function PreJoinScreen({ roomTitle, userName, onJoin, spectator = false }
 						</span>
 					</button>
 				</div>}
+
+				{/* Background blur — the choice is kept on this device for the room */}
+				{!spectator && blurAvailable && (
+					<div className='flex flex-col items-center gap-[8px] -mt-[8px] w-full'>
+						<button onClick={toggleBlur} aria-pressed={blurOn}
+							className='flex items-center gap-[8px] px-[16px] py-[8px] rounded-[12px] text-[12.5px] font-[600] cursor-pointer transition-all'
+							style={blurOn
+								? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' }
+								: { background: '#0f1120', border: '1px solid #1c1f35', color: '#9aabcc' }}>
+							<Sparkles size={15} strokeWidth={1.8} />
+							{blurOn ? t('room.blur.on') : t('room.blur.off')}
+						</button>
+						{onPhone && (
+							<p className='text-[11.5px] leading-[1.45] text-center max-w-[400px]' style={{ color: 'rgba(255,200,120,0.8)' }}>
+								{t('room.blur.phone_warning')}
+							</p>
+						)}
+					</div>
+				)}
+				{!spectator && blurFailed && (
+					<p role='alert' className='text-[12px] leading-[1.5] text-center -mt-[8px]' style={{ color: 'rgba(255,215,160,0.9)' }}>
+						{t('room.blur.failed')}
+					</p>
+				)}
 
 				{/* Why the camera is off, and what to do — instead of a dead button */}
 				{!spectator && micBlocked && (

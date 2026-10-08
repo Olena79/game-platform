@@ -18,7 +18,9 @@ import {
 	useRoomContext,
 	useTracks,
 } from '@livekit/components-react'
-import { ConnectionState, Track } from 'livekit-client'
+import { ConnectionState, LocalVideoTrack, ParticipantEvent, Track } from 'livekit-client'
+import type { LocalTrackPublication } from 'livekit-client'
+import { applyBlur, blurPreferred, isTouchDevice, removeBlur, setBlurPreferred } from '../../utils/backgroundBlur'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
 const RoomAudioRenderer = LKAudioRenderer as React.ComponentType<any>
 import { useGameRoom } from '../../hooks/useGameRoom'
@@ -39,7 +41,7 @@ import { TimerFloatOverlay } from '../gameroom/TimerFloatOverlay'
 import { SpeakerView } from '../gameroom/SpeakerView'
 import { GridView } from '../gameroom/GridView'
 import { ChatPanel } from '../gameroom/ChatPanel'
-import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff } from 'lucide-react'
+import { ChevronRight, Mic, MicOff, Video, VideoOff, PhoneOff, Smile, MessageSquare, Settings, CircleDollarSign, ScreenShare, ScreenShareOff, Sparkles } from 'lucide-react'
 import { CoinModal } from '../gameroom/CoinModal'
 import { BankModal } from '../gameroom/BankModal'
 import { KickModal } from '../gameroom/KickModal'
@@ -525,6 +527,42 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 		}
 	}, [localParticipant])
 
+	// ── Background blur (utils/backgroundBlur) ─────────────────────────────────
+	// Chosen on the pre-join screen or here; laid on the camera track each
+	// time one is published (joining, a breakout's room, camera back on), so
+	// it follows the person everywhere. If it cannot start, the plain camera
+	// stays and the person is told once.
+	const [blurOn, setBlurOn] = useState(blurPreferred)
+	useEffect(() => {
+		if (!localParticipant || isSpectator) return
+		let alive = true
+		const sync = async () => {
+			const track = localParticipant.getTrackPublication(Track.Source.Camera)?.track
+			if (!(track instanceof LocalVideoTrack)) return
+			if (!blurOn) { await removeBlur(track); return }
+			const ok = await applyBlur(track)
+			if (!ok && alive) {
+				setBlurOn(false)
+				setBlurPreferred(false)
+				showScreenError(t('room.blur.failed'), 10000)
+			}
+		}
+		void sync()
+		const onPublished = (pub: LocalTrackPublication) => { if (pub.source === Track.Source.Camera) void sync() }
+		localParticipant.on(ParticipantEvent.LocalTrackPublished, onPublished)
+		return () => {
+			alive = false
+			localParticipant.off(ParticipantEvent.LocalTrackPublished, onPublished)
+		}
+	}, [localParticipant, blurOn, isSpectator]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	const toggleBlur = useCallback(() => {
+		const next = !blurOn
+		setBlurPreferred(next)
+		setBlurOn(next)
+		if (next && isTouchDevice()) showScreenError(t('room.blur.phone_hint'), 8000)
+	}, [blurOn]) // eslint-disable-line react-hooks/exhaustive-deps
+
 	/**
 	 * Any player or the gamemaster may show their screen; spectators never see
 	 * the button, and their media token could not publish it anyway.
@@ -883,6 +921,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							screenOn={screenOn}
 							onToggleMic={toggleMic}
 							onToggleCam={toggleCam}
+							blurOn={blurOn} onToggleBlur={toggleBlur}
 							onToggleScreen={toggleScreen}
 							onReact={react}
 							onRaiseHand={raiseHand}
@@ -909,6 +948,7 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							screenOn={screenOn}
 							onToggleMic={toggleMic}
 							onToggleCam={toggleCam}
+							blurOn={blurOn} onToggleBlur={toggleBlur}
 							onToggleScreen={toggleScreen}
 							onReact={react}
 							onRaiseHand={raiseHand}
@@ -1052,11 +1092,11 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 					<style>{'@keyframes slideUpPanel{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}'}</style>
 					<div className='fixed inset-0 z-[54]' style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setMobilePanelOpen(null)} />
 					{mobilePanelOpen === 'media' && (
-						<div className='fixed left-0 right-0 z-[55] flex items-center justify-around px-[16px] py-[12px]'
+						<div className='fixed left-0 right-0 z-[55] flex items-center justify-around gap-[4px] px-[8px] py-[12px]'
 							style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))', background: '#0d1228', borderTop: '1px solid rgba(15,255,200,0.2)', animation: 'slideUpPanel 0.18s ease-out' }}>
 							{!isSpectator && (
 								<button onClick={toggleMic}
-									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[8px] min-w-[60px] py-[10px] cursor-pointer transition-all'
 									style={micOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{micOn ? <Mic size={22} /> : <MicOff size={22} />}
 									<span className='text-[11px]'>{t('room.mic_label')}</span>
@@ -1064,22 +1104,30 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 							)}
 							{!isSpectator && (
 								<button onClick={toggleCam}
-									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[8px] min-w-[60px] py-[10px] cursor-pointer transition-all'
 									style={camOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{camOn ? <Video size={22} /> : <VideoOff size={22} />}
 									<span className='text-[11px]'>{t('room.cam_label')}</span>
 								</button>
 							)}
 							{!isSpectator && (
+								<button onClick={toggleBlur} aria-pressed={blurOn}
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[8px] min-w-[60px] py-[10px] cursor-pointer transition-all'
+									style={blurOn ? { background: 'rgba(15,255,200,0.08)', border: '1px solid rgba(15,255,200,0.3)', color: '#0fffc8' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
+									<Sparkles size={22} />
+									<span className='text-[11px]'>{t('room.blur.label')}</span>
+								</button>
+							)}
+							{!isSpectator && (
 								<button onClick={toggleScreen}
-									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+									className='flex flex-col items-center gap-[6px] rounded-[12px] px-[8px] min-w-[60px] py-[10px] cursor-pointer transition-all'
 									style={screenOn ? { background: 'rgba(68,170,255,0.08)', border: '1px solid rgba(68,170,255,0.3)', color: '#44aaff' } : { background: '#0f1120', border: '1px solid #1c1f35', color: '#7a80a0' }}>
 									{screenOn ? <ScreenShareOff size={22} /> : <ScreenShare size={22} />}
 									<span className='text-[11px]'>{t('room.screen_label')}</span>
 								</button>
 							)}
 							<button onClick={handleLeave}
-								className='flex flex-col items-center gap-[6px] rounded-[12px] px-[20px] py-[10px] cursor-pointer transition-all'
+								className='flex flex-col items-center gap-[6px] rounded-[12px] px-[8px] min-w-[60px] py-[10px] cursor-pointer transition-all'
 								style={{ background: 'rgba(255,56,80,0.08)', border: '1px solid rgba(255,56,80,0.25)', color: '#ff3850' }}>
 								<PhoneOff size={22} />
 								<span className='text-[11px]'>{t('room.leave_label')}</span>
