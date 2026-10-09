@@ -101,6 +101,11 @@ Tests: backend 24 suites / 191 tests, frontend 14 files / 65 tests.
   zoom followed people from page to page (2026-09-28). On iOS only,
   `utils/iosNoAutoZoom.ts` adds `maximum-scale=1` to the viewport — iOS
   still allows pinch zoom; not on Android, where it would block it.
+- **Pages open at the top** (`components/ScrollToTop.tsx`, since
+  2026-10-09): pages change without a reload, so the window kept its
+  scroll and a tap in the phone menu from the bottom of one page landed at
+  the bottom of the next. Every new page now starts at the top; going back
+  is left to the browser, which returns near where the person was.
 - **Language**: the last chosen language is kept in `localStorage`
   (`gos-lang`, `i18n.ts`) and the site opens in it; Ukrainian otherwise.
 - **Contact**: the legal pages give only the club's address,

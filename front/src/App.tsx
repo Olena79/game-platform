@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useRef } from 'react'
 import { lazyPage } from './utils/lazyPage'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { ScrollToTop } from './components/ScrollToTop'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireAuth } from './components/RequireAuth'
@@ -74,6 +75,7 @@ const PageFallback = () => <div className='w-full min-h-[50vh]' />
 
 const SiteLayout = () => (
 	<div className='min-h-screen flex flex-col' style={{ color: 'var(--text-primary)' }}>
+		<ScrollToTop />
 		<Stars />
 		<div className='rainbow-line relative z-10' />
 		<Header />
