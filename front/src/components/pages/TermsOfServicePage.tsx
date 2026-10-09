@@ -26,7 +26,7 @@ export const TermsOfServicePage = () => {
         >
           {/* Last Updated */}
           <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "24px" }}>
-            {t("legal.last_updated")}: 2026-09-26
+            {t("legal.last_updated")}: 2026-10-09
           </p>
 
           {/* Acceptance */}
@@ -176,6 +176,7 @@ export const TermsOfServicePage = () => {
               <li>{t("legal.gm_responsibility_conduct")}</li>
               <li>{t("legal.gm_responsibility_safe")}</li>
               <li>{t("legal.gm_responsibility_participants")}</li>
+              <li>{t("legal.gm_responsibility_tools")}</li>
             </ul>
           </section>
 
@@ -299,6 +300,7 @@ export const TermsOfServicePage = () => {
               {t("legal.termination_title")}
             </h2>
             <p>{t("legal.termination_text")}</p>
+            <p className="mt-3">{t("legal.termination_gm")}</p>
           </section>
 
           {/* Disputes */}

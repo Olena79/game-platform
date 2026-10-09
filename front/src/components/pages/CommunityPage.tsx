@@ -752,8 +752,10 @@ export const CommunityPage = () => {
 		getPosts(sort, 0, 20, token || undefined)
 			.then(res => {
 				if (cancelled) return
-				setPosts(res.posts); setTotal(res.total); setHasMore(res.hasMore)
+				setPosts(res.posts ?? []); setTotal(res.total ?? 0); setHasMore(!!res.hasMore)
 			})
+			// No network: an empty feed rather than an unhandled error
+			.catch(() => { /* the empty state shows */ })
 			.finally(() => { if (!cancelled) setLoading(false) })
 		return () => { cancelled = true }
 	}, [sort])
