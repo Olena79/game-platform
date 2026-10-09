@@ -15,7 +15,7 @@ uploads, Google sign-in trusting unverified emails, reset links working as
 sessions, sessions dying on a token refresh. Recording was then rebuilt to
 run in the gamemaster's browser for free, phones included (see below).
 The admin panel was added on 2026-09-26 (see "Administrator").
-Tests: backend 24 suites / 189 tests, frontend 14 files / 65 tests.
+Tests: backend 24 suites / 191 tests, frontend 14 files / 65 tests.
 
 ### What exists
 - **Auth**: email + password, Google sign-in (audience and `email_verified`
@@ -241,6 +241,17 @@ Tests: backend 24 suites / 189 tests, frontend 14 files / 65 tests.
   who can vote; never for the GM who started it. The open tab is kept by
   `GameRoomPage` (the panel unmounts when closed). Private chats keep their
   own red counts.
+- **A game without spectators** (`Game.spectatorsClosed`, since
+  2026-10-09): a toggle on the create/edit page. Nobody may register as a
+  spectator (`SPECTATORS_CLOSED`), and `resolveSeat` refuses the spectator
+  code (a registered player using it keeps their voiced seat; the GM is
+  unaffected) — the screen says why. The card shows «🚫 Без глядачів» to
+  everyone, visitors included, instead of the spectator count, and no
+  spectator button; the creator no longer sees the spectator code; the
+  Telegram announcement says «Без глядачів». Turning it on for a game
+  that has spectators lets them go: they are taken off the game, told in
+  Telegram (`notifySpectatorsClosed`), and any in an open room leave it
+  (`removeSpectators`); the edit page warns the GM how many first.
 - **Closing access** (any game, paid or free, since 2026-10-02; meant for
   "not paid yet" but a GM may filter anyone): in the
   card's list of registered people the GM can «Закрити доступ» for a player

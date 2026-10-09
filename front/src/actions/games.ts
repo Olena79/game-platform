@@ -41,6 +41,8 @@ export interface GameData {
 	coverImage: string
 	images: string[]
 	defaultTimerSeconds?: number | null
+	/** The gamemaster closed the game to spectators: players only */
+	spectatorsClosed?: boolean
 	gameCode: string
 	spectatorCode?: string
 	registeredPlayers?: RegisteredPlayer[]

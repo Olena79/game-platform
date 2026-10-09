@@ -10,10 +10,10 @@ import { User } from '../models/User'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/authMiddleware'
 import { sendGameCodeToTelegram, sendNotesToTelegram, announceNewGame, escapeHtml, sendTelegramHtml } from '../services/telegramBot'
 import { notifyGmOfRegistration } from '../services/registrationNotify'
-import { notifyGameCancelled, notifyGameRescheduled } from '../services/gameChangeNotify'
+import { notifyGameCancelled, notifyGameRescheduled, notifySpectatorsClosed } from '../services/gameChangeNotify'
 import { noticeGameCreated } from '../services/adminNotify'
 import { deleteGame } from '../services/gameDeletion'
-import { applyGameSettings, closeDeletedGame, removeForClosedAccess } from '../socket/gameRoom'
+import { applyGameSettings, closeDeletedGame, removeForClosedAccess, removeSpectators } from '../socket/gameRoom'
 import { validateBody, validateParams } from '../middleware/validationMiddleware'
 import { createGameSchema, updateGameSchema, gameIdSchema, gameCodeSchema, sendNotesSchema, EDITABLE_GAME_FIELDS, gameAccessSchema } from '../validation/schemas'
 const router = Router()
@@ -30,6 +30,7 @@ const PUBLIC_GAME_FIELDS = [
 	'minPlayers', 'maxPlayers', 'useCoins', 'coinsPerPlayer',
 	'useInfluence', 'influencePerPlayer', 'participationCost',
 	'scheduledAt', 'coverImage', 'images', 'likesCount', 'createdAt', 'updatedAt',
+	'spectatorsClosed',
 ] as const
 
 type GameDoc = { toObject(): Record<string, unknown> }
@@ -274,6 +275,7 @@ router.post('/', authMiddleware, validateBody(createGameSchema), async (req: Aut
 			description: game.description,
 			scheduledAt: game.scheduledAt,
 			participationCost: game.participationCost,
+			spectatorsClosed: !!game.spectatorsClosed,
 			creatorName: creatorLabel(user).name,
 			creatorAlias: creatorLabel(user).alias,
 			coverImage: game.coverImage,
@@ -305,6 +307,7 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		}
 
 		const scheduledBefore = game.scheduledAt ? game.scheduledAt.getTime() : null
+		const spectatorsClosedBefore = !!game.spectatorsClosed
 		for (const field of EDITABLE_GAME_FIELDS) {
 			const value = (req.body as Record<string, unknown>)[field]
 			if (value !== undefined) (game as unknown as Record<string, unknown>)[field] = value
@@ -334,6 +337,11 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 			game.accessBlockedUserIds = []
 			game.gmNotes = ''
 		}
+		// Closed to spectators now: those registered are let go (and told
+		// below, unless a replay already emptied the lists)
+		const closingToSpectators = !spectatorsClosedBefore && !!game.spectatorsClosed
+		const droppedSpectators = closingToSpectators ? game.spectators.map(s => ({ userId: s.userId })) : []
+		if (closingToSpectators) game.spectators = [] as unknown as typeof game.spectators
 		if (game.maxPlayers < game.registeredPlayers.length) {
 			res.status(400).json({ message: 'MAX_BELOW_REGISTERED' })
 			return
@@ -355,6 +363,8 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 		// A room still open under the old codes closes; everyone in it is told why
 		if (rescheduled) await closeDeletedGame(oldCode, String(game._id), 'CODES_CHANGED')
 		if (replay) await GameMessage.deleteMany({ gameId: String(game._id) })
+		// Spectators in an open room leave it, told why
+		if (closingToSpectators && !rescheduled) await removeSpectators(String(game._id))
 		// An open room takes the new settings now, not when next loaded
 		applyGameSettings(game)
 		const labels = await creatorLabels([game.creatorId])
@@ -362,6 +372,9 @@ router.put('/:id', authMiddleware, validateParams(gameIdSchema), validateBody(up
 
 		// A new date or time: everyone registered hears it (after the answer);
 		// after a replay nobody is registered any more, so nobody is told
+		if (closingToSpectators && !replay) {
+			void notifySpectatorsClosed({ _id: game._id, title: game.title, creatorId: game.creatorId }, droppedSpectators)
+		}
 		if (replay && cleanNotes(notesBefore)) {
 			void deliverGameNotes(game.gameCode, notesBefore, String(game.creatorId), game.title, 'ended')
 		}
@@ -506,6 +519,8 @@ router.post('/:id/register-spectator', authMiddleware, async (req: AuthRequest, 
 		if ((game.bannedUserIds ?? []).includes(String(req.userId))) {
 			res.status(403).json({ message: 'REMOVED_FROM_GAME' }); return
 		}
+		// The gamemaster closed this game to spectators
+		if (game.spectatorsClosed) { res.status(400).json({ message: 'SPECTATORS_CLOSED' }); return }
 
 		const alreadyPlayer = game.registeredPlayers.some(p => String(p.userId) === String(req.userId))
 		if (alreadyPlayer) { res.status(400).json({ message: 'ALREADY_REGISTERED_AS_PLAYER' }); return }

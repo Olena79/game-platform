@@ -1767,6 +1767,7 @@ function roomErrorText(error: string, t: (k: string, o?: Record<string, unknown>
 	if (error === 'CLOSED') return t('room.window.closed')
 	if (error === 'PAYMENT_BLOCKED') return t('room.window.payment_blocked')
 	if (error === 'CODES_CHANGED') return t('room.window.codes_changed')
+	if (error === 'SPECTATORS_CLOSED') return t('room.window.spectators_closed')
 	if (error.startsWith('NOT_YET:')) {
 		const opens = new Date(error.slice('NOT_YET:'.length))
 		const locale = lang === 'ua' ? 'uk-UA' : 'en-GB'

@@ -435,6 +435,7 @@ export const OurGamesPage = () => {
 				msg === 'ALREADY_REGISTERED_AS_PLAYER' ? t('our_games.err_already_player') :
 				msg === 'CREATOR_CANNOT_REGISTER'      ? t('our_games.err_creator_register') :
 				msg === 'REMOVED_FROM_GAME'            ? t('our_games.err_removed') :
+				msg === 'SPECTATORS_CLOSED'            ? t('our_games.spectators_closed_hint') :
 				msg
 			setModal({ open: true, title: t('our_games.err_register_title'), message: text, variant: 'error' })
 		} finally {
@@ -1203,7 +1204,7 @@ const GameCard = ({
 							</button>
 						</div>
 					)}
-					{game.spectatorCode && (
+					{game.spectatorCode && !game.spectatorsClosed && (
 						<div className='flex gap-[8px] items-center rounded-[10px] px-[10px] py-[7px]'
 							style={isDark
 								? { background: 'rgba(180,130,255,0.05)', border: '1px solid rgba(180,130,255,0.15)' }
@@ -1242,18 +1243,28 @@ const GameCard = ({
 							<UserCheck size={12} strokeWidth={1.8} />
 							{regCount} / {game.maxPlayers} {t('our_games.btn_players')}
 						</button>
-						<span className='flex items-center gap-[5px] text-[12px]'
-							style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}
-							title={t('our_games.spectators_count')}>
-							<span aria-hidden='true' className='text-[13px] leading-none'>👀</span>
-							{t('our_games.spectators_count')}: {game.spectatorsCount ?? spectators.length}
-						</span>
+						{game.spectatorsClosed ? (
+							// Players only: said to everyone, visitors included
+							<span className='flex items-center gap-[5px] text-[12px] font-[500]'
+								style={{ color: isDark ? 'rgba(255,170,120,0.85)' : '#a5461f' }}
+								title={t('our_games.spectators_closed_hint')}>
+								<span aria-hidden='true' className='text-[12px] leading-none'>🚫</span>
+								{t('our_games.spectators_closed')}
+							</span>
+						) : (
+							<span className='flex items-center gap-[5px] text-[12px]'
+								style={{ color: isDark ? 'rgba(190,148,255,0.78)' : 'var(--text-muted)' }}
+								title={t('our_games.spectators_count')}>
+								<span aria-hidden='true' className='text-[13px] leading-none'>👀</span>
+								{t('our_games.spectators_count')}: {game.spectatorsCount ?? spectators.length}
+							</span>
+						)}
 					</div>
 
 					{/* Wraps under the counts on a narrow phone rather than past the card */}
 					<div className='flex flex-wrap gap-[6px] items-center justify-end ml-auto'>
 						{/* Spectator button */}
-						{!isCreator && isLoggedIn && !isRegistered && (
+						{!isCreator && isLoggedIn && !isRegistered && (isSpectator || !game.spectatorsClosed) && (
 							isSpectator ? (
 								<button
 									onClick={onUnregisterSpectator}

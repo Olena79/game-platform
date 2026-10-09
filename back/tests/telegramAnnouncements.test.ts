@@ -27,6 +27,11 @@ describe('new game announcement', () => {
 		expect(text).toContain('/stop')
 	})
 
+	it('says when a game is for players only', () => {
+		expect(announcementText({ ...game, spectatorsClosed: true }, 'uk')).toContain('Без глядачів')
+		expect(announcementText(game, 'uk')).not.toContain('Без глядачів')
+	})
+
 	it('says free when there is no cost', () => {
 		expect(announcementText({ ...game, participationCost: 0 }, 'uk')).toContain('Безкоштовна')
 		expect(announcementText({ ...game, participationCost: undefined }, 'en')).toContain('Free')

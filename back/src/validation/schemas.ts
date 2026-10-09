@@ -51,6 +51,8 @@ const gameFields = {
 	coverImage:          z.string().url().or(z.literal('')).optional(),
 	images:              z.array(z.string().url()).max(30).optional(),
 	defaultTimerSeconds: z.number().int().min(1).max(86400).nullable().optional(),
+	// No spectators in this game: none may register, the spectator code opens nothing
+	spectatorsClosed:    z.boolean().optional(),
 }
 
 export const createGameSchema = z.object(gameFields)

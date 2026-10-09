@@ -39,7 +39,7 @@ export const CLOSES_AFTER_SESSION_MS = 30 * 60 * 1000
 /** A game never played: closed to players this long after its time all the same */
 export const STALE_AFTER_MS = 24 * 60 * 60 * 1000
 
-export type Refusal = { reason: 'REMOVED' } | { reason: 'PAYMENT_BLOCKED' } | { reason: 'NOT_YET'; opensAt: Date } | { reason: 'CLOSED' }
+export type Refusal = { reason: 'REMOVED' } | { reason: 'PAYMENT_BLOCKED' } | { reason: 'SPECTATORS_CLOSED' } | { reason: 'NOT_YET'; opensAt: Date } | { reason: 'CLOSED' }
 
 /**
  * When may players and spectators be in the room? (The gamemaster: always.)
@@ -66,7 +66,7 @@ export async function resolveSeat(presentedCode: unknown, userId: string): Promi
 	if (!CODE_RE.test(code)) return null
 
 	const game = await Game.findOne({ $or: [{ gameCode: code }, { spectatorCode: code }] })
-		.select('gameCode spectatorCode creatorId registeredPlayers bannedUserIds accessBlockedUserIds scheduledAt closedAt')
+		.select('gameCode spectatorCode creatorId registeredPlayers bannedUserIds accessBlockedUserIds scheduledAt closedAt spectatorsClosed')
 	if (!game) return null
 
 	const uid = String(userId)
@@ -80,6 +80,9 @@ export async function resolveSeat(presentedCode: unknown, userId: string): Promi
 	if (!isCreator && timeRefusal(game)) return null
 	const isRegisteredPlayer = game.registeredPlayers.some(p => String(p.userId) === uid)
 	const heldSpectatorCode = game.spectatorCode === code && game.gameCode !== code
+	// A game closed to spectators: their code opens nothing (a registered
+	// player who came in with it keeps their voiced seat)
+	if (heldSpectatorCode && !isCreator && !isRegisteredPlayer && game.spectatorsClosed) return null
 
 	return {
 		gameId: String(game._id),
@@ -98,10 +101,12 @@ export async function seatRefusal(presentedCode: unknown, userId: string): Promi
 	const code = presentedCode.trim().toUpperCase()
 	if (!CODE_RE.test(code)) return null
 	const game = await Game.findOne({ $or: [{ gameCode: code }, { spectatorCode: code }] })
-		.select('creatorId bannedUserIds accessBlockedUserIds scheduledAt closedAt')
+		.select('gameCode spectatorCode creatorId registeredPlayers bannedUserIds accessBlockedUserIds scheduledAt closedAt spectatorsClosed')
 	if (!game || String(game.creatorId) === String(userId)) return null
 	if ((game.bannedUserIds ?? []).includes(String(userId))) return { reason: 'REMOVED' }
 	if ((game.accessBlockedUserIds ?? []).includes(String(userId))) return { reason: 'PAYMENT_BLOCKED' }
+	if (game.spectatorsClosed && game.spectatorCode === code && game.gameCode !== code
+		&& !(game.registeredPlayers ?? []).some(p => String(p.userId) === String(userId))) return { reason: 'SPECTATORS_CLOSED' }
 	return timeRefusal(game)
 }
 

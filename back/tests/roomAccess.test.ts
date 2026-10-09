@@ -46,6 +46,17 @@ describe('resolveSeat', () => {
 		expect(seat).toMatchObject({ gameCode: 'PLAY23', asSpectator: false, isCreator: false })
 	})
 
+	it('a game closed to spectators: the spectator code opens nothing, and says why', async () => {
+		returns({ ...game, spectatorsClosed: true })
+		expect(await resolveSeat('WATCH7', 'someone')).toBeNull()
+		expect(await seatRefusal('WATCH7', 'someone')).toEqual({ reason: 'SPECTATORS_CLOSED' })
+		// The entry code, a registered player with either code, and the gamemaster are unaffected
+		expect(await resolveSeat('PLAY23', 'someone')).toMatchObject({ asSpectator: false })
+		expect(await resolveSeat('WATCH7', 'registered-player')).toMatchObject({ asSpectator: false })
+		expect(await resolveSeat('WATCH7', 'gm-user')).toMatchObject({ isCreator: true })
+		expect(await seatRefusal('PLAY23', 'someone')).toBeNull()
+	})
+
 	it('gives the spectator code a silent seat', async () => {
 		const seat = await resolveSeat('WATCH7', 'someone')
 		expect(seat?.asSpectator).toBe(true)

@@ -93,6 +93,9 @@
     "your_code_label": "Your game code"
   },
   "create_game": {
+    "spectators_closed": "No spectators (players only)",
+    "spectators_closed_hint": "Spectators will not be able to register, and the spectator code will not open the room. Everyone will see on the game card that it is closed to spectators.",
+    "spectators_closed_warn": "Spectators already registered: {{count}}. Once you save, their registration will be cancelled and they will be told in Telegram.",
     "badge_new": "New game",
     "badge_edit": "Edit game",
     "title_new": "Create game",
@@ -148,6 +151,8 @@
     "schedule_hint_edit": "Players and spectators enter 10 minutes before the start; half an hour after the game the room closes to them. Changing the date or time renews the player and spectator codes — the old ones stop working, and registered participants get the new codes in Telegram. If the game has already taken place and you set a new date ahead, the lists of players and spectators are emptied (nobody is notified) — people register again for the new game. You, the gamemaster, can enter at any time."
   },
   "our_games": {
+    "spectators_closed": "No spectators",
+    "spectators_closed_hint": "The gamemaster closed this game to spectators: you cannot register as a spectator, only players may enter.",
     "title": "Games",
     "empty": "No games yet. Be the first!",
     "btn_create": "Create game",
@@ -629,6 +634,7 @@
     },
     "panel_resize": "Drag to widen the panel (double-click to reset)",
     "window": {
+      "spectators_closed": "The gamemaster closed this game to spectators — only players may enter. If you want to play, register as a player on the game's page.",
       "not_yet": "The room opens for players and spectators at {{when}} — 10 minutes before the game. This page will open it by itself.",
       "closed": "The game has taken place and the room is closed. It opens again when the gamemaster sets a new time.",
       "codes_changed": "The gamemaster changed the game time, so the codes were renewed. Registered participants get the new codes in Telegram.",

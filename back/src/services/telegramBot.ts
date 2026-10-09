@@ -351,6 +351,8 @@ export interface GameAnnouncement {
 	/** Then: the part of their email before the @ */
 	creatorAlias?: string
 	coverImage?: string
+	/** No spectators in this game */
+	spectatorsClosed?: boolean
 }
 
 /** "25 вересня 2026, 19:00 (за Києвом)" — the club lives in Kyiv time. */
@@ -376,6 +378,7 @@ export function announcementText(game: GameAnnouncement, lang: Lang): string {
 		game.description ? `\n${escapeHtml(game.description)}\n` : '',
 		`📅 ${escapeHtml(formatGameDate(game.scheduledAt, lang))}`,
 		price,
+		game.spectatorsClosed ? (lang === 'uk' ? '🚫 Без глядачів — лише для гравців' : '🚫 No spectators — players only') : '',
 		`🎭 ${lang === 'uk' ? 'Ігромастер' : 'Gamemaster'}: ${escapeHtml(game.creatorName || `${lang === 'uk' ? 'Немає імені' : 'No name'} (${game.creatorAlias ?? ''})`)}`,
 		'',
 		link

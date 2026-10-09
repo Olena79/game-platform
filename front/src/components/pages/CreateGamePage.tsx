@@ -3,7 +3,7 @@ import { splitSeconds } from '../../utils/clock'
 import { RichTextEditor } from '../minicomponents/RichTextEditor'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Scroll, Users, CircleDollarSign, Zap, CalendarDays, X, ImagePlus, CreditCard, Banknote } from 'lucide-react'
+import { Scroll, Users, CircleDollarSign, Zap, CalendarDays, X, ImagePlus, CreditCard, Banknote, EyeOff } from 'lucide-react'
 import { uploadToCloudinary } from '../../utils/cloudinary'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -177,6 +177,12 @@ export const CreateGamePage = () => {
 	// The gamemaster's bank at the start: coins to hand out during the game
 	const [startingBank, setStartingBank]         = useState(0)
 	const [useInfluence, setUseInfluence]         = useState(false)
+	// Players only: nobody may register as a spectator, the spectator code opens nothing
+	const [spectatorsClosed, setSpectatorsClosed] = useState(false)
+	// Editing: was it already closed, and how many spectators are registered
+	// (closing lets them go — they are told in Telegram)
+	const [spectatorsClosedBefore, setSpectatorsClosedBefore] = useState(false)
+	const [registeredSpectators, setRegisteredSpectators] = useState(0)
 	const [influencePerPlayer, setInfluencePerPlayer] = useState(10)
 	// Date and time as the person sees them, in their own time zone
 	const [gameDate, setGameDate]                 = useState('')   // YYYY-MM-DD
@@ -217,6 +223,9 @@ export const CreateGamePage = () => {
 				setCoinsPerPlayer(g.useCoins ? (g.coinsPerPlayer ?? 0) : 100)
 				setStartingBank(g.startingBank ?? 0)
 				setUseInfluence(g.useInfluence)
+				setSpectatorsClosed(!!g.spectatorsClosed)
+				setSpectatorsClosedBefore(!!g.spectatorsClosed)
+				setRegisteredSpectators(g.spectators?.length ?? 0)
 				setInfluencePerPlayer(g.influencePerPlayer || 10)
 				// Local, like the game card shows it (it used to be UTC here — 3 hours off)
 				if (g.scheduledAt) {
@@ -285,6 +294,7 @@ export const CreateGamePage = () => {
 				startingBank: useCoins ? startingBank : 0,
 				useInfluence,
 				influencePerPlayer: useInfluence ? influencePerPlayer : 0,
+				spectatorsClosed,
 				participationCost,
 				gmCardNumber: rawCard.length === 16 ? rawCard : '',
 				// With its time zone: a bare "2026-10-01T19:00" was read by the
@@ -562,6 +572,24 @@ export const CreateGamePage = () => {
 							{errors.maxPlayers && (
 								<span className='text-[12px] text-[rgba(255,90,160,0.85)] mt-[4px] block'>{errors.maxPlayers}</span>
 							)}
+							{/* Players only — no spectators may register or enter */}
+							<div className='flex flex-col gap-[8px] mt-[16px]'>
+								<Toggle
+									checked={spectatorsClosed}
+									onChange={setSpectatorsClosed}
+									label={t('create_game.spectators_closed')}
+									icon={<EyeOff size={15} strokeWidth={1.8} />}
+								/>
+								<p className='text-[12px] leading-[1.45] sm:pl-[54px]' style={{ color: isDark ? 'rgba(150,170,220,0.6)' : 'var(--text-muted)' }}>
+									{t('create_game.spectators_closed_hint')}
+								</p>
+								{spectatorsClosed && !spectatorsClosedBefore && registeredSpectators > 0 && (
+									<p className='text-[12px] leading-[1.45] sm:ml-[54px] rounded-[8px] px-[10px] py-[7px]'
+										style={{ background: 'rgba(255,170,60,0.08)', border: '1px solid rgba(255,170,60,0.3)', color: isDark ? 'rgba(255,215,160,0.95)' : '#8a4b00' }}>
+										{t('create_game.spectators_closed_warn', { count: registeredSpectators })}
+									</p>
+								)}
+							</div>
 						</section>
 
 						<Divider />

@@ -101,3 +101,18 @@ export function notifyGameCancelled(game: GameForNotice, opts: { byGamemaster: b
 	if (when && when.getTime() < now.getTime() - PAST_GAME_MS) return Promise.resolve(0)
 	return tellParticipants(game, lang => cancelledText(game.title, when, lang), !opts.byGamemaster)
 }
+
+export function spectatorsClosedText(title: string, lang: Lang): string {
+	return lang === 'en'
+		? [`🚫 <b>No spectators in this game</b>`, `<b>${escapeHtml(title)}</b>`, '', 'The gamemaster closed this game to spectators, so your spectator registration has been cancelled and the spectator code no longer works.'].join('\n')
+		: [`🚫 <b>Гра без глядачів</b>`, `<b>${escapeHtml(title)}</b>`, '', 'Ігромайстер закрив цю гру для глядачів, тому вашу реєстрацію глядача скасовано, а код глядача більше не діє.'].join('\n')
+}
+
+/**
+ * The gamemaster closed the game to spectators: the spectators who had
+ * registered (passed in — they are already off the game) hear why.
+ */
+export function notifySpectatorsClosed(game: { _id: unknown; title: string; creatorId: unknown }, dropped: Array<{ userId: unknown }>): Promise<number> {
+	if (dropped.length === 0) return Promise.resolve(0)
+	return tellParticipants({ ...game, registeredPlayers: [], spectators: dropped }, lang => spectatorsClosedText(game.title, lang), false)
+}

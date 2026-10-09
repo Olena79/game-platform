@@ -346,7 +346,17 @@ export async function removeForClosedAccess(gameId: string, userId: string): Pro
 	await removeFromRoom(ioRef, state, userId, 'PAYMENT_BLOCKED')
 }
 
-async function removeFromRoom(io: Server, state: GameRoomState, userId: string, why: 'REMOVED' | 'PAYMENT_BLOCKED' = 'REMOVED'): Promise<void> {
+/** The gamemaster closed the game to spectators: those in the room leave it, told why */
+export async function removeSpectators(gameId: string): Promise<void> {
+	if (!ioRef) return
+	const state = [...rooms.values()].find(s => s.gameId === gameId)
+	if (!state) return
+	for (const p of state.players.filter(pl => pl.isSpectator && !pl.isGamemaster)) {
+		await removeFromRoom(ioRef, state, p.userId, 'SPECTATORS_CLOSED')
+	}
+}
+
+async function removeFromRoom(io: Server, state: GameRoomState, userId: string, why: 'REMOVED' | 'PAYMENT_BLOCKED' | 'SPECTATORS_CLOSED' = 'REMOVED'): Promise<void> {
 	const p = state.players.find(pl => pl.userId === userId)
 	// Off the roster before the sockets close, so the disconnect that follows
 	// finds nobody to mark "away" and nobody sees a ghost tile flicker

@@ -42,6 +42,8 @@ export interface IGame extends Document {
 	accessBlockedUserIds: string[]
 	/** Closed to players and spectators from this moment (30 min after the session ended), until rescheduled */
 	closedAt?: Date | null
+	/** The gamemaster closed the game to spectators: no spectator registration, the spectator code opens nothing */
+	spectatorsClosed?: boolean
 	createdAt: Date
 	updatedAt: Date
 }
@@ -86,6 +88,7 @@ const GameSchema = new Schema<IGame>(
 		bannedUserIds:      { type: [String], default: [] },
 		accessBlockedUserIds: { type: [String], default: [] },
 		closedAt:           { type: Date, default: null },
+		spectatorsClosed:   { type: Boolean, default: false },
 	},
 	{ timestamps: true, collection: 'our_games' }
 )
