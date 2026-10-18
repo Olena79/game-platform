@@ -1226,7 +1226,7 @@ const GameCard = ({
 
 			{/* Bottom row: players count + register buttons */}
 			<div className='mt-auto flex flex-col gap-[8px]'>
-				{!isCreator && isLoggedIn && !isRegistered && !isSpectator && !isFull && (
+				{!isCreator && !isRegistered && !isSpectator && !isFull && (
 					<span className='text-[12px] font-[500] text-right' style={{ color: isDark ? 'rgba(180,200,255,0.75)' : 'var(--text-muted)' }}>
 						{t('our_games.register_as_label')}
 					</span>
@@ -1264,7 +1264,8 @@ const GameCard = ({
 					{/* Wraps under the counts on a narrow phone rather than past the card */}
 					<div className='flex flex-wrap gap-[6px] items-center justify-end ml-auto'>
 						{/* Spectator button */}
-						{!isCreator && isLoggedIn && !isRegistered && (isSpectator || !game.spectatorsClosed) && (
+						{/* Shown to visitors too, like the player button: a tap sends them to sign in */}
+						{!isCreator && !isRegistered && (isSpectator || !game.spectatorsClosed) && (
 							isSpectator ? (
 								<button
 									onClick={onUnregisterSpectator}
