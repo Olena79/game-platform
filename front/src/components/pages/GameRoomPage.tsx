@@ -18,7 +18,7 @@ import {
 	useRoomContext,
 	useTracks,
 } from '@livekit/components-react'
-import { ConnectionState, LocalVideoTrack, ParticipantEvent, Track } from 'livekit-client'
+import { ConnectionState, LocalVideoTrack, ParticipantEvent, Track, VideoPresets } from 'livekit-client'
 import type { LocalTrackPublication } from 'livekit-client'
 import { applyBlur, blurPreferred, isTouchDevice, removeBlur, setBlurPreferred } from '../../utils/backgroundBlur'
 const LiveKitRoom = LKRoom as React.ComponentType<any>
@@ -114,10 +114,33 @@ const VIDEO_CAPTURE_OPTS = {
 	width: { ideal: 1280 },
 	height: { ideal: 720 },
 }
-const LK_ROOM_OPTS = {
-	audioCaptureDefaults: AUDIO_CAPTURE_OPTS,
-	videoCaptureDefaults: VIDEO_CAPTURE_OPTS,
-	webAudioMix: true,
+/**
+ * Traffic: LiveKit's free plan includes 50 GB a month of video *received*,
+ * and it is a hard cap — on 2026-10-22 it ran out mid-month and a game had
+ * no video or sound. Everyone used to receive everyone's camera at full
+ * 720p whatever the size of the tile, even off screen. Now:
+ * - adaptiveStream: each viewer gets the quality its tile needs (a small
+ *   tile → 180p), nothing for a tile off screen or a tab in the background;
+ * - simulcast with 180p / 360p layers and a capped top layer (~1 Mbit/s,
+ *   24 fps), so there is a small copy to send;
+ * - dynacast: a camera stops encoding layers nobody watches.
+ * Not for the gamemaster: their browser records the room and draws every
+ * camera from its own hidden elements, which adaptiveStream would see as
+ * "not shown" and pause.
+ */
+function lkRoomOptions(isGM: boolean) {
+	return {
+		audioCaptureDefaults: AUDIO_CAPTURE_OPTS,
+		videoCaptureDefaults: VIDEO_CAPTURE_OPTS,
+		webAudioMix: true,
+		adaptiveStream: !isGM,
+		dynacast: true,
+		publishDefaults: {
+			simulcast: true,
+			videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
+			videoEncoding: { maxBitrate: 1_000_000, maxFramerate: 24 },
+		},
+	}
 }
 
 function MobileBarBtn({ icon, label, active, onClick, badge = 0 }: {
@@ -1655,6 +1678,8 @@ function GameRoomInner() {
 	}, [room.recordStopSignal, recorder])
 	const containerRef = useRef<HTMLDivElement>(null)
 
+	// Fixed when the media connection is made (the seat is known by then)
+	const lkOptions = useMemo(() => lkRoomOptions(room.isGM), [room.isGM])
 	const activeLk = inBreakout ? lkBreakout : lk
 
 	// Pre-join screen — shown once before the first LiveKit connection.
@@ -1783,7 +1808,7 @@ function GameRoomInner() {
 				connect={true}
 				audio={false}
 				video={false}
-				options={LK_ROOM_OPTS}
+				options={lkOptions}
 				onError={(e: Error) => setLkError(`${e?.name ?? 'Error'}: ${e?.message ?? ''}`)}
 				style={{ height: '100dvh', background: '#07080f' }}
 			>

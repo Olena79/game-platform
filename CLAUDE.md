@@ -141,10 +141,16 @@ Tests: backend 24 suites / 191 tests, frontend 14 files / 65 tests.
   real devices or against a real LiveKit room when written (the pre-join
   preview was, in headless Chromium with a fake camera).
 - **Video service down** (since 2026-10-22): chat runs on our server, video
-  and sound on LiveKit Cloud. On the free Build plan the monthly allowance
-  (WebRTC participant minutes, shared by all free projects) is a hard cap:
-  once used up, connections are refused until the 1st — on 2026-10-22 a
-  whole game had chat but no one seen or heard, and the room said nothing.
+  and sound on LiveKit Cloud. The free Build plan has monthly allowances that
+  are hard caps (5 000 participant minutes, 50 GB of downstream data) — what
+  ran out on 2026-10-22 was the **50 GB of traffic** (only 1 285 minutes used;
+  September had gone 67 GB over): a whole game had chat but no one seen or
+  heard, and the room said nothing. Traffic was high because everyone
+  received everyone's camera at full 720p, whatever the tile's size; since
+  then `lkRoomOptions` turns on adaptiveStream (a tile gets the quality its
+  size needs, nothing off screen), simulcast 180p/360p with the top layer
+  capped (~1 Mbit/s, 24 fps) and dynacast — adaptiveStream not for the GM,
+  whose browser records every camera from hidden elements.
   Now, not connected to LiveKit for 20 s → a red bar in the room («Відео й
   звук не підключилися…», with «Оновити»), and the page reports
   `gr:media-down` (with LiveKit's error) → the administrator's Telegram
