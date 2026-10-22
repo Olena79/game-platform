@@ -191,6 +191,12 @@ export const gameAccessSchema = z.object({
 	blocked: z.boolean(),
 })
 
+// The page could not reach the video service (LiveKit) — reported so the administrator hears
+export const grMediaDownSchema = z.object({
+	gameCode: z.string().min(1),
+	reason: z.string().max(300).optional(),
+})
+
 export const grPresenceSchema = z.object({
 	gameCode: z.string().min(1),
 	away: z.boolean(),

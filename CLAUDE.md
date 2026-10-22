@@ -140,6 +140,15 @@ Tests: backend 24 suites / 191 tests, frontend 14 files / 65 tests.
   storage.googleapis.com (a future CSP must allow them). Not checked on
   real devices or against a real LiveKit room when written (the pre-join
   preview was, in headless Chromium with a fake camera).
+- **Video service down** (since 2026-10-22): chat runs on our server, video
+  and sound on LiveKit Cloud. On the free Build plan the monthly allowance
+  (WebRTC participant minutes, shared by all free projects) is a hard cap:
+  once used up, connections are refused until the 1st — on 2026-10-22 a
+  whole game had chat but no one seen or heard, and the room said nothing.
+  Now, not connected to LiveKit for 20 s → a red bar in the room («Відео й
+  звук не підключилися…», with «Оновити»), and the page reports
+  `gr:media-down` (with LiveKit's error) → the administrator's Telegram
+  (`noticeMediaDown`, at most once an hour per room).
 - **Screen sharing**: players and the GM (never spectators — their token
   cannot publish). Desktop browsers only; phones are told it cannot work
   there. Starting a share switches everyone to the speaker view, where the

@@ -105,6 +105,21 @@ export async function noticeGameCreated(creatorId: string, game: { title: string
 	].join('\n'))
 }
 
+/**
+ * People in a room could not connect to the video service: the chat works,
+ * but nobody sees or hears anyone. On the free LiveKit plan the usual cause
+ * is the monthly limit being used up (it is a hard cap until the 1st).
+ */
+export async function noticeMediaDown(game: { title: string }, reporter: string, reason?: string): Promise<void> {
+	await notifyAdmin([
+		'⚠️ <b>Відео й звук не підключилися</b>',
+		`Гра «${escapeHtml(game.title)}» — повідомив(-ла): ${escapeHtml(reporter)}`,
+		reason ? `Причина від браузера: <code>${escapeHtml(reason.slice(0, 200))}</code>` : '',
+		'',
+		'Чат працює, а відеосервіс (LiveKit) не прийняв з’єднання. Найчастіше це вичерпаний місячний ліміт безкоштовного плану LiveKit Cloud — перевірте Usage у панелі LiveKit (cloud.livekit.io).',
+	].filter((l, i, all) => !(l === '' && all[i - 1] === '')).join('\n'))
+}
+
 export async function noticeRecordingStarted(rec: { gmId: unknown; gameTitle: string; contentType?: string; mode: string }): Promise<void> {
 	if (await isAdminId(String(rec.gmId))) return
 	const gm = await User.findById(rec.gmId).select('name surname email').lean()

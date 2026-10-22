@@ -160,8 +160,10 @@ function supportsScreenAudio(): boolean {
 }
 
 // ── Inner room content (needs LiveKit context) ────────────────────────────────
-function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap }: {
+function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap, lkError = '' }: {
 	room: RoomHook; gameCode: string
+	/** Why LiveKit refused the connection, when it said so */
+	lkError?: string
 	initMic: boolean; initCam: boolean
 	recorder: RoomRecorder; recorderSnap: RecorderSnapshot
 }) {
@@ -466,6 +468,25 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 
 	// Mute All: GM can force-disable all participants' mics
 	const connectionState = useConnectionState()
+
+	// ── Video service unreachable ───────────────────────────────────────────────
+	// The chat runs on our server, video and sound on LiveKit. When LiveKit
+	// refuses (on the free plan: the month's minutes used up — a hard cap),
+	// the room used to look normal with nobody seen or heard (2026-10-22).
+	// Not connected for 20 s → say so on screen and tell the administrator.
+	const [mediaDown, setMediaDown] = useState(false)
+	const mediaReportedRef = useRef(false)
+	useEffect(() => {
+		if (connectionState === ConnectionState.Connected) { setMediaDown(false); return }
+		const timer = setTimeout(() => {
+			setMediaDown(true)
+			if (!mediaReportedRef.current) {
+				mediaReportedRef.current = true
+				room.reportMediaDown(lkError || String(connectionState))
+			}
+		}, 20_000)
+		return () => clearTimeout(timer)
+	}, [connectionState]) // eslint-disable-line react-hooks/exhaustive-deps
 	useEffect(() => {
 		if (!shouldMute || isSpectator || !localParticipant) return
 		// "Mute everyone" means the room, not the person who pressed it: the
@@ -720,6 +741,19 @@ function RoomContent({ room, gameCode, initMic, initCam, recorder, recorderSnap 
 					<span style={{ color: 'rgba(150,200,255,0.95)', fontSize: '12px' }}>{screenError}</span>
 					<button onClick={() => setScreenError('')} aria-label='✕' className='flex-shrink-0 text-[12px] cursor-pointer px-[4px]'
 						style={{ color: 'rgba(150,200,255,0.6)' }}>✕</button>
+				</div>
+			)}
+
+			{/* Video and sound could not connect — the chat still works */}
+			{mediaDown && (
+				<div role='alert' className='flex-shrink-0 flex flex-wrap items-center justify-center gap-x-[10px] gap-y-[4px] py-[7px] px-[16px] text-center'
+					style={{ background: 'rgba(255,90,90,0.12)', borderBottom: '1px solid rgba(255,90,90,0.3)' }}>
+					<span style={{ color: 'rgba(255,190,180,0.95)', fontSize: '12.5px' }}>{t('room.media_down')}</span>
+					<button onClick={() => window.location.reload()}
+						className='text-[12px] font-[600] px-[10px] py-[3px] rounded-[6px] cursor-pointer'
+						style={{ color: '#ffb4a8', border: '1px solid rgba(255,140,120,0.45)' }}>
+						{t('room.media_down_reload')}
+					</button>
 				</div>
 			)}
 
@@ -1629,6 +1663,8 @@ function GameRoomInner() {
 	const [preJoinDone, setPreJoinDone] = useState(false)
 	const [initMic, setInitMic] = useState(false)
 	const [initCam, setInitCam] = useState(false)
+	// Why LiveKit refused the connection (shown and reported by RoomContent)
+	const [lkError, setLkError] = useState('')
 
 	// Immersive mode — locks page scrolling and hides the browser chrome
 	// (URL bar + Android nav bar) for as long as the room is open.
@@ -1748,9 +1784,10 @@ function GameRoomInner() {
 				audio={false}
 				video={false}
 				options={LK_ROOM_OPTS}
+				onError={(e: Error) => setLkError(`${e?.name ?? 'Error'}: ${e?.message ?? ''}`)}
 				style={{ height: '100dvh', background: '#07080f' }}
 			>
-				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} recorder={recorder} recorderSnap={recorderSnap} />
+				<RoomContent room={room} gameCode={code} initMic={initMic} initCam={initCam} recorder={recorder} recorderSnap={recorderSnap} lkError={lkError} />
 			</LiveKitRoom>
 		</div>
 	)

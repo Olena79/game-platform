@@ -30,6 +30,7 @@ import {
 	grMutePlayerSchema,
 	grKickSchema,
 	grPresenceSchema,
+	grMediaDownSchema,
 	grAnnounceSchema,
 	grBreakoutAssignSchema,
 	grImageShowSchema,
@@ -43,6 +44,7 @@ import {
 	grBreakoutEndSchema,
 } from '../validation/schemas'
 import logger from '../config/logger'
+import { noticeMediaDown } from '../services/adminNotify'
 import { cleanNotes, deliverGameNotes } from '../services/notesDelivery'
 import { resolveSeat, seatRefusal, refusalMessage, CLOSES_AFTER_SESSION_MS } from '../services/roomAccess'
 import { muteMicrophones, roomNameFor, roomService } from '../services/livekit'
@@ -68,6 +70,9 @@ const breakoutTimers = new Map<string, ReturnType<typeof setTimeout>>() // `${ga
 const userSockets = new Map<string, Set<string>>() // `${gameCode}:${userId}` → active socket IDs
 // The GM's notes, synced as they type. Deliberately kept out of GameRoomState:
 // that object is broadcast to every participant, and these are private.
+// Rooms whose "video did not connect" the administrator was told about, and when
+const mediaDownNoticed = new Map<string, number>()
+const MEDIA_DOWN_NOTICE_EVERY_MS = 60 * 60 * 1000
 const gmNotes = new Map<string, string>()               // gameCode → notes draft
 const gmAwayTimers = new Map<string, ReturnType<typeof setTimeout>>() // gameCode → grace timer
 
@@ -971,6 +976,19 @@ export function registerGameRoom(io: Server) {
 		// loses camera and microphone: its tile hung there, looking muted.
 		// After AWAY_AFTER_MS in the background it is hidden for everyone;
 		// it comes back the moment the page is in front again.
+		// The page could not connect to LiveKit: the administrator hears it,
+		// at most once an hour per room (everyone in a failing room reports)
+		socket.on('gr:media-down', validateSocketEvent(grMediaDownSchema, async (d: any) => {
+			const state = here()
+			if (!state || !curUser) return
+			const last = mediaDownNoticed.get(state.gameCode) ?? 0
+			if (Date.now() - last < MEDIA_DOWN_NOTICE_EVERY_MS) return
+			mediaDownNoticed.set(state.gameCode, Date.now())
+			const who = state.players.find(p => p.userId === curUser)?.name ?? ''
+			logger.warn('[room] video service unreachable', { gameCode: state.gameCode, reason: d.reason })
+			void noticeMediaDown({ title: state.title }, who, d.reason).catch(() => undefined)
+		}, socket))
+
 		socket.on('gr:presence', validateSocketEvent(grPresenceSchema, async (d: any) => {
 			const state = here()
 			if (!state || !curUser) return

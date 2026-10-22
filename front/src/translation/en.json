@@ -367,6 +367,8 @@
     "logout_hint": "Sign out of your account on this device."
   },
   "room": {
+    "media_down": "Video and sound did not connect — the video service is not answering. The chat works. Reload the page; if it helps nobody, the problem is on the service's side, and the administrator has been told.",
+    "media_down_reload": "Reload",
     "error_prefix": "Error:",
     "loading": "Loading...",
     "connecting": "Connecting...",

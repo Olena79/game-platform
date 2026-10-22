@@ -373,7 +373,13 @@ export function useGameRoom(rawCode: string) {
 	}, [inBreakout, connected, fetchLKToken, emit])
 	const isSpectatorJoin = resolved?.isSpectatorJoin ?? false
 
+	// The page could not reach the video service: the administrator hears it
+	const reportMediaDown = useCallback((reason?: string) => {
+		emit('gr:media-down', reason ? { reason: reason.slice(0, 300) } : {})
+	}, [emit])
+
 	return {
+		reportMediaDown,
 		state, connected, me, isGM, myId, inBreakout, isSpectatorJoin, error, connStatus, playerReactions,
 		privateChats, unreadDMs, markDMRead,
 		shouldMute, clearMuteSignal,
