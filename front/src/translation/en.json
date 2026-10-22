@@ -966,5 +966,16 @@
     "rec_open": "Open the recording",
     "raw_hint": "Need the same data in a format for programs?",
     "raw_button": "Download the JSON file"
+  },
+  "club_support": {
+    "btn": "I want to help the club",
+    "title": "For the «Games of Senses» club",
+    "text": "This is your thanks, and it goes to the development of the «Games of Senses» club.",
+    "jar_btn": "Top up the jar",
+    "card_label": "Jar card number",
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "thanks": "Thank you for being with us!"
   }
 }

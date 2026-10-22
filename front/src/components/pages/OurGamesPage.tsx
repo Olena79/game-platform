@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffe
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ClubSupportButton } from '../ClubSupport'
 import { Gamepad2, Users, CircleDollarSign, Zap, CalendarDays, Pencil, Trash2, UserCheck, Heart, Search, CreditCard, Copy, Check, Banknote, BookOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -510,12 +511,15 @@ export const OurGamesPage = () => {
 						</h1>
 					</div>
 
+					<div className='self-start md:self-auto flex flex-wrap items-center gap-[10px]'>
+					<ClubSupportButton />
 					<button
 						onClick={() => isLoggedIn ? navigate('/create-game') : setAuthModal(true)}
-						className='self-start md:self-auto flex items-center gap-[8px] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[20px] py-[11px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_24px_rgba(100,80,255,0.4)] hover:-translate-y-[1px] transition-all cursor-pointer whitespace-nowrap'
+						className='flex items-center gap-[8px] bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[20px] py-[11px] rounded-[12px] text-[14px] font-[600] hover:shadow-[0_0_24px_rgba(100,80,255,0.4)] hover:-translate-y-[1px] transition-all cursor-pointer whitespace-nowrap'
 					>
 						+ {t('our_games.btn_create')}
 					</button>
+					</div>
 				</div>
 
 				{/* ── Search / Sort / Filter bar ─────────────────────────────────── */}

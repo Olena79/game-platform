@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { Heart, MessageCircle, Pencil, Trash2, Send, X, ChevronDown, ChevronUp, CornerDownRight, UserX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ClubSupportButton } from '../ClubSupport'
 import { useAuth } from '../../context/AuthContext'
 import { useAdmin } from '../../context/AdminContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -878,6 +879,7 @@ export const CommunityPage = () => {
 						<span className='w-[6px] h-[6px] rounded-full bg-[#44aaff] pulse-dot-anim flex-shrink-0' />
 						{t('community.badge')}
 					</span>
+					<ClubSupportButton className='my-[6px]' />
 					<h1 className='font-amatic text-[34px] md:text-[44px] font-[700] text-center' style={{ color: isDark ? 'white' : 'var(--text-primary)' }}>{t('community.title')}</h1>
 					<p className='text-[15px] text-center' style={{ color: isDark ? 'rgba(160,190,240,0.82)' : 'var(--text-secondary)' }}>
 						{t('community.subtitle')}

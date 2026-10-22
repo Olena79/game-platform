@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ClubSupportButton } from '../ClubSupport'
 import { Link, useNavigate } from 'react-router-dom'
 import { FileText, LogOut, Trash2, ShieldAlert, Send, Pencil } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -76,7 +77,10 @@ export const AccountPage = () => {
 
 	return (
 		<div className='w-full max-w-[640px] mx-auto px-[16px] py-[40px] flex flex-col gap-[18px]'>
-			<h1 className='text-[22px] font-[700]'>{t('account.title')}</h1>
+			<div className='flex flex-wrap items-center justify-between gap-[12px]'>
+				<h1 className='text-[22px] font-[700]'>{t('account.title')}</h1>
+				<ClubSupportButton />
+			</div>
 
 			{/* Who you are here */}
 			<section className='rounded-[16px] p-[20px] flex flex-col gap-[10px]' style={card}>

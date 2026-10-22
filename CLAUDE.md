@@ -284,6 +284,14 @@ Tests: backend 24 suites / 191 tests, frontend 14 files / 65 tests.
   room and LiveKit (`removeFromRoom`). `resolveSeat` refuses them through
   both codes and registration refuses them. No undo, never the GM.
   `tests/kick.test.ts` runs it through a real Socket.IO room.
+- **«Я хочу допомогти клубу»** (`components/ClubSupport.tsx`, since
+  2026-10-22): a donation to the club itself (a game's «Дяка» goes to its
+  GM). On Home beside «Створити власну гру» / «Доєднатись до групи
+  гравців» (under them on phones), on Games beside «Створити гру», on
+  Community under the badge, on Account right of the title. The window
+  gives the club's Monobank jar link and the jar's card number (copy
+  button). The account holder's IBAN and tax number are deliberately not
+  on the site — they would be public on every page.
 - **Community feed** with live updates.
 - **Administrator** — one person, `/admin` (invisible button at the end of
   the footer links). See "Administrator" below.

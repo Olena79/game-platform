@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ClubSupportButton } from '../ClubSupport'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Modal } from '../minicomponents/Modal'
@@ -132,7 +133,9 @@ export const HomePage = () => {
 						{t('home.hero.subtitle')}
 					</p>
 
-					<div className='flex flex-wrap gap-[12px] md:gap-[14px]'>
+					{/* Phone: the club button under the two; computer: beside them */}
+					<div className='flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap md:items-center gap-[12px] md:gap-[14px] lg:w-max'>
+					<div className='flex flex-wrap lg:flex-nowrap gap-[12px] md:gap-[14px]'>
 						<button
 							onClick={handleCreateGame}
 							className="bg-gradient-to-br from-[#2255dd] to-[#7744cc] text-white px-[22px] md:px-[28px] py-[12px] md:py-[14px] rounded-[12px] text-[14px] md:text-[15px] font-amatic font-[600] hover:shadow-[0_0_30px_rgba(100,80,255,0.5)] hover:-translate-y-[1px] transition-all cursor-pointer"
@@ -149,6 +152,8 @@ export const HomePage = () => {
 							<TelegramIcon />
 							{t('home.hero.btn_learn')}
 						</a>
+					</div>
+					<ClubSupportButton className='self-start md:py-[14px] md:px-[24px] md:text-[15px]' />
 					</div>
 				</div>
 			</section>
